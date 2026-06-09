@@ -36,8 +36,10 @@ class BelsisAuthService
         $username = config('belsis.username');
         $password = config('belsis.password');
 
-        if (empty($username) || empty($password)) {
-            throw new BelsisException('Belsis kullanıcı adı veya şifre yapılandırılmamış.');
+        if (empty($username) || $password === null || $password === '') {
+            throw new BelsisException(
+                'Belsis kullanıcı adı veya şifre yapılandırılmamış. .env dosyasında BELSIS_USERNAME ve BELSIS_PASSWORD ayarlayın, ardından: php artisan config:clear',
+            );
         }
 
         $result = $this->tryOturumAc($username, $password);

@@ -9,11 +9,11 @@ return [
 
     'ip_address' => env('BELSIS_IP_ADDRESS', '127.0.0.1'),
     'timeout'    => (int) env('BELSIS_TIMEOUT', 30),
-    'verify_ssl' => env('BELSIS_VERIFY_SSL', false),
+    'verify_ssl' => filter_var(env('BELSIS_VERIFY_SSL', false), FILTER_VALIDATE_BOOLEAN),
 
     'session_cache_ttl' => (int) env('BELSIS_SESSION_TTL', 1500),
 
-    'mock' => env('BELSIS_MOCK', false),
+    'mock' => filter_var(env('BELSIS_MOCK', true), FILTER_VALIDATE_BOOLEAN),
 
     'namespace' => 'http://tempuri.org/',
 ];
