@@ -47,12 +47,32 @@
         .kiosk-screen { display: none; width: 1024px; height: 768px; overflow: hidden; }
         .kiosk-screen.active { display: flex; }
         #screen-login.active {
-            display: grid;
-            grid-template-rows: 56px 1fr 268px;
+            display: flex;
+            flex-direction: column;
         }
-        #screen-login .login-main {
+        .login-split {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 624px 400px;
             min-height: 0;
-            overflow: hidden;
+            height: 712px;
+        }
+        .login-left {
+            padding: 2rem 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 1.25rem;
+            min-width: 0;
+        }
+        .login-numpad {
+            background: #fff;
+            border-left: 3px solid #93c5fd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+            box-shadow: -4px 0 16px rgba(30, 90, 158, 0.08);
         }
         .touch-btn { transition: transform .1s ease, background-color .15s ease; cursor: pointer; }
         .touch-btn:active { transform: scale(0.97); }
@@ -69,44 +89,58 @@
         .animate-fade-in { animation: fadeIn .4s ease forwards; }
         .animate-scale-in { animation: scaleIn .5s ease forwards; }
         .success-check-ring { animation: pulse-ring 1.5s ease-out infinite; }
-        .numpad-panel {
-            height: 268px;
-            box-sizing: border-box;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
         .numpad-grid {
             display: grid;
-            grid-template-columns: repeat(3, 148px);
-            grid-template-rows: repeat(4, 52px);
-            gap: 8px;
-            width: 460px;
+            grid-template-columns: repeat(3, 112px);
+            grid-template-rows: repeat(4, 88px);
+            gap: 12px;
         }
         .numpad-key {
-            height: 52px;
-            font-size: 1.5rem;
+            font-size: 1.75rem;
             line-height: 1;
         }
-        .numpad-key.action { font-size: 1rem; }
-        .identity-display {
+        .numpad-key.action { font-size: 1.05rem; }
+        .identity-strip {
             width: 100%;
-            max-width: 520px;
-            min-height: 64px;
-            padding: 0 1.25rem;
+            background: #fff;
             border: 3px solid #1e5a9e;
             border-radius: 1rem;
-            background: #fff;
+            padding: 1.25rem 1rem;
+            box-shadow: 0 4px 14px rgba(30, 90, 158, 0.12);
+        }
+        .digit-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 6px;
+        }
+        .digit-slot {
+            flex: 1;
+            min-width: 0;
+            height: 80px;
+            border: 2px solid #bfdbfe;
+            border-radius: 0.75rem;
+            background: #f8fafc;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            font-size: 2.125rem;
             font-weight: 700;
-            letter-spacing: 0.35em;
             color: #123a6b;
-            text-indent: 0.35em;
         }
-        .identity-display.empty { color: #9ca3af; letter-spacing: normal; text-indent: 0; font-size: 1.125rem; font-weight: 500; }
+        .digit-slot.filled {
+            background: #eff6ff;
+            border-color: #1e5a9e;
+        }
+        .digit-slot.active {
+            border-color: #1e5a9e;
+            box-shadow: 0 0 0 3px rgba(30, 90, 158, 0.2);
+            background: #fff;
+        }
+        .btn-query-wide {
+            width: 100%;
+            padding: 1.125rem 1rem;
+            font-size: 1.25rem;
+        }
         .loading-spinner {
             border: 4px solid #dbeafe; border-top-color: #1e5a9e;
             border-radius: 50%; width: 40px; height: 40px;
@@ -158,9 +192,9 @@
         <p class="absolute bottom-6 text-white/60 text-kiosk-xs">Dokunmatik ekranı kullanarak işleminizi tamamlayın</p>
     </section>
 
-    {{-- EKRAN 2: VATANDAŞ GİRİŞİ --}}
+    {{-- EKRAN 2: VATANDAŞ GİRİŞİ — sol: uzun numara alanı, sağ: numaratör --}}
     <section id="screen-login" class="kiosk-screen bg-gray-50">
-        <header class="bg-municipal-600 text-white px-8 py-3 flex items-center justify-between">
+        <header class="bg-municipal-600 text-white px-8 py-3 flex items-center justify-between shrink-0 h-14">
             <div class="flex items-center gap-3">
                 <button id="btn-back-welcome" type="button" class="touch-btn w-10 h-10 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -169,31 +203,39 @@
             </div>
             <span class="text-kiosk-xs opacity-75">Adım 1 / 2</span>
         </header>
-        <div class="login-main flex flex-col items-center justify-center px-10">
-            <p class="text-kiosk-sm text-municipalGray-700 mb-3 text-center leading-snug">
-                <strong class="text-municipal-600">T.C. Kimlik No</strong> veya <strong class="text-municipal-600">Sicil No</strong> giriniz
-            </p>
-            <div id="identity-display" class="identity-display empty" aria-live="polite">Numaranızı giriniz</div>
-            <input id="input-identity" type="text" class="sr-only" maxlength="11" readonly aria-label="T.C. Kimlik No veya Sicil No" />
-            <p id="login-error" class="mt-2 text-kiosk-xs text-red-600 font-medium text-center hidden" role="alert"></p>
-            <button id="btn-query" type="button" disabled
-                class="touch-btn mt-4 bg-municipal-600 text-white font-bold text-kiosk-sm px-10 py-3.5 rounded-2xl shadow-xl hover:bg-municipal-700 disabled:opacity-40">
-                BORÇLARI SORGULA
-            </button>
-            <div id="login-loading" class="mt-2 hidden flex items-center gap-3">
-                <div class="loading-spinner w-8 h-8" style="border-width:3px"></div>
-                <span class="text-kiosk-xs text-municipalGray-600">Sorgulanıyor...</span>
+        <div class="login-split">
+            <div class="login-left">
+                <div>
+                    <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-2">T.C. Kimlik No / Sicil No</h3>
+                    <p class="text-kiosk-sm text-municipalGray-600 leading-snug">
+                        Sağdaki numaratör ile numaranızı giriniz. T.C. Kimlik No 11 hane, Sicil No en az 5 hanedir.
+                    </p>
+                </div>
+                <div class="identity-strip">
+                    <p class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">Girilen Numara</p>
+                    <div id="digit-row" class="digit-row" aria-live="polite"></div>
+                </div>
+                <input id="input-identity" type="text" class="sr-only" maxlength="11" readonly aria-label="T.C. Kimlik No veya Sicil No" />
+                <p id="login-error" class="text-kiosk-sm text-red-600 font-medium hidden" role="alert"></p>
+                <button id="btn-query" type="button" disabled
+                    class="touch-btn btn-query-wide bg-municipal-600 text-white font-bold rounded-2xl shadow-xl hover:bg-municipal-700 disabled:opacity-40">
+                    BORÇLARI SORGULA
+                </button>
+                <div id="login-loading" class="hidden flex items-center gap-3">
+                    <div class="loading-spinner w-8 h-8" style="border-width:3px"></div>
+                    <span class="text-kiosk-sm text-municipalGray-600">Sorgulanıyor, lütfen bekleyiniz...</span>
+                </div>
             </div>
-        </div>
-        <div id="numpad-panel" class="numpad-panel bg-white border-t-2 border-municipal-300 shadow-2xl" role="group" aria-label="Sayısal klavye">
-            <div class="numpad-grid">
-                @foreach (['1','2','3','4','5','6','7','8','9'] as $key)
-                <button type="button" data-key="{{ $key }}" class="numpad-key touch-btn bg-municipal-50 hover:bg-municipal-100 text-municipal-700 font-bold rounded-xl border-2 border-municipal-200">{{ $key }}</button>
-                @endforeach
-                <button type="button" data-key="clear" class="numpad-key action touch-btn bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl border-2 border-red-200">SİL</button>
-                <button type="button" data-key="0" class="numpad-key touch-btn bg-municipal-50 hover:bg-municipal-100 text-municipal-700 font-bold rounded-xl border-2 border-municipal-200">0</button>
-                <button type="button" data-key="backspace" class="numpad-key action touch-btn bg-municipalGray-100 hover:bg-municipalGray-200 text-municipalGray-700 font-bold rounded-xl border-2 border-municipalGray-400">SİL ←</button>
-            </div>
+            <aside id="numpad-panel" class="login-numpad" role="group" aria-label="Sayısal klavye">
+                <div class="numpad-grid">
+                    @foreach (['1','2','3','4','5','6','7','8','9'] as $key)
+                    <button type="button" data-key="{{ $key }}" class="numpad-key touch-btn bg-municipal-50 hover:bg-municipal-100 text-municipal-700 font-bold rounded-xl border-2 border-municipal-200">{{ $key }}</button>
+                    @endforeach
+                    <button type="button" data-key="clear" class="numpad-key action touch-btn bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl border-2 border-red-200">TEMİZLE</button>
+                    <button type="button" data-key="0" class="numpad-key touch-btn bg-municipal-50 hover:bg-municipal-100 text-municipal-700 font-bold rounded-xl border-2 border-municipal-200">0</button>
+                    <button type="button" data-key="backspace" class="numpad-key action touch-btn bg-municipalGray-100 hover:bg-municipalGray-200 text-municipalGray-700 font-bold rounded-xl border-2 border-municipalGray-400">← SİL</button>
+                </div>
+            </aside>
         </div>
     </section>
 
@@ -390,20 +432,22 @@
         }
 
         const inputIdentity = document.getElementById('input-identity');
-        const identityDisplay = document.getElementById('identity-display');
+        const digitRow = document.getElementById('digit-row');
         const btnQuery = document.getElementById('btn-query');
         const loginError = document.getElementById('login-error');
         const MAX_DIGITS = 11;
 
         function renderIdentityDisplay() {
-            const val = inputIdentity.value.trim();
-            if (!val) {
-                identityDisplay.textContent = 'Numaranızı giriniz';
-                identityDisplay.classList.add('empty');
-            } else {
-                identityDisplay.textContent = val;
-                identityDisplay.classList.remove('empty');
+            const val = inputIdentity.value;
+            let html = '';
+            for (let i = 0; i < MAX_DIGITS; i++) {
+                const ch = val[i] || '';
+                const cls = ['digit-slot'];
+                if (ch) cls.push('filled');
+                if (i === val.length && val.length < MAX_DIGITS) cls.push('active');
+                html += `<div class="${cls.join(' ')}" aria-hidden="true">${ch}</div>`;
             }
+            digitRow.innerHTML = html;
         }
 
         function updateQueryButton() { btnQuery.disabled = inputIdentity.value.trim().length < 5; }
