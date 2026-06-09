@@ -28,7 +28,7 @@ BELSIS_IP_ADDRESS=127.0.0.1
 BELSIS_MOCK=false
 ```
 
-> Sunucuya erişim yoksa geçici test için `BELSIS_MOCK=true` kullanın.
+> Demo yalnızca sicil `89874` için: `BELSIS_MOCK=true` ve `BELSIS_MOCK_SICILS=89874`. Gerçek TC her zaman Belsis'e gider.
 
 ## Canlı Veri (Belsis SOAP) — Ne Yapmalısınız?
 
@@ -122,7 +122,7 @@ Tarayıcı: **http://127.0.0.1:8000** (meşgulse 8001)
 1. **Karşılama** — "BAŞLAMAK İÇİN DOKUNUN"
 2. **Kimlik girişi** — Sicil No `89874` veya T.C. Kimlik No (min. 5 hane)
 3. **Borç listesi** — Belsis'ten gelen tahakkuklar
-4. **QR ödeme** — QR göster → `tahsilatEkle` ile tahsilat kaydı
+4. **Banka kartı ödeme** — POS cihazına kart okut → `tahsilatEkle` ile tahsilat kaydı
 5. **Başarı** — 7 sn sonra ana ekrana dönüş
 
 ## API Uçları
@@ -131,8 +131,8 @@ Tarayıcı: **http://127.0.0.1:8000** (meşgulse 8001)
 |--------|----------|---------------|
 | GET | `/api/kiosk/citizen/{identityNo}` | `gensicilBilgileriniGetir` |
 | GET | `/api/kiosk/debts/{identityNo}` | `tahakkukBilgileriniGetir` |
-| POST | `/api/kiosk/payment/qr` | QR referans üretimi |
-| POST | `/api/kiosk/payment/{id}/status` | `tahsilatEkle` |
+| POST | `/api/kiosk/payment/bank` | Banka ödeme başlatma |
+| POST | `/api/kiosk/payment/{id}/confirm` | `tahsilatEkle` |
 
 ## Belsis Entegrasyon Mimarisi
 
@@ -141,7 +141,7 @@ app/Services/Belsis/
   BelsisSoapClient.php      → SOAP envelope + HTTP + XML parse
   BelsisAuthService.php     → oturumAc, oturum cache
   BelsisTahakkukService.php → tahakkuk sorguları
-  BelsisTahsilatService.php → tahsilatEkle, QR ödeme
+  BelsisTahsilatService.php → tahsilatEkle, banka kartı ödeme
   BelsisKioskService.php    → Kiosk API orchestrator
 config/belsis.php           → URL, kimlik bilgileri
 ```

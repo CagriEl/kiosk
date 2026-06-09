@@ -30,8 +30,8 @@ class BelsisTahsilatService
                     'gensicilno'  => $gensicilno,
                     'tahID'       => $tahId,
                     'odemeTutari' => $amount,
-                    'odemeTuru'   => 'KIOSK',
-                    'aciklama'    => 'Kiosk QR Ödeme',
+                    'odemeTuru'   => 'BANKA',
+                    'aciklama'    => 'Kiosk Banka Kartı Ödemesi',
                     'kulno'       => 0,
                 ],
             ));
@@ -51,32 +51,32 @@ class BelsisTahsilatService
     }
 
     /**
-     * QR ödeme başlatma — tahsilat öncesi referans üretir.
+     * Banka kartı ödemesi başlatma — POS cihazına yönlendirme için referans üretir.
      *
      * @param  array<int, string>  $tahIds
-     * @return array{transactionId: string, qrCodeUrl: string, total: float, status: string}
+     * @return array{transactionId: string, total: float, status: string, paymentMethod: string}
      */
-    public function initiateQrPayment(string $gensicilno, array $tahIds, float $total): array
+    public function initiateBankPayment(string $gensicilno, array $tahIds, float $total): array
     {
-        $transactionId = 'TXN-'.now()->timestamp;
-        $qrPayload = implode('|', ['BELEDIYE', $gensicilno, number_format($total, 2, '.', ''), $transactionId, ...$tahIds]);
-        $qrData = urlencode($qrPayload);
-
         return [
-            'transactionId' => $transactionId,
-            'qrCodeUrl'     => 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data='.$qrData.'&bgcolor=ffffff&color=1e5a9e',
+            'transactionId' => 'TXN-'.now()->timestamp,
             'total'         => $total,
             'status'        => 'pending',
+            'paymentMethod' => 'bank',
         ];
     }
 
     /**
-     * @param  array<int, string>  $tahIds
+     * @param  array<int, array{id: string, amount: float}>  $debts
+     * @return array{transactionId: string, receiptNo: string, total: float, status: string}
      */
-    public function confirmQrPayment(string $gensicilno, array $debts, string $transactionId): array
+    public function confirmBankPayment(string $gensicilno, array $debts, string $transactionId): array
     {
         try {
-            return $this->collectPayment($gensicilno, $debts);
+            $result = $this->collectPayment($gensicilno, $debts);
+            $result['transactionId'] = $transactionId;
+
+            return $result;
         } catch (BelsisException $e) {
             throw new BelsisException('Ödeme kaydedilemedi: '.$e->getMessage(), $e->sonucKodu, $e->getCode(), $e);
         }

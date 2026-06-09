@@ -262,23 +262,26 @@
                 <div id="debt-list" class="flex-1 min-h-0 space-y-2" role="list"></div>
             </div>
             <aside class="w-[290px] shrink-0 bg-white border-l-2 border-municipal-200 flex flex-col items-center justify-center px-5 py-6 shadow-inner">
-                <div class="text-center mb-4">
+                <div class="text-center mb-5">
                     <p class="text-kiosk-xs text-municipalGray-500 mb-1">Seçilen Toplam</p>
                     <p id="selected-total" class="text-kiosk-xl font-bold text-municipal-700">0,00 ₺</p>
                     <p id="selected-count" class="text-kiosk-xs text-municipalGray-500 mt-1">0 borç seçildi</p>
                 </div>
-                <div id="qr-container" class="w-36 h-36 bg-gray-100 rounded-2xl border-2 border-dashed border-municipalGray-400 flex items-center justify-center mb-4 hidden">
-                    <img id="qr-image" src="" alt="Ödeme QR Kodu" class="w-full h-full object-contain rounded-xl p-1" />
+                <div class="w-28 h-20 mb-5 rounded-2xl bg-municipal-50 border-2 border-municipal-200 flex items-center justify-center">
+                    <svg class="w-16 h-12 text-municipal-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 64 48">
+                        <rect x="2" y="6" width="60" height="36" rx="4" stroke-width="2"/>
+                        <rect x="2" y="14" width="60" height="8" fill="currentColor" opacity="0.15" stroke="none"/>
+                        <rect x="8" y="30" width="20" height="4" rx="1" fill="currentColor" opacity="0.4" stroke="none"/>
+                        <rect x="36" y="28" width="12" height="8" rx="2" stroke-width="2"/>
+                    </svg>
                 </div>
-                <button id="btn-pay-qr" type="button" disabled
+                <button id="btn-pay-bank" type="button" disabled
                     class="touch-btn w-full bg-municipal-600 text-white font-bold text-kiosk-sm px-4 py-5 rounded-2xl shadow-xl hover:bg-municipal-700 disabled:opacity-40 flex flex-col items-center gap-2">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M4 12h2m14 0h2M6 20h2M6 4h2v4m6-4h2v4"/></svg>
-                    QR KOD İLE ÖDE
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                    BANKA KARTI İLE ÖDE
                 </button>
-                <div id="payment-loading" class="mt-3 hidden flex items-center gap-2">
-                    <div class="loading-spinner w-8 h-8" style="border-width:3px"></div>
-                    <span class="text-kiosk-xs text-municipalGray-600">Ödeme işleniyor...</span>
-                </div>
+                <p class="text-[0.7rem] text-municipalGray-500 text-center mt-3 leading-snug">Kartınızı yanınızdaki POS cihazına okutunuz</p>
+                <p id="payment-error" class="mt-3 text-kiosk-xs text-red-600 text-center hidden" role="alert"></p>
             </aside>
         </div>
     </section>
@@ -298,6 +301,39 @@
             <span id="success-countdown">7 saniye içinde ana ekrana dönülecek</span>
         </div>
     </section>
+
+    {{-- BANKA ÖDEME MODALI --}}
+    <div id="bank-payment-modal" class="fixed inset-0 z-40 hidden items-center justify-center inactivity-overlay bg-black/60" role="dialog" aria-modal="true">
+        <div class="bg-white rounded-2xl shadow-2xl w-[560px] border-2 border-municipal-300 overflow-hidden">
+            <div class="bg-municipal-600 text-white px-8 py-5 text-center">
+                <h3 class="text-kiosk-lg font-bold">Banka Kartı ile Ödeme</h3>
+            </div>
+            <div class="px-8 py-8 text-center">
+                <div class="w-24 h-16 mx-auto mb-5 rounded-xl bg-municipal-50 border-2 border-municipal-200 flex items-center justify-center">
+                    <svg class="w-14 h-10 text-municipal-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 64 48">
+                        <rect x="2" y="6" width="60" height="36" rx="4" stroke-width="2"/>
+                        <rect x="2" y="14" width="60" height="8" fill="currentColor" opacity="0.15" stroke="none"/>
+                        <rect x="36" y="28" width="12" height="8" rx="2" stroke-width="2"/>
+                    </svg>
+                </div>
+                <p class="text-kiosk-sm text-municipalGray-600 mb-2">Ödenecek Tutar</p>
+                <p id="bank-modal-total" class="text-kiosk-2xl font-bold text-municipal-700 mb-5">0,00 ₺</p>
+                <p id="bank-modal-instruction" class="text-kiosk-base text-municipalGray-700 leading-relaxed mb-6">
+                    Lütfen banka kartınızı <strong>yanınızdaki POS cihazına</strong> okutunuz.<br>
+                    İşlem tamamlandığında aşağıdaki butona dokunun.
+                </p>
+                <div id="bank-modal-loading" class="hidden flex items-center justify-center gap-3 mb-4">
+                    <div class="loading-spinner w-8 h-8" style="border-width:3px"></div>
+                    <span class="text-kiosk-sm text-municipalGray-600">Ödeme kaydediliyor...</span>
+                </div>
+                <p id="bank-modal-error" class="text-kiosk-sm text-red-600 mb-4 hidden" role="alert"></p>
+                <div class="flex gap-3">
+                    <button id="btn-cancel-bank" type="button" class="touch-btn flex-1 bg-municipalGray-100 text-municipalGray-700 font-bold text-kiosk-sm py-4 rounded-2xl border-2 border-municipalGray-400">İPTAL</button>
+                    <button id="btn-confirm-bank" type="button" class="touch-btn flex-1 bg-municipal-600 text-white font-bold text-kiosk-sm py-4 rounded-2xl shadow-xl hover:bg-municipal-700">ÖDEMEYİ ONAYLA</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     {{-- HAREKETSİZLİK UYARISI --}}
     <div id="inactivity-modal" class="fixed inset-0 z-50 hidden items-center justify-center inactivity-overlay bg-black/50" role="dialog" aria-modal="true">
@@ -338,8 +374,8 @@
             return apiRequest(`${API_BASE}/debts/${identityNo}`);
         }
 
-        async function initiateQRPayment(identityNo, selectedDebtIds) {
-            return apiRequest(`${API_BASE}/payment/qr`, {
+        async function initiateBankPayment(identityNo, selectedDebtIds) {
+            return apiRequest(`${API_BASE}/payment/bank`, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
                 body: JSON.stringify({ identityNo, debtIds: selectedDebtIds }),
@@ -347,8 +383,7 @@
         }
 
         async function confirmPayment(transactionId, identityNo, debtIds) {
-            await new Promise(r => setTimeout(r, 1500));
-            return apiRequest(`${API_BASE}/payment/${transactionId}/status`, {
+            return apiRequest(`${API_BASE}/payment/${transactionId}/confirm`, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
                 body: JSON.stringify({ identityNo, debtIds }),
@@ -370,7 +405,7 @@
             success: document.getElementById('screen-success'),
         };
 
-        const session = { citizen: null, debts: [], selectedIds: new Set(), currentScreen: 'welcome' };
+        const session = { citizen: null, debts: [], selectedIds: new Set(), currentScreen: 'welcome', pendingPayment: null };
         const INACTIVITY_MS = 45000, WARNING_COUNTDOWN_S = 15, SUCCESS_REDIRECT_MS = 7000;
         let inactivityTimer, warningInterval, successTimer, successCountdownIv;
 
@@ -391,9 +426,10 @@
             document.getElementById('debt-list').innerHTML = '';
             document.getElementById('selected-total').textContent = '0,00 ₺';
             document.getElementById('selected-count').textContent = '0 borç seçildi';
-            document.getElementById('btn-pay-qr').disabled = true;
-            document.getElementById('qr-container').classList.add('hidden');
-            document.getElementById('payment-loading').classList.add('hidden');
+            document.getElementById('btn-pay-bank').disabled = true;
+            document.getElementById('payment-error').classList.add('hidden');
+            session.pendingPayment = null;
+            closeBankModal();
             document.getElementById('btn-select-all').textContent = 'TÜMÜNÜ SEÇ';
             clearTimeout(successTimer); clearInterval(successCountdownIv);
             closeInactivityModal();
@@ -545,8 +581,24 @@
             const total = selected.reduce((s, d) => s + d.amount, 0);
             document.getElementById('selected-total').textContent = formatCurrency(total);
             document.getElementById('selected-count').textContent = selected.length + ' borç seçildi';
-            document.getElementById('btn-pay-qr').disabled = selected.length === 0;
-            document.getElementById('qr-container').classList.add('hidden');
+            document.getElementById('btn-pay-bank').disabled = selected.length === 0;
+            document.getElementById('payment-error').classList.add('hidden');
+        }
+
+        function openBankModal(total) {
+            document.getElementById('bank-modal-total').textContent = formatCurrency(total);
+            document.getElementById('bank-modal-error').classList.add('hidden');
+            document.getElementById('bank-modal-loading').classList.add('hidden');
+            document.getElementById('btn-confirm-bank').disabled = false;
+            const modal = document.getElementById('bank-payment-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeBankModal() {
+            const modal = document.getElementById('bank-payment-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         }
 
         document.getElementById('btn-select-all').addEventListener('click', () => {
@@ -559,29 +611,52 @@
             onUserActivity();
         });
 
-        document.getElementById('btn-pay-qr').addEventListener('click', async () => {
+        document.getElementById('btn-pay-bank').addEventListener('click', async () => {
             const selectedIds = [...session.selectedIds];
             if (!selectedIds.length) return;
-            const btnPay = document.getElementById('btn-pay-qr');
+            const btnPay = document.getElementById('btn-pay-bank');
+            const total = session.debts.filter(d => session.selectedIds.has(d.id)).reduce((s, d) => s + d.amount, 0);
             btnPay.disabled = true;
-            document.getElementById('payment-loading').classList.remove('hidden');
             onUserActivity();
             try {
-                const payment = await initiateQRPayment(session.citizen.identityNo, selectedIds);
-                document.getElementById('qr-image').src = payment.qrCodeUrl;
-                document.getElementById('qr-container').classList.remove('hidden');
-                const confirmation = await confirmPayment(payment.transactionId, session.citizen.identityNo, selectedIds);
-                if (confirmation.status === 'completed') showSuccessScreen();
+                const payment = await initiateBankPayment(session.citizen.identityNo, selectedIds);
+                session.pendingPayment = { transactionId: payment.transactionId, debtIds: selectedIds };
+                openBankModal(total);
             } catch (err) {
-                document.getElementById('payment-error')?.remove();
-                const el = document.createElement('p');
-                el.id = 'payment-error';
-                el.className = 'mt-4 text-kiosk-sm text-red-600 text-center';
-                el.textContent = err.message;
-                btnPay.parentElement.appendChild(el);
+                const errEl = document.getElementById('payment-error');
+                errEl.textContent = err.message;
+                errEl.classList.remove('hidden');
                 btnPay.disabled = false;
+            }
+        });
+
+        document.getElementById('btn-cancel-bank').addEventListener('click', () => {
+            closeBankModal();
+            document.getElementById('btn-pay-bank').disabled = session.selectedIds.size === 0;
+            session.pendingPayment = null;
+            onUserActivity();
+        });
+
+        document.getElementById('btn-confirm-bank').addEventListener('click', async () => {
+            if (!session.pendingPayment) return;
+            const btnConfirm = document.getElementById('btn-confirm-bank');
+            btnConfirm.disabled = true;
+            document.getElementById('bank-modal-loading').classList.remove('hidden');
+            document.getElementById('bank-modal-error').classList.add('hidden');
+            onUserActivity();
+            try {
+                const { transactionId, debtIds } = session.pendingPayment;
+                const confirmation = await confirmPayment(transactionId, session.citizen.identityNo, debtIds);
+                if (confirmation.status === 'completed') {
+                    closeBankModal();
+                    showSuccessScreen();
+                }
+            } catch (err) {
+                document.getElementById('bank-modal-error').textContent = err.message;
+                document.getElementById('bank-modal-error').classList.remove('hidden');
+                btnConfirm.disabled = false;
             } finally {
-                document.getElementById('payment-loading').classList.add('hidden');
+                document.getElementById('bank-modal-loading').classList.add('hidden');
             }
         });
 

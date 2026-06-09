@@ -18,7 +18,7 @@ class BelsisKioskService
      */
     public function getCitizen(string $identityNo): array
     {
-        if (config('belsis.mock')) {
+        if ($this->shouldUseMock($identityNo)) {
             return $this->mockCitizen($identityNo);
         }
 
@@ -39,7 +39,7 @@ class BelsisKioskService
      */
     public function getDebts(string $identityNo): array
     {
-        if (config('belsis.mock')) {
+        if ($this->shouldUseMock($identityNo)) {
             return ['debts' => $this->mockDebts()];
         }
 
@@ -61,6 +61,7 @@ class BelsisKioskService
 
     /**
      * @param  array<int, string>  $debtIds
+     * @return array{transactionId: string, total: float, status: string, paymentMethod: string}
      */
     public function initiatePayment(string $identityNo, array $debtIds): array
     {
@@ -73,24 +74,20 @@ class BelsisKioskService
         }
 
         $total = $selected->sum('amount');
-        $gensicilno = $citizen['sicilNo'];
 
-        if (config('belsis.mock')) {
-            return $this->tahsilat->initiateQrPayment($gensicilno, $debtIds, $total);
-        }
-
-        return $this->tahsilat->initiateQrPayment($gensicilno, $debtIds, $total);
+        return $this->tahsilat->initiateBankPayment($citizen['sicilNo'], $debtIds, $total);
     }
 
     /**
      * @param  array<int, string>  $debtIds
+     * @return array{transactionId: string, status: string, receiptNo?: string}
      */
     public function confirmPayment(string $identityNo, array $debtIds, string $transactionId): array
     {
         $citizen = $this->getCitizen($identityNo);
         $debts = $this->getDebts($identityNo)['debts'];
 
-        if (config('belsis.mock')) {
+        if ($this->shouldUseMock($identityNo)) {
             return [
                 'transactionId' => $transactionId,
                 'status'        => 'completed',
@@ -104,7 +101,7 @@ class BelsisKioskService
         ])->values()->all();
 
         try {
-            return $this->tahsilat->confirmQrPayment(
+            return $this->tahsilat->confirmBankPayment(
                 $citizen['sicilNo'],
                 $selectedDebts,
                 $transactionId,
@@ -113,7 +110,7 @@ class BelsisKioskService
             if ($this->shouldRetryWithFreshSession($e)) {
                 $this->auth->forgetSession();
 
-                return $this->tahsilat->confirmQrPayment(
+                return $this->tahsilat->confirmBankPayment(
                     $citizen['sicilNo'],
                     $selectedDebts,
                     $transactionId,
@@ -121,6 +118,18 @@ class BelsisKioskService
             }
             throw $e;
         }
+    }
+
+    private function shouldUseMock(string $identityNo): bool
+    {
+        if (! config('belsis.mock')) {
+            return false;
+        }
+
+        $identityNo = trim($identityNo);
+        $mockSicils = config('belsis.mock_sicils', []);
+
+        return in_array($identityNo, $mockSicils, true);
     }
 
     private function shouldRetryWithFreshSession(BelsisException $e): bool
@@ -140,7 +149,7 @@ class BelsisKioskService
         return [
             'identityNo' => $identityNo,
             'fullName'   => 'Ahmet YILMAZ (Demo)',
-            'sicilNo'    => strlen($identityNo) <= 10 ? $identityNo : '89874',
+            'sicilNo'    => $identityNo,
         ];
     }
 

@@ -18,8 +18,11 @@ class BelsisTestCommand extends Command
         $sicil = $this->argument('sicil');
 
         try {
-            if (config('belsis.mock')) {
-                $this->warn('BELSIS_MOCK=true — demo verisi kullanılıyor.');
+            $mockSicils = config('belsis.mock_sicils', []);
+            if (config('belsis.mock') && in_array($sicil, $mockSicils, true)) {
+                $this->warn('Demo sicil ('.$sicil.') — mock verisi kullanılıyor.');
+            } elseif (config('belsis.mock')) {
+                $this->info('BELSIS_MOCK=true ancak '.$sicil.' demo listesinde değil — canlı Belsis sorgulanıyor.');
             } else {
                 $this->info('Belsis oturum açılıyor...');
                 $session = $auth->openSession();
