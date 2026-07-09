@@ -39,9 +39,11 @@ class BelsisTahakkukService
         $soyad = trim((string) ($first['soyadi'] ?? ''));
         $unvan = trim((string) ($first['unvan'] ?? ''));
 
+        $fullName = $unvan !== '' ? $unvan : (trim($ad.' '.$soyad) ?: 'Sicil No: '.$gensicilno);
+
         return [
             'identityNo' => $identityNo,
-            'fullName'   => $unvan !== '' ? $unvan : trim($ad.' '.$soyad) ?: 'Sicil No: '.$gensicilno,
+            'fullName'   => $fullName,
             'sicilNo'    => (string) ($first['gensicilno'] ?? $gensicilno),
         ];
     }
@@ -49,9 +51,9 @@ class BelsisTahakkukService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function getDebts(string $identityNo): array
+    public function getDebts(string $identityNo, ?string $searchType = null): array
     {
-        $gensicilno = $this->identity->resolveGensicilNo($identityNo);
+        $gensicilno = $this->identity->resolveGensicilNo($identityNo, $searchType);
         $result = $this->client->callTahakkuk('tahakkukBilgileriniGetir', array_merge(
             $this->auth->baseParams(),
             ['gensicilno' => (int) $gensicilno],

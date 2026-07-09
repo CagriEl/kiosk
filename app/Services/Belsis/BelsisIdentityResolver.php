@@ -10,8 +10,8 @@ class BelsisIdentityResolver
         private readonly BelsisBorcSorgulaService $borc,
     ) {}
 
-    public function resolveGensicilNo(string $identityNo): string
+    public function resolveGensicilNo(string $identityNo, ?string $searchType = null): string
     {
-        return $this->borc->resolveGensicilNo($identityNo);
+        return $this->borc->resolveGensicilNo($identityNo, $searchType);
     }
 }

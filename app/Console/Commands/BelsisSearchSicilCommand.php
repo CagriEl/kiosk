@@ -21,8 +21,8 @@ class BelsisSearchSicilCommand extends Command
     ): int {
         $sicil = trim($this->argument('sicil'));
 
-        if (! ctype_digit($sicil) || strlen($sicil) < 5) {
-            $this->error('Geçerli bir sicil numarası giriniz (en az 5 hane).');
+        if (! ctype_digit($sicil) || strlen($sicil) < 1) {
+            $this->error('Geçerli bir sicil numarası giriniz.');
 
             return self::FAILURE;
         }

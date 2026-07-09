@@ -17,9 +17,10 @@ class BelsisBorcSorgulaService
     /**
      * TC veya sicil ile borç sorgusu — tüm sorguTip kombinasyonları denenir.
      *
+     * @param  'tc'|'sicil'|null  $searchType
      * @return array<string, mixed>
      */
-    public function query(string $identityNo): array
+    public function query(string $identityNo, ?string $searchType = null): array
     {
         $identityNo = trim($identityNo);
 
@@ -27,21 +28,31 @@ class BelsisBorcSorgulaService
             throw new BelsisException('Geçersiz kimlik numarası. Sadece rakam giriniz.');
         }
 
-        if (strlen($identityNo) === 11) {
+        $searchType = $this->resolveSearchType($identityNo, $searchType);
+
+        if ($searchType === 'tc') {
+            if (strlen($identityNo) !== 11) {
+                throw new BelsisException('T.C. Kimlik No 11 haneli olmalıdır.');
+            }
+
             return $this->queryByTc($identityNo);
         }
 
-        if (strlen($identityNo) < 5) {
-            throw new BelsisException('Geçersiz kimlik numarası. En az 5 haneli olmalıdır.');
+        if (strlen($identityNo) < 1) {
+            throw new BelsisException('Sicil numarası giriniz.');
+        }
+
+        if (strlen($identityNo) > 10) {
+            throw new BelsisException('Sicil numarası en fazla 10 haneli olabilir.');
         }
 
         return $this->queryBySicil($identityNo);
     }
 
     /**
-     * Kimlik numarasından gensicilno çözümler (ödeme akışı için).
+     * @param  'tc'|'sicil'|null  $searchType
      */
-    public function resolveGensicilNo(string $identityNo): string
+    public function resolveGensicilNo(string $identityNo, ?string $searchType = null): string
     {
         $identityNo = trim($identityNo);
 
@@ -49,17 +60,36 @@ class BelsisBorcSorgulaService
             throw new BelsisException('Geçersiz kimlik numarası. Sadece rakam giriniz.');
         }
 
-        if (strlen($identityNo) === 11) {
+        $searchType = $this->resolveSearchType($identityNo, $searchType);
+
+        if ($searchType === 'tc') {
+            if (strlen($identityNo) !== 11) {
+                throw new BelsisException('T.C. Kimlik No 11 haneli olmalıdır.');
+            }
+
             return $this->extractSicilNo($this->queryByTc($identityNo), $identityNo);
         }
 
-        if (strlen($identityNo) < 5) {
-            throw new BelsisException('Geçersiz kimlik numarası. En az 5 haneli olmalıdır.');
+        if (strlen($identityNo) < 1) {
+            throw new BelsisException('Sicil numarası giriniz.');
         }
 
         $this->queryBySicil($identityNo);
 
         return $identityNo;
+    }
+
+    /**
+     * @param  'tc'|'sicil'|null  $searchType
+     * @return 'tc'|'sicil'
+     */
+    private function resolveSearchType(string $identityNo, ?string $searchType): string
+    {
+        if (in_array($searchType, ['tc', 'sicil'], true)) {
+            return $searchType;
+        }
+
+        return strlen($identityNo) === 11 ? 'tc' : 'sicil';
     }
 
     /**
@@ -336,7 +366,7 @@ class BelsisBorcSorgulaService
             }
         }
 
-        if (strlen($identityNo) >= 5 && ctype_digit($identityNo)) {
+        if (strlen($identityNo) >= 1 && ctype_digit($identityNo) && strlen($identityNo) !== 11) {
             return $identityNo;
         }
 

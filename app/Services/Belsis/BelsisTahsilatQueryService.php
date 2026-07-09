@@ -19,9 +19,9 @@ class BelsisTahsilatQueryService
     /**
      * @return array{identityNo: string, fullName: string, sicilNo: string, adi?: string, soyadi?: string}
      */
-    public function getCitizen(string $identityNo): array
+    public function getCitizen(string $identityNo, ?string $searchType = null): array
     {
-        $borc = $this->borc->query($identityNo);
+        $borc = $this->borc->query($identityNo, $searchType);
 
         $sicil = $borc['Sicil'] ?? [];
         $gensicilno = $this->borc->extractSicilNo($borc, $identityNo);
@@ -37,6 +37,7 @@ class BelsisTahsilatQueryService
             'identityNo' => $identityNo,
             'fullName'   => $fullName,
             'sicilNo'    => $gensicilno,
+            'searchType' => $searchType ?? (strlen(trim($identityNo)) === 11 ? 'tc' : 'sicil'),
             'adi'        => $adi,
             'soyadi'     => $soyadi,
         ];
@@ -45,14 +46,14 @@ class BelsisTahsilatQueryService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function getDebts(string $identityNo): array
+    public function getDebts(string $identityNo, ?string $searchType = null): array
     {
-        $borc = $this->borc->query($identityNo);
+        $borc = $this->borc->query($identityNo, $searchType);
         $debts = $this->extractDebtsFromBorc($borc);
 
         if ($debts === [] && config('belsis.tahakkuk_fallback', true)) {
             try {
-                $debts = $this->tahakkuk->getDebts($identityNo);
+                $debts = $this->tahakkuk->getDebts($identityNo, $searchType);
             } catch (BelsisException) {
                 // borcSorgula fallback yanıtı ile devam
             }

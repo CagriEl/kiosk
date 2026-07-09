@@ -17,26 +17,26 @@ class BelsisKioskService
     /**
      * @return array{identityNo: string, fullName: string, sicilNo: string}
      */
-    public function getCitizen(string $identityNo): array
+    public function getCitizen(string $identityNo, ?string $searchType = null): array
     {
         if ($this->shouldUseMock($identityNo)) {
-            return $this->mockCitizen($identityNo);
+            return $this->mockCitizen($identityNo, $searchType);
         }
 
-        return $this->withSessionRetry(fn () => $this->query->getCitizen($identityNo));
+        return $this->withSessionRetry(fn () => $this->query->getCitizen($identityNo, $searchType));
     }
 
     /**
      * @return array{debts: array<int, array<string, mixed>>}
      */
-    public function getDebts(string $identityNo): array
+    public function getDebts(string $identityNo, ?string $searchType = null): array
     {
         if ($this->shouldUseMock($identityNo)) {
             return ['debts' => $this->mockDebts()];
         }
 
         try {
-            return ['debts' => $this->withSessionRetry(fn () => $this->query->getDebts($identityNo))];
+            return ['debts' => $this->withSessionRetry(fn () => $this->query->getDebts($identityNo, $searchType))];
         } catch (BelsisException $e) {
             Log::error('Belsis borç sorgusu hatası', ['message' => $e->getMessage(), 'code' => $e->sonucKodu]);
             throw $e;
@@ -79,10 +79,10 @@ class BelsisKioskService
      * @param  array<int, string>  $debtIds
      * @return array{transactionId: string, total: float, status: string, paymentMethod: string}
      */
-    public function initiatePayment(string $identityNo, array $debtIds): array
+    public function initiatePayment(string $identityNo, array $debtIds, ?string $searchType = null): array
     {
-        $citizen = $this->getCitizen($identityNo);
-        $debts = $this->getDebts($identityNo)['debts'];
+        $citizen = $this->getCitizen($identityNo, $searchType);
+        $debts = $this->getDebts($identityNo, $searchType)['debts'];
         $selected = collect($debts)->whereIn('id', $debtIds)->values();
 
         if ($selected->isEmpty()) {
@@ -100,10 +100,10 @@ class BelsisKioskService
      * @param  array<int, string>  $debtIds
      * @return array<string, mixed>
      */
-    public function confirmPayment(string $identityNo, array $debtIds, string $transactionId): array
+    public function confirmPayment(string $identityNo, array $debtIds, string $transactionId, ?string $searchType = null): array
     {
-        $citizen = $this->getCitizen($identityNo);
-        $debts = $this->getDebts($identityNo)['debts'];
+        $citizen = $this->getCitizen($identityNo, $searchType);
+        $debts = $this->getDebts($identityNo, $searchType)['debts'];
 
         if ($this->shouldUseMock($identityNo)) {
             return [
@@ -170,12 +170,13 @@ class BelsisKioskService
     /**
      * @return array{identityNo: string, fullName: string, sicilNo: string, adi?: string, soyadi?: string}
      */
-    private function mockCitizen(string $identityNo): array
+    private function mockCitizen(string $identityNo, ?string $searchType = null): array
     {
         return [
             'identityNo' => $identityNo,
             'fullName'   => 'Ahmet YILMAZ (Demo)',
             'sicilNo'    => $identityNo,
+            'searchType' => $searchType ?? (strlen($identityNo) === 11 ? 'tc' : 'sicil'),
             'adi'        => 'Ahmet',
             'soyadi'     => 'YILMAZ (Demo)',
         ];
