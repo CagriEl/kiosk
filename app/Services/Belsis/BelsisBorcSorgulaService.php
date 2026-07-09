@@ -672,7 +672,56 @@ class BelsisBorcSorgulaService
             return $identityNo;
         }
 
-        throw new BelsisException('T.C. Kimlik No ile sicil numarası çözümlenemedi.');
+        throw new BelsisException('Abone / sicil numarası ile kayıt çözümlenemedi.');
+    }
+
+    /**
+     * Abone veya sicil numarasından gensicilno çıkarır (borc yanıtı varsa önce onu kullanır).
+     */
+    public function resolveGensicilFromAccount(string $accountNo, ?array $borcResult = null): ?string
+    {
+        $accountNo = trim($accountNo);
+
+        if ($accountNo === '' || ! ctype_digit($accountNo)) {
+            return null;
+        }
+
+        if (is_array($borcResult)) {
+            $fromBorc = $this->extractGensicilFromBorc($borcResult);
+            if ($fromBorc !== null) {
+                return $fromBorc;
+            }
+        }
+
+        try {
+            return $this->extractSicilNo($borcResult ?? $this->query($accountNo, 'sicil'), $accountNo);
+        } catch (BelsisException $e) {
+            if ($this->isInfrastructureError($e)) {
+                throw $e;
+            }
+
+            foreach ($this->sicilAramaTips() as $tip) {
+                try {
+                    $gensicil = $this->tryArama($tip, $accountNo);
+                    if ($gensicil !== null && (int) $gensicil > 0) {
+                        return $gensicil;
+                    }
+                } catch (BelsisException $inner) {
+                    if ($this->isInfrastructureError($inner)) {
+                        throw $inner;
+                    }
+                }
+            }
+
+            if ($record = $this->resolveSicilRecord($accountNo)) {
+                $resolved = (int) ($record['gensicilno'] ?? $record['gensicilNo'] ?? 0);
+                if ($resolved > 0) {
+                    return (string) $resolved;
+                }
+            }
+
+            return strlen($accountNo) <= 10 ? $accountNo : null;
+        }
     }
 
     /**

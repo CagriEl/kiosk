@@ -169,6 +169,7 @@
             font-size: 1.5rem; font-weight: 700; color: #123a6b;
         }
         .abone-digit.filled { background: #eff6ff; border-color: #1e5a9e; }
+        .abone-digit.active { border-color: #1e5a9e; box-shadow: 0 0 0 3px rgba(30, 90, 158, 0.2); background: #fff; }
         #debt-list, #water-invoice-list { overflow-y:auto; scrollbar-width:none; }
         #debt-list::-webkit-scrollbar, #water-invoice-list::-webkit-scrollbar { display:none; }
     </style>
@@ -228,7 +229,7 @@
                     <svg class="w-9 h-9 text-municipal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                 </div>
                 <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-2">Borç Ödeme &amp; Sorgulama</h3>
-                <p class="text-kiosk-sm text-municipalGray-600">T.C. Kimlik No ile belediye borçlarınızı görüntüleyin ve ödeyin.</p>
+                <p class="text-kiosk-sm text-municipalGray-600">Abone veya sicil numaranızla belediye borçlarınızı görüntüleyin ve ödeyin.</p>
             </button>
             <button id="btn-menu-water" type="button" class="touch-btn flex-1 max-w-md bg-white border-3 border-cyan-400 rounded-3xl p-10 shadow-xl hover:border-cyan-600 text-left">
                 <div class="w-16 h-16 rounded-2xl bg-cyan-100 flex items-center justify-center mb-5">
@@ -414,7 +415,7 @@
                 <button id="btn-back-welcome" type="button" class="touch-btn w-10 h-10 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <h2 class="text-kiosk-base font-bold">Kimlik Bilgileri</h2>
+                <h2 class="text-kiosk-base font-bold">Abone Bilgileri</h2>
             </div>
             <span class="text-kiosk-xs opacity-75">Adım 1 / 2</span>
         </header>
@@ -423,14 +424,14 @@
                 <div>
                     <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-3">Borç Sorgulama</h3>
                     <p id="identity-hint" class="text-kiosk-sm text-municipalGray-600 leading-snug">
-                        11 haneli T.C. Kimlik Numaranızı numaratör veya fiziksel klavye (NumLock) ile giriniz.
+                        Abone veya sicil numaranızı numaratör veya fiziksel klavye (NumLock) ile giriniz.
                     </p>
                 </div>
                 <div class="identity-strip">
-                    <p class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">T.C. Kimlik No</p>
-                    <div id="digit-row" class="digit-row" aria-live="polite"></div>
+                    <p class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">Abone / Sicil No</p>
+                    <div id="digit-row" class="abone-digit-row justify-start flex-wrap" aria-live="polite"></div>
                 </div>
-                <input id="input-identity" type="text" class="sr-only" maxlength="11" readonly aria-label="T.C. Kimlik No" />
+                <input id="input-identity" type="text" class="sr-only" maxlength="10" readonly aria-label="Abone veya sicil numarası" />
                 <p id="login-error" class="text-kiosk-sm text-red-600 font-medium hidden" role="alert"></p>
                 <button id="btn-query" type="button" disabled
                     class="touch-btn btn-query-wide bg-municipal-600 text-white font-bold rounded-2xl shadow-xl hover:bg-municipal-700 disabled:opacity-40">
@@ -597,12 +598,12 @@
             }
         }
 
-        async function fetchCitizen(tcKimlikNo) {
-            return apiRequest(`${API_BASE}/citizen/${tcKimlikNo}`);
+        async function fetchCitizen(accountNo) {
+            return apiRequest(`${API_BASE}/citizen/${accountNo}`);
         }
 
-        async function fetchDebts(tcKimlikNo) {
-            return apiRequest(`${API_BASE}/debts/${tcKimlikNo}`);
+        async function fetchDebts(accountNo) {
+            return apiRequest(`${API_BASE}/debts/${accountNo}`);
         }
 
         async function initiateBankPayment(identityNo, selectedDebtIds) {
@@ -944,7 +945,7 @@
             const digit = digitFromKeyEvent(e);
             if (digit !== null) {
                 e.preventDefault();
-                if (inputIdentity.value.length < MAX_TC_DIGITS) {
+                if (inputIdentity.value.length < MAX_ACCOUNT_DIGITS) {
                     setIdentityValue(inputIdentity.value + digit);
                 }
                 loginError.classList.add('hidden');
@@ -1075,27 +1076,30 @@
         const digitRow = document.getElementById('digit-row');
         const btnQuery = document.getElementById('btn-query');
         const loginError = document.getElementById('login-error');
-        const MAX_TC_DIGITS = 11;
+        const MAX_ACCOUNT_DIGITS = 10;
+        const MIN_ACCOUNT_DIGITS = 1;
 
         function renderIdentityDisplay() {
             const val = inputIdentity.value;
             let html = '';
-            for (let i = 0; i < MAX_TC_DIGITS; i++) {
+            const slotCount = Math.max(val.length + 1, MIN_ACCOUNT_DIGITS);
+            for (let i = 0; i < slotCount && i < MAX_ACCOUNT_DIGITS; i++) {
                 const ch = val[i] || '';
-                const cls = ['digit-slot'];
+                const cls = ['abone-digit'];
                 if (ch) cls.push('filled');
-                if (i === val.length && val.length < MAX_TC_DIGITS) cls.push('active');
+                if (i === val.length && val.length < MAX_ACCOUNT_DIGITS) cls.push('active');
                 html += `<div class="${cls.join(' ')}" aria-hidden="true">${ch}</div>`;
             }
             digitRow.innerHTML = html;
         }
 
         function updateQueryButton() {
-            btnQuery.disabled = inputIdentity.value.trim().length !== MAX_TC_DIGITS;
+            const len = inputIdentity.value.trim().length;
+            btnQuery.disabled = len < MIN_ACCOUNT_DIGITS || len > MAX_ACCOUNT_DIGITS;
         }
 
         function setIdentityValue(val) {
-            inputIdentity.value = val.slice(0, MAX_TC_DIGITS);
+            inputIdentity.value = val.replace(/\D/g, '').slice(0, MAX_ACCOUNT_DIGITS);
             renderIdentityDisplay();
             updateQueryButton();
         }
@@ -1104,7 +1108,7 @@
             key.addEventListener('click', () => {
                 const action = key.dataset.key;
                 let val = inputIdentity.value;
-                const maxDigits = MAX_TC_DIGITS;
+                const maxDigits = MAX_ACCOUNT_DIGITS;
                 if (action === 'clear') val = '';
                 else if (action === 'backspace') val = val.slice(0, -1);
                 else if (val.length < maxDigits) val += action;
@@ -1223,7 +1227,7 @@
 
         btnQuery.addEventListener('click', async () => {
             const identityNo = inputIdentity.value.trim();
-            if (identityNo.length !== MAX_TC_DIGITS) return;
+            if (identityNo.length < MIN_ACCOUNT_DIGITS || identityNo.length > MAX_ACCOUNT_DIGITS) return;
             btnQuery.disabled = true;
             document.getElementById('login-loading').classList.remove('hidden');
             loginError.classList.add('hidden');
@@ -1235,8 +1239,9 @@
                 session.debts = debts;
                 session.selectedIds.clear();
                 renderDebtList();
+                const sicilLabel = citizen.sicilNo ? 'Sicil: ' + citizen.sicilNo : 'Abone: ' + identityNo;
                 document.getElementById('citizen-name').textContent =
-                    subscriberDisplayName(citizen) + ' — T.C.: ' + identityNo;
+                    subscriberDisplayName(citizen) + ' — ' + sicilLabel;
                 showScreen('debts');
             } catch (err) {
                 loginError.textContent = err.message;

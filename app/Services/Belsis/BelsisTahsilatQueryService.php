@@ -22,6 +22,12 @@ class BelsisTahsilatQueryService
     public function getCitizen(string $identityNo, ?string $searchType = null): array
     {
         $identityNo = trim($identityNo);
+        $searchType = $searchType ?? (strlen($identityNo) === 11 ? 'tc' : 'sicil');
+
+        if ($searchType === 'sicil') {
+            return $this->getCitizenByAccount($identityNo);
+        }
+
         $gensicilno = null;
         $fullName = '';
         $adi = '';
@@ -71,6 +77,43 @@ class BelsisTahsilatQueryService
     }
 
     /**
+     * @return array{identityNo: string, fullName: string, sicilNo: string, searchType: string, adi?: string, soyadi?: string}
+     */
+    private function getCitizenByAccount(string $accountNo): array
+    {
+        $borc = $this->borc->query($accountNo, 'sicil');
+        $gensicilno = $this->borc->extractSicilNo($borc, $accountNo);
+        $sicil = $borc['Sicil'] ?? [];
+        $fullName = trim((string) ($sicil['adiSoyadiUnvani'] ?? ''));
+        $adi = '';
+        $soyadi = '';
+
+        if ($fullName === '') {
+            $profile = $this->fetchSicilProfile((int) $gensicilno);
+            $fullName = $profile['fullName'];
+            $adi = $profile['adi'];
+            $soyadi = $profile['soyadi'];
+        }
+
+        if ($fullName === '') {
+            $fullName = 'Sicil No: '.$gensicilno;
+        }
+
+        if ($adi === '' && $soyadi === '') {
+            [$adi, $soyadi] = $this->splitName($fullName);
+        }
+
+        return [
+            'identityNo' => $accountNo,
+            'fullName'   => $fullName,
+            'sicilNo'    => $gensicilno,
+            'searchType' => 'sicil',
+            'adi'        => $adi,
+            'soyadi'     => $soyadi,
+        ];
+    }
+
+    /**
      * @return array{gensicilno: int, fullName: string, adi: string, soyadi: string}
      */
     private function fetchSicilProfile(int $gensicilno): array
@@ -106,7 +149,9 @@ class BelsisTahsilatQueryService
     public function getDebts(string $identityNo, ?string $searchType = null): array
     {
         $identityNo = trim($identityNo);
+        $searchType = $searchType ?? (strlen($identityNo) === 11 ? 'tc' : 'sicil');
         $debts = [];
+        $borc = null;
 
         try {
             $borc = $this->borc->query($identityNo, $searchType);
@@ -118,7 +163,9 @@ class BelsisTahsilatQueryService
         }
 
         $gensicilno = null;
-        if (strlen($identityNo) === 11) {
+        if ($searchType === 'sicil') {
+            $gensicilno = $this->borc->resolveGensicilFromAccount($identityNo, $borc);
+        } elseif (strlen($identityNo) === 11) {
             $gensicilno = $this->borc->resolveGensicilFromTc($identityNo)
                 ?? $this->borc->resolveGensicilFromTcBorcResponse($identityNo);
         }

@@ -19,9 +19,9 @@ class KioskApiController extends Controller
     public function citizen(Request $request, string $identityNo): JsonResponse
     {
         try {
-            $this->assertTcKimlikNo($identityNo);
+            $this->assertAccountNo($identityNo);
 
-            return response()->json($this->belsis->getCitizen($identityNo, 'tc'));
+            return response()->json($this->belsis->getCitizen($identityNo, 'sicil'));
         } catch (BelsisException $e) {
             return $this->belsisError($e);
         }
@@ -30,9 +30,9 @@ class KioskApiController extends Controller
     public function debts(Request $request, string $identityNo): JsonResponse
     {
         try {
-            $this->assertTcKimlikNo($identityNo);
+            $this->assertAccountNo($identityNo);
 
-            return response()->json($this->belsis->getDebts($identityNo, 'tc'));
+            return response()->json($this->belsis->getDebts($identityNo, 'sicil'));
         } catch (BelsisException $e) {
             return $this->belsisError($e);
         }
@@ -68,7 +68,7 @@ class KioskApiController extends Controller
     public function initiatePayment(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'identityNo' => 'required|string|size:11|regex:/^\d{11}$/',
+            'identityNo' => 'required|string|regex:/^\d{1,10}$/',
             'debtIds'    => 'required|array|min:1',
             'debtIds.*'  => 'required|string',
         ]);
@@ -78,7 +78,7 @@ class KioskApiController extends Controller
                 $this->belsis->initiatePayment(
                     $validated['identityNo'],
                     $validated['debtIds'],
-                    'tc',
+                    'sicil',
                 ),
             );
         } catch (BelsisException $e) {
@@ -89,7 +89,7 @@ class KioskApiController extends Controller
     public function paymentStatus(Request $request, string $transactionId): JsonResponse
     {
         $validated = $request->validate([
-            'identityNo' => 'required|string|size:11|regex:/^\d{11}$/',
+            'identityNo' => 'required|string|regex:/^\d{1,10}$/',
             'debtIds'    => 'required|array|min:1',
             'debtIds.*'  => 'required|string',
         ]);
@@ -100,7 +100,7 @@ class KioskApiController extends Controller
                     $validated['identityNo'],
                     $validated['debtIds'],
                     $transactionId,
-                    'tc',
+                    'sicil',
                 ),
             );
         } catch (BelsisException $e) {
@@ -269,7 +269,7 @@ class KioskApiController extends Controller
         $message = mb_strtolower($e->getMessage());
         $status = 422;
 
-        if (str_contains($message, '11 haneli')) {
+        if (str_contains($message, '11 haneli') || str_contains($message, 'abone') || str_contains($message, 'sicil no')) {
             $status = 400;
         } elseif (
             str_contains($message, 'bulunamad')
@@ -303,12 +303,12 @@ class KioskApiController extends Controller
         ], $status);
     }
 
-    private function assertTcKimlikNo(string $identityNo): void
+    private function assertAccountNo(string $identityNo): void
     {
         $identityNo = trim($identityNo);
 
-        if (! ctype_digit($identityNo) || strlen($identityNo) !== 11) {
-            throw new BelsisException('T.C. Kimlik No 11 haneli olmalıdır.');
+        if (! ctype_digit($identityNo) || strlen($identityNo) < 1 || strlen($identityNo) > 10) {
+            throw new BelsisException('Abone / sicil numarası 1–10 haneli olmalıdır.');
         }
     }
 }
