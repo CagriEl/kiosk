@@ -276,7 +276,7 @@ class BelsisSoapClient
                 ?? $result['sonucAciklama']
                 ?? $result['hataMesaji']
                 ?? $result['mesaj']
-                ?? 'Belsis işlemi başarısız.';
+                ?? 'Belsis işlemi başarısız (kod: '.$code.').';
 
             if (! empty($result['hataMesaji']) && $result['hataMesaji'] !== $message) {
                 $message .= ' — '.$result['hataMesaji'];

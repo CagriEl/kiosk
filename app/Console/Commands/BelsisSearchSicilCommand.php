@@ -40,6 +40,17 @@ class BelsisSearchSicilCommand extends Command
             return self::FAILURE;
         }
 
+        $this->info('Tahakkuk login...');
+        $tahakkukAvailable = false;
+        try {
+            $auth->forgetSession();
+            $tahakkukSession = $auth->openTahakkukSession();
+            $this->line('Tahakkuk oturum OK — seri: '.($tahakkukSession['seriNo'] ?? '-'));
+            $tahakkukAvailable = true;
+        } catch (BelsisException $e) {
+            $this->error('Tahakkuk login başarısız: '.$e->getMessage().' ['.($e->sonucKodu ?? '-').']');
+        }
+
         $base = $auth->baseParams();
         $tips = config('belsis.borc_sorgu_tips_abone', config('belsis.borc_sorgu_tips_sicil', ['UYE', 'UYENO', 'ABONE', '1']));
         $aramaTips = config('belsis.arama_sorgu_tips_abone', config('belsis.arama_sorgu_tips_sicil', ['UYE', 'UYENO', 'ABONE', '1']));
@@ -71,7 +82,7 @@ class BelsisSearchSicilCommand extends Command
                         .' uyeNo: '.($row['uyeNo'] ?? '?').' — '.$ad);
                 }
             } catch (BelsisException $e) {
-                $this->warn('    Hata: '.$e->getMessage());
+                $this->warn('    Hata: '.$e->getMessage().' ['.($e->sonucKodu ?? '-').']');
             }
         }
 
@@ -99,7 +110,7 @@ class BelsisSearchSicilCommand extends Command
                     $this->line('  <info>OK</info> gensicilno: '.($row['gensicilno'] ?? '?').' — '.$ad);
                 }
             } catch (BelsisException $e) {
-                $this->warn('  Hata: '.$e->getMessage());
+                $this->warn('  Hata: '.$e->getMessage().' ['.($e->sonucKodu ?? '-').']');
             }
         }
 
@@ -121,48 +132,54 @@ class BelsisSearchSicilCommand extends Command
                     $name = is_array($s) ? ($s['adiSoyadiUnvani'] ?? '-') : '-';
                     $this->line("  <info>OK</info> sicilNo: {$no} — {$name}");
                 } catch (BelsisException $e) {
-                    $this->warn('  Hata: '.$e->getMessage());
+                    $this->warn('  Hata: '.$e->getMessage().' ['.($e->sonucKodu ?? '-').']');
                 }
             }
         }
 
-        $this->newLine();
-        $this->info('=== sicilSorgula (tahakkuk) — gensicilno birebir ===');
-        $baseTahakkuk = $auth->baseParamsTahakkuk();
-        foreach ([
-            ['gensicilno' => $aboneInt, 'koyID' => 0, 'mukellefNo' => $abone],
-            ['gensicilno' => $aboneInt, 'koyID' => 0],
-        ] as $params) {
-            $label = json_encode($params, JSON_UNESCAPED_UNICODE);
-            $this->line("  <comment>{$label}</comment>");
-            try {
-                $result = $client->callTahakkuk('sicilSorgula', array_merge($baseTahakkuk, $params));
-                $rows = $result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? [];
-                $rows = is_array($rows) && isset($rows['gensicilno']) ? [$rows] : (array) $rows;
-                if (empty($rows)) {
-                    $this->warn('    kayıt yok');
-                    continue;
-                }
-                foreach ($rows as $row) {
-                    if (! is_array($row)) {
+        if (! $tahakkukAvailable) {
+            $this->newLine();
+            $this->warn('Tahakkuk oturumu açılamadığı için tahakkuk testleri atlanıyor.');
+        } else {
+            $baseTahakkuk = $auth->baseParamsTahakkuk();
+
+            $this->newLine();
+            $this->info('=== sicilSorgula (tahakkuk) — gensicilno birebir ===');
+            foreach ([
+                ['gensicilno' => $aboneInt, 'koyID' => 0, 'mukellefNo' => $abone],
+                ['gensicilno' => $aboneInt, 'koyID' => 0],
+            ] as $params) {
+                $label = json_encode($params, JSON_UNESCAPED_UNICODE);
+                $this->line("  <comment>{$label}</comment>");
+                try {
+                    $result = $client->callTahakkuk('sicilSorgula', array_merge($baseTahakkuk, $params));
+                    $rows = $result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? [];
+                    $rows = is_array($rows) && isset($rows['gensicilno']) ? [$rows] : (array) $rows;
+                    if (empty($rows)) {
+                        $this->warn('    kayıt yok');
                         continue;
                     }
-                    $ad = trim(($row['adi'] ?? '').' '.($row['soyadi'] ?? ''));
-                    $this->line('    gensicilno: <info>'.($row['gensicilno'] ?? '?').'</info>'
-                        .' uyeNo: '.($row['uyeNo'] ?? '?').' — '.$ad);
+                    foreach ($rows as $row) {
+                        if (! is_array($row)) {
+                            continue;
+                        }
+                        $ad = trim(($row['adi'] ?? '').' '.($row['soyadi'] ?? ''));
+                        $this->line('    gensicilno: <info>'.($row['gensicilno'] ?? '?').'</info>'
+                            .' uyeNo: '.($row['uyeNo'] ?? '?').' — '.$ad);
+                    }
+                } catch (BelsisException $e) {
+                    $this->warn('    Hata: '.$e->getMessage().' ['.($e->sonucKodu ?? '-').']');
                 }
-            } catch (BelsisException $e) {
-                $this->warn('    Hata: '.$e->getMessage());
             }
-        }
 
-        $this->newLine();
-        $this->info('=== tahakkukBilgileriniGetir (tahakkuk) — gensicilno birebir ===');
-        try {
-            $result = $client->callTahakkuk('tahakkukBilgileriniGetir', array_merge($baseTahakkuk, ['gensicilno' => $aboneInt]));
-            $this->line('  <info>OK</info> ham yanıt: '.json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR));
-        } catch (BelsisException $e) {
-            $this->warn('  Hata: '.$e->getMessage());
+            $this->newLine();
+            $this->info('=== tahakkukBilgileriniGetir (tahakkuk) — gensicilno birebir ===');
+            try {
+                $result = $client->callTahakkuk('tahakkukBilgileriniGetir', array_merge($baseTahakkuk, ['gensicilno' => $aboneInt]));
+                $this->line('  <info>OK</info> ham yanıt: '.json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR));
+            } catch (BelsisException $e) {
+                $this->warn('  Hata: '.$e->getMessage().' ['.($e->sonucKodu ?? '-').']');
+            }
         }
 
         $this->newLine();

@@ -3,6 +3,7 @@
 namespace App\Services\Belsis;
 
 use App\Exceptions\BelsisException;
+use App\Services\Belsis\Concerns\ChecksBelsisInfrastructureErrors;
 use App\Services\Belsis\Concerns\NormalizesBelsisLists;
 
 /**
@@ -10,6 +11,7 @@ use App\Services\Belsis\Concerns\NormalizesBelsisLists;
  */
 class BelsisTahakkukService
 {
+    use ChecksBelsisInfrastructureErrors;
     use NormalizesBelsisLists;
 
     public function __construct(
@@ -181,7 +183,11 @@ class BelsisTahakkukService
             ));
 
             return $this->normalizeList($result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? []);
-        } catch (BelsisException) {
+        } catch (BelsisException $e) {
+            if ($this->isInfrastructureError($e)) {
+                throw $e;
+            }
+
             return [];
         }
     }

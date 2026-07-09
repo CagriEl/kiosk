@@ -3,10 +3,12 @@
 namespace App\Services\Belsis;
 
 use App\Exceptions\BelsisException;
+use App\Services\Belsis\Concerns\ChecksBelsisInfrastructureErrors;
 use App\Services\Belsis\Concerns\NormalizesBelsisLists;
 
 class BelsisBorcSorgulaService
 {
+    use ChecksBelsisInfrastructureErrors;
     use NormalizesBelsisLists;
 
     public function __construct(
@@ -1044,18 +1046,5 @@ class BelsisBorcSorgulaService
             || str_contains($message, 'not been initialized')
             || str_contains($message, 'sistem hatas')
             || $e->sonucKodu === '1004';
-    }
-
-    private function isInfrastructureError(BelsisException $e): bool
-    {
-        $message = mb_strtolower($e->getMessage());
-
-        return str_contains($message, 'yetkisiz_ip')
-            || str_contains($message, 'bağlanılamadı')
-            || str_contains($message, 'baglanilamadi')
-            || str_contains($message, 'html')
-            || str_contains($message, 'oturum')
-            || str_contains($message, 'ip adresini tanımıyor')
-            || in_array($e->sonucKodu, ['401', '403', '1002', '1003'], true);
     }
 }
