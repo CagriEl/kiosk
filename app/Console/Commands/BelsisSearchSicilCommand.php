@@ -40,30 +40,65 @@ class BelsisSearchSicilCommand extends Command
 
         $base = $auth->baseParams();
         $tips = config('belsis.borc_sorgu_tips_sicil', ['SICIL', 'GENSICIL', '1', '2', '0']);
+        $aramaTips = config('belsis.arama_sorgu_tips_sicil', ['SICIL', 'GENSICIL', 'UYE', '1', '2', '0']);
         $sicilInt = (int) $sicil;
 
         $this->newLine();
-        $this->info('=== sicilSorgula ===');
-        try {
-            $result = $client->callTahsilat('sicilSorgula', array_merge($base, [
-                'gensicilno' => $sicilInt,
-                'koyID'      => 0,
-                'mukellefNo' => $sicil,
-            ]));
-            $rows = $result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? [];
-            $rows = is_array($rows) && isset($rows['gensicilno']) ? [$rows] : (array) $rows;
-            if (empty($rows)) {
-                $this->warn('  sicilSorgula: kayıt yok');
-            }
-            foreach ($rows as $row) {
-                if (! is_array($row)) {
+        $this->info('=== sicilSorgula (tahsilat) — parametre varyantları ===');
+        foreach ([
+            ['gensicilno' => $sicilInt, 'koyID' => 0, 'mukellefNo' => $sicil],
+            ['gensicilno' => $sicilInt, 'koyID' => 0],
+            ['gensicilno' => 0, 'koyID' => 0, 'mukellefNo' => $sicil],
+        ] as $params) {
+            $label = json_encode($params, JSON_UNESCAPED_UNICODE);
+            $this->line("  <comment>{$label}</comment>");
+            try {
+                $result = $client->callTahsilat('sicilSorgula', array_merge($base, $params));
+                $rows = $result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? [];
+                $rows = is_array($rows) && isset($rows['gensicilno']) ? [$rows] : (array) $rows;
+                if (empty($rows)) {
+                    $this->warn('    kayıt yok');
                     continue;
                 }
-                $ad = trim(($row['adi'] ?? '').' '.($row['soyadi'] ?? ''));
-                $this->line('  gensicilno: <info>'.($row['gensicilno'] ?? '?').'</info> — '.$ad);
+                foreach ($rows as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $ad = trim(($row['adi'] ?? '').' '.($row['soyadi'] ?? ''));
+                    $this->line('    gensicilno: <info>'.($row['gensicilno'] ?? '?').'</info>'
+                        .' uyeNo: '.($row['uyeNo'] ?? '?').' — '.$ad);
+                }
+            } catch (BelsisException $e) {
+                $this->warn('    Hata: '.$e->getMessage());
             }
-        } catch (BelsisException $e) {
-            $this->warn('  Hata: '.$e->getMessage());
+        }
+
+        $this->newLine();
+        $this->info('=== arama (sicil tipleri) ===');
+        foreach ($aramaTips as $tip) {
+            $this->line("sorguTip=<comment>{$tip}</comment>");
+            try {
+                $result = $client->callTahsilat('arama', array_merge($base, [
+                    'sorguTip' => $tip,
+                    'sorguNo'  => $sicil,
+                ]));
+                $siciller = $result['Siciller'] ?? $result['siciller'] ?? [];
+                $items = $siciller['SicilaramaObj'] ?? $siciller['sicilaramaObj'] ?? $siciller;
+                $items = is_array($items) && isset($items['gensicilno']) ? [$items] : (array) $items;
+                if (empty($items)) {
+                    $this->warn('  kayıt yok');
+                    continue;
+                }
+                foreach ($items as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $ad = trim(($row['adi'] ?? '').' '.($row['soyadi'] ?? ''));
+                    $this->line('  <info>OK</info> gensicilno: '.($row['gensicilno'] ?? '?').' — '.$ad);
+                }
+            } catch (BelsisException $e) {
+                $this->warn('  Hata: '.$e->getMessage());
+            }
         }
 
         $this->newLine();
