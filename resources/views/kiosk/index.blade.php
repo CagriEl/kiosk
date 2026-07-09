@@ -612,6 +612,22 @@
             });
         }
 
+        function subscriberDisplayName(s) {
+            if (!s) return 'Abone';
+            return s.fullName || [s.adi, s.soyadi].filter(Boolean).join(' ').trim() || ('Abone ' + (s.aboneNo || ''));
+        }
+
+        function extractSubscriber(payload) {
+            if (!payload || typeof payload !== 'object') return null;
+            if (payload.subscriber && typeof payload.subscriber === 'object') return payload.subscriber;
+            if (payload.aboneNo) return payload;
+            return null;
+        }
+
+        async function waterFetchSubscriber(vendor, aboneNo) {
+            return apiRequest(`${API_BASE}/water/${vendor}/subscriber/${aboneNo}`);
+        }
+
         async function waterCardRead(vendor, aboneNo) {
             return apiRequest(`${API_BASE}/water/card-read`, {
                 method: 'POST',
@@ -758,7 +774,12 @@
         }
 
         function afterWaterCardRead(subscriber) {
+            if (!subscriber || !subscriber.aboneNo) {
+                throw new Error('Abone bilgisi alınamadı. Lütfen tekrar deneyiniz.');
+            }
             water.subscriber = subscriber;
+            const label = subscriberDisplayName(subscriber) + ' — Abone ' + subscriber.aboneNo;
+
             if (water.action === 'invoice') {
                 loadWaterInvoices();
             } else if (water.action === 'advance') {
@@ -766,27 +787,36 @@
                 showScreen('waterAdvance');
             } else if (water.action === 'kontor') {
                 water.kontorIndex = 0;
-                document.getElementById('water-kontor-subscriber').textContent =
-                    subscriber.fullName + ' — Abone ' + subscriber.aboneNo;
+                document.getElementById('water-kontor-subscriber').textContent = label;
                 updateKontorDisplay();
                 showScreen('waterKontor');
             }
         }
 
         async function loadWaterInvoices() {
-            const { invoices } = await waterFetchInvoices(water.vendor, water.subscriber.aboneNo);
-            water.invoices = invoices;
-            water.selectedInvoiceIds.clear();
-            document.getElementById('water-invoice-subscriber').textContent =
-                water.subscriber.fullName + ' — Abone ' + water.subscriber.aboneNo;
-            renderWaterInvoiceList();
-            showScreen('waterInvoices');
+            if (!water.subscriber?.aboneNo) {
+                throw new Error('Abone bilgisi bulunamadı.');
+            }
+            try {
+                const { invoices } = await waterFetchInvoices(water.vendor, water.subscriber.aboneNo);
+                water.invoices = invoices || [];
+                water.selectedInvoiceIds.clear();
+                document.getElementById('water-invoice-subscriber').textContent =
+                    subscriberDisplayName(water.subscriber) + ' — Abone ' + water.subscriber.aboneNo;
+                renderWaterInvoiceList();
+                showScreen('waterInvoices');
+            } catch (err) {
+                document.getElementById('water-card-error').textContent = err.message;
+                document.getElementById('water-card-error').classList.remove('hidden');
+                showScreen('waterCard');
+            }
         }
 
         function renderWaterAdvanceInfo() {
             const s = water.subscriber;
+            if (!s) return;
             document.getElementById('water-advance-info').innerHTML = `
-                <p class="text-kiosk-lg font-bold text-municipalGray-800">${s.fullName}</p>
+                <p class="text-kiosk-lg font-bold text-municipalGray-800">${subscriberDisplayName(s)}</p>
                 <p class="text-kiosk-sm text-municipalGray-600">Abone No: <strong>${s.aboneNo}</strong> · ${vendorLabel(water.vendor)}</p>
                 <p class="text-kiosk-sm text-municipalGray-600">Sayaç: ${s.sayacNo} · Kart: ${s.kartTipi}</p>
                 <p class="text-kiosk-sm text-municipalGray-600">Mevcut kredi: <strong>${s.anaKredi} ton</strong> (yedek: ${s.yedekKredi} ton)</p>
@@ -843,6 +873,7 @@
         }
 
         function updateKontorDisplay() {
+            if (!water.subscriber?.aboneNo || !water.vendor) return;
             const tons = KONTOR_OPTIONS[water.kontorIndex];
             document.getElementById('water-kontor-tons').textContent = tons;
             document.getElementById('btn-kontor-minus').disabled = water.kontorIndex <= 0;
@@ -879,15 +910,33 @@
             renderWaterAboneDisplay();
         }
 
-        async function processWaterCardRead(aboneNo) {
+        async function processWaterCardRead(aboneNo, mode = 'card') {
             const errEl = document.getElementById('water-card-error');
             const loading = document.getElementById('water-card-loading');
             errEl.classList.add('hidden');
+
+            if (!water.vendor) {
+                errEl.textContent = 'Lütfen önce sayaç markası seçiniz.';
+                errEl.classList.remove('hidden');
+                return;
+            }
+            if (!water.action) {
+                errEl.textContent = 'Lütfen önce işlem türü seçiniz.';
+                errEl.classList.remove('hidden');
+                return;
+            }
+
             loading.classList.remove('hidden');
             onUserActivity();
             try {
-                const data = await waterCardRead(water.vendor, aboneNo || null);
-                afterWaterCardRead(data.subscriber);
+                let subscriber;
+                if (mode === 'manual' && aboneNo) {
+                    subscriber = extractSubscriber(await waterFetchSubscriber(water.vendor, aboneNo));
+                } else {
+                    const data = await waterCardRead(water.vendor, aboneNo || null);
+                    subscriber = extractSubscriber(data);
+                }
+                afterWaterCardRead(subscriber);
             } catch (err) {
                 errEl.textContent = err.message;
                 errEl.classList.remove('hidden');
@@ -975,6 +1024,8 @@
                 document.querySelectorAll('.vendor-card').forEach(el => el.classList.remove('selected'));
                 btn.classList.add('selected');
                 water.vendor = btn.dataset.vendor;
+                water.action = null;
+                water.subscriber = null;
                 document.getElementById('water-vendor-label').textContent = vendorLabel(water.vendor) + ' kartlı sayaç';
                 setTimeout(() => showScreen('waterAction'), 200);
                 onUserActivity();
@@ -995,10 +1046,10 @@
         });
 
         document.getElementById('btn-water-card-back').addEventListener('click', () => showScreen('waterAction'));
-        document.getElementById('btn-water-read-card').addEventListener('click', () => processWaterCardRead(inputWaterAbone.value.trim() || null));
+        document.getElementById('btn-water-read-card').addEventListener('click', () => processWaterCardRead(inputWaterAbone.value.trim() || null, 'card'));
         document.getElementById('btn-water-abone-query').addEventListener('click', () => {
             const abone = inputWaterAbone.value.trim();
-            if (abone.length >= 4) processWaterCardRead(abone);
+            if (abone.length >= 4) processWaterCardRead(abone, 'manual');
         });
 
         document.querySelectorAll('.water-numpad').forEach(key => {
@@ -1082,7 +1133,8 @@
                 const { debts } = await fetchDebts(identityNo);
                 session.citizen = citizen; session.debts = debts; session.selectedIds.clear();
                 renderDebtList();
-                document.getElementById('citizen-name').textContent = citizen.fullName + ' — ' + identityNo;
+                document.getElementById('citizen-name').textContent =
+                    subscriberDisplayName(citizen) + ' — ' + identityNo;
                 showScreen('debts');
             } catch (err) {
                 loginError.textContent = err.message;
