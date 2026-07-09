@@ -415,7 +415,7 @@
                 <button id="btn-back-welcome" type="button" class="touch-btn w-10 h-10 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <h2 class="text-kiosk-base font-bold">Abone Bilgileri</h2>
+                <h2 class="text-kiosk-base font-bold">Abone / Sicil Bilgileri</h2>
             </div>
             <span class="text-kiosk-xs opacity-75">Adım 1 / 2</span>
         </header>
@@ -424,14 +424,14 @@
                 <div>
                     <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-3">Borç Sorgulama</h3>
                     <p id="identity-hint" class="text-kiosk-sm text-municipalGray-600 leading-snug">
-                        Abone numaranızı numaratör veya fiziksel klavye (NumLock) ile giriniz.
+                        Abone numaranızı veya sicil numaranızı numaratör ya da fiziksel klavye (NumLock) ile giriniz.
                     </p>
                 </div>
                 <div class="identity-strip">
-                    <p class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">Abone No</p>
+                    <p class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">Abone No / Sicil No</p>
                     <div id="digit-row" class="abone-digit-row justify-start flex-wrap" aria-live="polite"></div>
                 </div>
-                <input id="input-identity" type="text" class="sr-only" maxlength="10" readonly aria-label="Abone numarası" />
+                <input id="input-identity" type="text" class="sr-only" maxlength="10" readonly aria-label="Abone numarası veya sicil numarası" />
                 <p id="login-error" class="text-kiosk-sm text-red-600 font-medium hidden" role="alert"></p>
                 <button id="btn-query" type="button" disabled
                     class="touch-btn btn-query-wide bg-municipal-600 text-white font-bold rounded-2xl shadow-xl hover:bg-municipal-700 disabled:opacity-40">
