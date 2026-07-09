@@ -127,16 +127,29 @@ class BelsisSearchSicilCommand extends Command
         }
 
         $this->newLine();
-        $this->info('=== birleşik borc sorgusu (otomatik) ===');
+        $this->info('=== birleşik borc sorgusu (otomatik, searchType=abone) ===');
         try {
             $result = $borc->query($abone, 'abone');
             $s = $result['Sicil'] ?? [];
             $no = is_array($s) ? ($s['sicilNo'] ?? $s['gensicilno'] ?? '-') : '-';
             $name = is_array($s) ? ($s['adiSoyadiUnvani'] ?? '-') : '-';
             $this->line("  sicilNo: <info>{$no}</info> — {$name}");
-            $this->info('Otomatik sorgu başarılı.');
+            $this->info('Otomatik sorgu başarılı (abone).');
         } catch (BelsisException $e) {
-            $this->error('Otomatik sorgu başarısız: '.$e->getMessage());
+            $this->error('Otomatik sorgu başarısız (abone): '.$e->getMessage().' ['.($e->sonucKodu ?? '-').']');
+        }
+
+        $this->newLine();
+        $this->info('=== birleşik borc sorgusu (otomatik, searchType=sicil / gensicilno birebir) ===');
+        try {
+            $result = $borc->query($abone, 'sicil');
+            $s = $result['Sicil'] ?? [];
+            $no = is_array($s) ? ($s['sicilNo'] ?? $s['gensicilno'] ?? '-') : '-';
+            $name = is_array($s) ? ($s['adiSoyadiUnvani'] ?? '-') : '-';
+            $this->line("  sicilNo: <info>{$no}</info> — {$name}");
+            $this->info('Otomatik sorgu başarılı (sicil).');
+        } catch (BelsisException $e) {
+            $this->error('Otomatik sorgu başarısız (sicil): '.$e->getMessage().' ['.($e->sonucKodu ?? '-').']');
         }
 
         return self::SUCCESS;

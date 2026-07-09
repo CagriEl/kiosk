@@ -87,18 +87,25 @@ class BelsisSoapClient
         $status = $response->status();
 
         if (in_array($status, [301, 302, 303, 307, 308], true)) {
-            throw new BelsisException($this->explainRedirect($response->header('Location') ?? '', $endpoint));
+            $message = $this->explainRedirect($response->header('Location') ?? '', $endpoint);
+            Log::warning('Belsis SOAP transport error', ['method' => $method, 'status' => $status, 'message' => $message]);
+            throw new BelsisException($message);
         }
 
         if (! $response->successful()) {
             if ($this->looksLikeHtml($raw)) {
-                throw new BelsisException($this->explainHtmlResponse($raw, $endpoint));
+                $message = $this->explainHtmlResponse($raw, $endpoint);
+                Log::warning('Belsis SOAP transport error', ['method' => $method, 'status' => $status, 'message' => $message]);
+                throw new BelsisException($message);
             }
+            Log::warning('Belsis SOAP transport error', ['method' => $method, 'status' => $status, 'message' => 'HTTP '.$status]);
             throw new BelsisException('Belsis servisine bağlanılamadı. HTTP '.$status);
         }
 
         if ($this->looksLikeHtml($raw)) {
-            throw new BelsisException($this->explainHtmlResponse($raw, $endpoint));
+            $message = $this->explainHtmlResponse($raw, $endpoint);
+            Log::warning('Belsis SOAP transport error', ['method' => $method, 'status' => $status, 'message' => $message]);
+            throw new BelsisException($message);
         }
 
         return $this->parseResponse($raw, $method);
@@ -274,6 +281,8 @@ class BelsisSoapClient
             if (! empty($result['hataMesaji']) && $result['hataMesaji'] !== $message) {
                 $message .= ' — '.$result['hataMesaji'];
             }
+
+            Log::warning('Belsis SOAP business error', ['method' => $method, 'sonucKodu' => $result['sonucKodu'], 'message' => $message]);
 
             throw new BelsisException((string) $message, (string) $result['sonucKodu']);
         }

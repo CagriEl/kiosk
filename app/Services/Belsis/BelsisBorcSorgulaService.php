@@ -630,7 +630,11 @@ class BelsisBorcSorgulaService
             $siciller = $this->normalizeList($result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? []);
 
             return $this->pickMatchingSicilRecord($siciller, $matchNo) ?? ($siciller[0] ?? null);
-        } catch (BelsisException) {
+        } catch (BelsisException $e) {
+            if ($this->isInfrastructureError($e)) {
+                throw $e;
+            }
+
             return null;
         }
     }

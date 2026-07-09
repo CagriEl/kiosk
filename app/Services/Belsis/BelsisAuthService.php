@@ -4,6 +4,7 @@ namespace App\Services\Belsis;
 
 use App\Exceptions\BelsisException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class BelsisAuthService
 {
@@ -50,6 +51,7 @@ class BelsisAuthService
         $oturumKimligi = $result['oturumKimligi'] ?? null;
 
         if (empty($oturumKimligi)) {
+            Log::warning('Belsis login oturum kimliği boş döndü', ['result' => $result]);
             throw new BelsisException('Belsis oturum kimliği alınamadı.');
         }
 
