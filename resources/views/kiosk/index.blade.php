@@ -141,30 +141,6 @@
             padding: 1.125rem 1rem;
             font-size: 1.25rem;
         }
-        .identity-type-tabs {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-        }
-        .identity-type-tab {
-            padding: 0.875rem 1rem;
-            border-radius: 1rem;
-            border: 2px solid #bfdbfe;
-            background: #fff;
-            color: #123a6b;
-            font-size: 1rem;
-            font-weight: 700;
-            text-align: center;
-        }
-        .identity-type-tab.active {
-            border-color: #1e5a9e;
-            background: #eff6ff;
-            box-shadow: 0 0 0 3px rgba(30, 90, 158, 0.15);
-        }
-        .digit-row.sicil-mode .digit-slot {
-            height: 72px;
-            font-size: 1.75rem;
-        }
         .loading-spinner {
             border: 4px solid #dbeafe; border-top-color: #1e5a9e;
             border-radius: 50%; width: 40px; height: 40px;
@@ -252,7 +228,7 @@
                     <svg class="w-9 h-9 text-municipal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                 </div>
                 <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-2">Borç Ödeme &amp; Sorgulama</h3>
-                <p class="text-kiosk-sm text-municipalGray-600">T.C. Kimlik / sicil ile belediye borçlarınızı görüntüleyin ve ödeyin.</p>
+                <p class="text-kiosk-sm text-municipalGray-600">T.C. Kimlik No ile belediye borçlarınızı görüntüleyin ve ödeyin.</p>
             </button>
             <button id="btn-menu-water" type="button" class="touch-btn flex-1 max-w-md bg-white border-3 border-cyan-400 rounded-3xl p-10 shadow-xl hover:border-cyan-600 text-left">
                 <div class="w-16 h-16 rounded-2xl bg-cyan-100 flex items-center justify-center mb-5">
@@ -446,19 +422,15 @@
             <div class="login-left">
                 <div>
                     <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-3">Borç Sorgulama</h3>
-                    <div class="identity-type-tabs mb-3" role="tablist" aria-label="Sorgu tipi">
-                        <button type="button" id="btn-id-type-tc" class="identity-type-tab touch-btn active" role="tab" aria-selected="true">T.C. Kimlik No</button>
-                        <button type="button" id="btn-id-type-sicil" class="identity-type-tab touch-btn" role="tab" aria-selected="false">Sicil No</button>
-                    </div>
                     <p id="identity-hint" class="text-kiosk-sm text-municipalGray-600 leading-snug">
-                        11 haneli T.C. Kimlik Numaranızı sağdaki numaratör ile giriniz.
+                        11 haneli T.C. Kimlik Numaranızı numaratör veya fiziksel klavye (NumLock) ile giriniz.
                     </p>
                 </div>
                 <div class="identity-strip">
-                    <p id="identity-label" class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">T.C. Kimlik No</p>
+                    <p class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">T.C. Kimlik No</p>
                     <div id="digit-row" class="digit-row" aria-live="polite"></div>
                 </div>
-                <input id="input-identity" type="text" class="sr-only" maxlength="11" readonly aria-label="T.C. Kimlik No veya Sicil No" />
+                <input id="input-identity" type="text" class="sr-only" maxlength="11" readonly aria-label="T.C. Kimlik No" />
                 <p id="login-error" class="text-kiosk-sm text-red-600 font-medium hidden" role="alert"></p>
                 <button id="btn-query" type="button" disabled
                     class="touch-btn btn-query-wide bg-municipal-600 text-white font-bold rounded-2xl shadow-xl hover:bg-municipal-700 disabled:opacity-40">
@@ -622,29 +594,27 @@
             }
         }
 
-        async function fetchCitizen(identityNo, searchType) {
-            const qs = searchType ? `?type=${encodeURIComponent(searchType)}` : '';
-            return apiRequest(`${API_BASE}/citizen/${identityNo}${qs}`);
+        async function fetchCitizen(tcKimlikNo) {
+            return apiRequest(`${API_BASE}/citizen/${tcKimlikNo}`);
         }
 
-        async function fetchDebts(identityNo, searchType) {
-            const qs = searchType ? `?type=${encodeURIComponent(searchType)}` : '';
-            return apiRequest(`${API_BASE}/debts/${identityNo}${qs}`);
+        async function fetchDebts(tcKimlikNo) {
+            return apiRequest(`${API_BASE}/debts/${tcKimlikNo}`);
         }
 
-        async function initiateBankPayment(identityNo, selectedDebtIds, searchType) {
+        async function initiateBankPayment(identityNo, selectedDebtIds) {
             return apiRequest(`${API_BASE}/payment/bank`, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
-                body: JSON.stringify({ identityNo, debtIds: selectedDebtIds, searchType }),
+                body: JSON.stringify({ identityNo, debtIds: selectedDebtIds }),
             });
         }
 
-        async function confirmPayment(transactionId, identityNo, debtIds, searchType) {
+        async function confirmPayment(transactionId, identityNo, debtIds) {
             return apiRequest(`${API_BASE}/payment/${transactionId}/confirm`, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
-                body: JSON.stringify({ identityNo, debtIds, searchType }),
+                body: JSON.stringify({ identityNo, debtIds }),
             });
         }
 
@@ -748,7 +718,7 @@
 
         const KONTOR_OPTIONS = [5, 10, 20, 30, 40, 50];
 
-        const session = { citizen: null, debts: [], selectedIds: new Set(), currentScreen: 'welcome', pendingPayment: null, searchType: 'tc' };
+        const session = { citizen: null, debts: [], selectedIds: new Set(), currentScreen: 'welcome', pendingPayment: null };
         const water = {
             vendor: null, action: null, subscriber: null,
             invoices: [], selectedInvoiceIds: new Set(),
@@ -779,8 +749,7 @@
 
         function resetSession() {
             session.citizen = null; session.debts = []; session.selectedIds.clear();
-            session.searchType = 'tc';
-            setIdentityMode('tc');
+            setIdentityValue('');
             document.getElementById('login-error').classList.add('hidden');
             document.getElementById('btn-query').disabled = true;
             document.getElementById('login-loading').classList.add('hidden');
@@ -972,7 +941,7 @@
             const digit = digitFromKeyEvent(e);
             if (digit !== null) {
                 e.preventDefault();
-                if (inputIdentity.value.length < identityMaxDigits()) {
+                if (inputIdentity.value.length < MAX_TC_DIGITS) {
                     setIdentityValue(inputIdentity.value + digit);
                 }
                 loginError.classList.add('hidden');
@@ -1103,68 +1072,36 @@
         const digitRow = document.getElementById('digit-row');
         const btnQuery = document.getElementById('btn-query');
         const loginError = document.getElementById('login-error');
-        const btnIdTypeTc = document.getElementById('btn-id-type-tc');
-        const btnIdTypeSicil = document.getElementById('btn-id-type-sicil');
-        const identityHint = document.getElementById('identity-hint');
-        const identityLabel = document.getElementById('identity-label');
-        let identityMode = 'tc';
         const MAX_TC_DIGITS = 11;
-        const MAX_SICIL_DIGITS = 10;
-
-        function identityMaxDigits() {
-            return identityMode === 'tc' ? MAX_TC_DIGITS : MAX_SICIL_DIGITS;
-        }
-
-        function setIdentityMode(mode) {
-            identityMode = mode;
-            const isTc = mode === 'tc';
-            btnIdTypeTc.classList.toggle('active', isTc);
-            btnIdTypeSicil.classList.toggle('active', !isTc);
-            btnIdTypeTc.setAttribute('aria-selected', isTc ? 'true' : 'false');
-            btnIdTypeSicil.setAttribute('aria-selected', isTc ? 'false' : 'true');
-            digitRow.classList.toggle('sicil-mode', !isTc);
-            inputIdentity.maxLength = identityMaxDigits();
-            identityLabel.textContent = isTc ? 'T.C. Kimlik No' : 'Sicil No';
-            identityHint.textContent = isTc
-                ? '11 haneli T.C. Kimlik Numaranızı numaratör veya fiziksel klavye (NumLock) ile giriniz.'
-                : 'Belediye sicil numaranızı giriniz (1 hane ve üzeri). Numaratör veya klavye kullanılabilir.';
-            setIdentityValue('');
-            loginError.classList.add('hidden');
-        }
 
         function renderIdentityDisplay() {
             const val = inputIdentity.value;
-            const maxDigits = identityMaxDigits();
             let html = '';
-            for (let i = 0; i < maxDigits; i++) {
+            for (let i = 0; i < MAX_TC_DIGITS; i++) {
                 const ch = val[i] || '';
                 const cls = ['digit-slot'];
                 if (ch) cls.push('filled');
-                if (i === val.length && val.length < maxDigits) cls.push('active');
+                if (i === val.length && val.length < MAX_TC_DIGITS) cls.push('active');
                 html += `<div class="${cls.join(' ')}" aria-hidden="true">${ch}</div>`;
             }
             digitRow.innerHTML = html;
         }
 
         function updateQueryButton() {
-            const len = inputIdentity.value.trim().length;
-            btnQuery.disabled = identityMode === 'tc' ? len !== MAX_TC_DIGITS : len < 1;
+            btnQuery.disabled = inputIdentity.value.trim().length !== MAX_TC_DIGITS;
         }
 
         function setIdentityValue(val) {
-            inputIdentity.value = val.slice(0, identityMaxDigits());
+            inputIdentity.value = val.slice(0, MAX_TC_DIGITS);
             renderIdentityDisplay();
             updateQueryButton();
         }
-
-        btnIdTypeTc.addEventListener('click', () => { setIdentityMode('tc'); onUserActivity(); });
-        btnIdTypeSicil.addEventListener('click', () => { setIdentityMode('sicil'); onUserActivity(); });
 
         document.querySelectorAll('.numpad-key').forEach(key => {
             key.addEventListener('click', () => {
                 const action = key.dataset.key;
                 let val = inputIdentity.value;
-                const maxDigits = identityMaxDigits();
+                const maxDigits = MAX_TC_DIGITS;
                 if (action === 'clear') val = '';
                 else if (action === 'backspace') val = val.slice(0, -1);
                 else if (val.length < maxDigits) val += action;
@@ -1283,25 +1220,20 @@
 
         btnQuery.addEventListener('click', async () => {
             const identityNo = inputIdentity.value.trim();
-            const minLen = identityMode === 'tc' ? MAX_TC_DIGITS : 1;
-            if (identityNo.length < minLen) return;
-            if (identityMode === 'tc' && identityNo.length !== MAX_TC_DIGITS) return;
+            if (identityNo.length !== MAX_TC_DIGITS) return;
             btnQuery.disabled = true;
             document.getElementById('login-loading').classList.remove('hidden');
             loginError.classList.add('hidden');
             onUserActivity();
             try {
-                const citizen = await fetchCitizen(identityNo, identityMode);
-                const { debts } = await fetchDebts(identityNo, identityMode);
+                const citizen = await fetchCitizen(identityNo);
+                const { debts } = await fetchDebts(identityNo);
                 session.citizen = citizen;
-                session.searchType = identityMode;
                 session.debts = debts;
                 session.selectedIds.clear();
                 renderDebtList();
-                const typeLabel = identityMode === 'tc' ? 'TC' : 'Sicil';
                 document.getElementById('citizen-name').textContent =
-                    subscriberDisplayName(citizen) + ' — ' + typeLabel + ': ' + identityNo
-                    + (citizen.sicilNo && citizen.sicilNo !== identityNo ? ' (Sicil: ' + citizen.sicilNo + ')' : '');
+                    subscriberDisplayName(citizen) + ' — T.C.: ' + identityNo;
                 showScreen('debts');
             } catch (err) {
                 loginError.textContent = err.message;
@@ -1398,7 +1330,7 @@
             btnPay.disabled = true;
             onUserActivity();
             try {
-                const payment = await initiateBankPayment(session.citizen.identityNo, selectedIds, session.searchType);
+                const payment = await initiateBankPayment(session.citizen.identityNo, selectedIds);
                 session.pendingPayment = { transactionId: payment.transactionId, debtIds: selectedIds };
                 openBankModal(total);
             } catch (err) {
@@ -1438,7 +1370,7 @@
                     showWaterSuccess('Kontör Yüklendi', confirmation.message + ' Makbuz: ' + confirmation.receiptNo);
                 } else if (session.pendingPayment) {
                     const { transactionId, debtIds } = session.pendingPayment;
-                    const confirmation = await confirmPayment(transactionId, session.citizen.identityNo, debtIds, session.searchType);
+                    const confirmation = await confirmPayment(transactionId, session.citizen.identityNo, debtIds);
                     if (confirmation.status === 'completed') {
                         closeBankModal();
                         const receipt = confirmation.receipt || {};
@@ -1503,7 +1435,6 @@
         });
 
         renderIdentityDisplay();
-        setIdentityMode('tc');
         renderWaterAboneDisplay();
         showScreen('welcome');
     })();

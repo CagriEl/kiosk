@@ -176,7 +176,7 @@ class BelsisKioskService
             'identityNo' => $identityNo,
             'fullName'   => 'Ahmet YILMAZ (Demo)',
             'sicilNo'    => $identityNo,
-            'searchType' => $searchType ?? (strlen($identityNo) === 11 ? 'tc' : 'sicil'),
+            'searchType' => 'tc',
             'adi'        => 'Ahmet',
             'soyadi'     => 'YILMAZ (Demo)',
         ];

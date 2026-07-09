@@ -37,7 +37,7 @@ class BelsisTahsilatQueryService
             'identityNo' => $identityNo,
             'fullName'   => $fullName,
             'sicilNo'    => $gensicilno,
-            'searchType' => $searchType ?? (strlen(trim($identityNo)) === 11 ? 'tc' : 'sicil'),
+            'searchType' => 'tc',
             'adi'        => $adi,
             'soyadi'     => $soyadi,
         ];

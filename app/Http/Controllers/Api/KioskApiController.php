@@ -19,9 +19,9 @@ class KioskApiController extends Controller
     public function citizen(Request $request, string $identityNo): JsonResponse
     {
         try {
-            $searchType = $this->normalizeSearchType($request->query('type'));
+            $this->assertTcKimlikNo($identityNo);
 
-            return response()->json($this->belsis->getCitizen($identityNo, $searchType));
+            return response()->json($this->belsis->getCitizen($identityNo, 'tc'));
         } catch (BelsisException $e) {
             return $this->belsisError($e);
         }
@@ -30,9 +30,9 @@ class KioskApiController extends Controller
     public function debts(Request $request, string $identityNo): JsonResponse
     {
         try {
-            $searchType = $this->normalizeSearchType($request->query('type'));
+            $this->assertTcKimlikNo($identityNo);
 
-            return response()->json($this->belsis->getDebts($identityNo, $searchType));
+            return response()->json($this->belsis->getDebts($identityNo, 'tc'));
         } catch (BelsisException $e) {
             return $this->belsisError($e);
         }
@@ -68,8 +68,7 @@ class KioskApiController extends Controller
     public function initiatePayment(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'identityNo' => 'required|string|min:1|regex:/^\d+$/',
-            'searchType' => 'nullable|in:tc,sicil',
+            'identityNo' => 'required|string|size:11|regex:/^\d{11}$/',
             'debtIds'    => 'required|array|min:1',
             'debtIds.*'  => 'required|string',
         ]);
@@ -79,7 +78,7 @@ class KioskApiController extends Controller
                 $this->belsis->initiatePayment(
                     $validated['identityNo'],
                     $validated['debtIds'],
-                    $validated['searchType'] ?? null,
+                    'tc',
                 ),
             );
         } catch (BelsisException $e) {
@@ -90,8 +89,7 @@ class KioskApiController extends Controller
     public function paymentStatus(Request $request, string $transactionId): JsonResponse
     {
         $validated = $request->validate([
-            'identityNo' => 'required|string|min:1|regex:/^\d+$/',
-            'searchType' => 'nullable|in:tc,sicil',
+            'identityNo' => 'required|string|size:11|regex:/^\d{11}$/',
             'debtIds'    => 'required|array|min:1',
             'debtIds.*'  => 'required|string',
         ]);
@@ -102,7 +100,7 @@ class KioskApiController extends Controller
                     $validated['identityNo'],
                     $validated['debtIds'],
                     $transactionId,
-                    $validated['searchType'] ?? null,
+                    'tc',
                 ),
             );
         } catch (BelsisException $e) {
@@ -274,21 +272,12 @@ class KioskApiController extends Controller
         ], 422);
     }
 
-    /**
-     * @return 'tc'|'sicil'|null
-     */
-    private function normalizeSearchType(mixed $type): ?string
+    private function assertTcKimlikNo(string $identityNo): void
     {
-        if ($type === null || $type === '') {
-            return null;
+        $identityNo = trim($identityNo);
+
+        if (! ctype_digit($identityNo) || strlen($identityNo) !== 11) {
+            throw new BelsisException('T.C. Kimlik No 11 haneli olmalıdır.');
         }
-
-        $type = strtolower((string) $type);
-
-        if (! in_array($type, ['tc', 'sicil'], true)) {
-            throw new BelsisException('Geçersiz sorgu tipi. tc veya sicil kullanın.');
-        }
-
-        return $type;
     }
 }
