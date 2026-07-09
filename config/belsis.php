@@ -37,6 +37,9 @@ return [
         'TC,TcKimlikNo,2,TCKIMLIK,Tc,1',
     )))),
 
+    // borcSorgula boş dönerse tahakkukWebServis'ten borç çek
+    'tahakkuk_fallback' => filter_var(env('BELSIS_TAHAKKUK_FALLBACK', true), FILTER_VALIDATE_BOOLEAN),
+
     // 5 = Kredi Kartı (odemeSekilleri), 2 = Banka
     'odeme_sekli' => (int) env('BELSIS_ODEME_SEKLI', 5),
 

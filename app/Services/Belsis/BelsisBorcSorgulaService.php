@@ -147,12 +147,27 @@ class BelsisBorcSorgulaService
             }
         }
 
-        if ($this->sicilExistsViaSicilSorgula($sicilInt)) {
-            throw new BelsisException(
-                'Sicil kaydı mevcut ancak borç sorgusu yapılamadı. Belsis: '.($lastError?->getMessage() ?? 'Sonuç boş')
-                .' — Belediye IT\'ye BELSIS_BORC_SORGU_TIPS_SICIL değerlerini sorunuz.',
-                $lastError?->sonucKodu,
-            );
+        if ($sicilRecord = $this->fetchSicilRecord($sicilInt)) {
+            $tc = preg_replace('/\D/', '', (string) ($sicilRecord['tcKimlikNo'] ?? ''));
+            if (strlen($tc) === 11) {
+                foreach ($this->tcTips() as $tip) {
+                    foreach ([0, $sicilInt] as $gensicilno) {
+                        try {
+                            $result = $this->callBorcSorgula($tip, $tc, $gensicilno);
+                            if ($this->isValidBorcResult($result)) {
+                                return $result;
+                            }
+                        } catch (BelsisException $e) {
+                            if ($this->isInfrastructureError($e)) {
+                                throw $e;
+                            }
+                            $lastError = $e;
+                        }
+                    }
+                }
+            }
+
+            return $this->buildFallbackBorcFromSicil($sicilRecord);
         }
 
         throw new BelsisException(
@@ -202,7 +217,10 @@ class BelsisBorcSorgulaService
         return $direct ? (string) $direct : null;
     }
 
-    private function sicilExistsViaSicilSorgula(int $gensicilno): bool
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function fetchSicilRecord(int $gensicilno): ?array
     {
         try {
             $result = $this->client->callTahsilat('sicilSorgula', array_merge(
@@ -216,10 +234,40 @@ class BelsisBorcSorgulaService
 
             $siciller = $this->normalizeList($result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? []);
 
-            return ! empty($siciller);
+            return $siciller[0] ?? null;
         } catch (BelsisException) {
-            return false;
+            return null;
         }
+    }
+
+    /**
+     * borcSorgula yanıt veremezse sicilSorgula kaydından minimum borcC üretir.
+     *
+     * @param  array<string, mixed>  $record
+     * @return array<string, mixed>
+     */
+    private function buildFallbackBorcFromSicil(array $record): array
+    {
+        $gensicilno = (int) ($record['gensicilno'] ?? $record['gensicilNo'] ?? 0);
+        $ad = trim((string) ($record['adi'] ?? ''));
+        $soyad = trim((string) ($record['soyadi'] ?? ''));
+        $unvan = trim((string) ($record['unvan'] ?? ''));
+        $name = $unvan !== '' ? $unvan : trim($ad.' '.$soyad);
+
+        return [
+            'sonucKodu' => '1001',
+            'Sicil'     => [
+                'sicilNo'          => $gensicilno,
+                'adiSoyadiUnvani'  => $name,
+                'modulListesi'     => [],
+            ],
+            '_fallback' => 'sicilSorgula',
+        ];
+    }
+
+    private function sicilExistsViaSicilSorgula(int $gensicilno): bool
+    {
+        return $this->fetchSicilRecord($gensicilno) !== null;
     }
 
     /**

@@ -13,6 +13,7 @@ class BelsisTahsilatQueryService
         private readonly BelsisSoapClient $client,
         private readonly BelsisAuthService $auth,
         private readonly BelsisBorcSorgulaService $borc,
+        private readonly BelsisTahakkukService $tahakkuk,
     ) {}
 
     /**
@@ -47,7 +48,25 @@ class BelsisTahsilatQueryService
     public function getDebts(string $identityNo): array
     {
         $borc = $this->borc->query($identityNo);
+        $debts = $this->extractDebtsFromBorc($borc);
 
+        if ($debts === [] && config('belsis.tahakkuk_fallback', true)) {
+            try {
+                $debts = $this->tahakkuk->getDebts($identityNo);
+            } catch (BelsisException) {
+                // borcSorgula fallback yanıtı ile devam
+            }
+        }
+
+        return $debts;
+    }
+
+    /**
+     * @param  array<string, mixed>  $borc
+     * @return array<int, array<string, mixed>>
+     */
+    private function extractDebtsFromBorc(array $borc): array
+    {
         $debts = [];
         $sicil = $borc['Sicil'] ?? [];
         $moduller = $this->normalizeList($sicil['modulListesi']['Modul'] ?? $sicil['modulListesi'] ?? []);
