@@ -200,8 +200,17 @@ class BelsisSoapClient
                 continue;
             }
 
+            if (is_array($value) && isset($value['__empty']) && $value['__empty'] === true) {
+                $xml .= '<tem:'.$key.' />';
+                continue;
+            }
+
             if (is_array($value) && isset($value['__list'])) {
                 $itemTag = (string) $value['__list'];
+                if (empty($value['__items'])) {
+                    $xml .= '<tem:'.$key.' />';
+                    continue;
+                }
                 foreach ($value['__items'] as $item) {
                     if (! is_array($item)) {
                         continue;

@@ -417,7 +417,8 @@
                 <div>
                     <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-2">T.C. Kimlik No / Sicil No</h3>
                     <p class="text-kiosk-sm text-municipalGray-600 leading-snug">
-                        Sağdaki numaratör ile numaranızı giriniz. T.C. Kimlik No 11 hane, Sicil No en az 5 hanedir.
+                        Sağdaki numaratör ile numaranızı giriniz.<br>
+                        <span class="text-municipal-600 font-medium">T.C. Kimlik No (11 hane)</span> veya doğrudan <span class="text-municipal-600 font-medium">sicil numarası</span> (ör. 89874) girebilirsiniz.
                     </p>
                 </div>
                 <div class="identity-strip">
