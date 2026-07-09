@@ -12,7 +12,7 @@ class BelsisTahsilatQueryService
     public function __construct(
         private readonly BelsisSoapClient $client,
         private readonly BelsisAuthService $auth,
-        private readonly BelsisIdentityResolver $identity,
+        private readonly BelsisBorcSorgulaService $borc,
     ) {}
 
     /**
@@ -20,10 +20,10 @@ class BelsisTahsilatQueryService
      */
     public function getCitizen(string $identityNo): array
     {
-        $gensicilno = $this->identity->resolveGensicilNo($identityNo);
-        $borc = $this->fetchBorcSorgula((int) $gensicilno, $identityNo);
+        $borc = $this->borc->query($identityNo);
 
         $sicil = $borc['Sicil'] ?? [];
+        $gensicilno = $this->borc->extractSicilNo($borc, $identityNo);
         $fullName = trim((string) ($sicil['adiSoyadiUnvani'] ?? ''));
 
         if ($fullName === '') {
@@ -35,7 +35,7 @@ class BelsisTahsilatQueryService
         return [
             'identityNo' => $identityNo,
             'fullName'   => $fullName,
-            'sicilNo'    => (string) ($sicil['sicilNo'] ?? $gensicilno),
+            'sicilNo'    => $gensicilno,
             'adi'        => $adi,
             'soyadi'     => $soyadi,
         ];
@@ -46,8 +46,7 @@ class BelsisTahsilatQueryService
      */
     public function getDebts(string $identityNo): array
     {
-        $gensicilno = $this->identity->resolveGensicilNo($identityNo);
-        $borc = $this->fetchBorcSorgula((int) $gensicilno, $identityNo);
+        $borc = $this->borc->query($identityNo);
 
         $debts = [];
         $sicil = $borc['Sicil'] ?? [];
@@ -225,76 +224,6 @@ class BelsisTahsilatQueryService
                 'odemeTutari' => (float) ($row['odemeTutari'] ?? 0),
             ], $details),
         ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function fetchBorcSorgula(int $gensicilno, string $identityNo): array
-    {
-        $params = $this->buildBorcSorgulaParams($gensicilno, $identityNo);
-
-        try {
-            return $this->client->callTahsilat('borcSorgula', $params);
-        } catch (BelsisException $e) {
-            if ($this->shouldRetryBorcSorgulaWithGensicilnoZero($params, $e)) {
-                $params['gensicilno'] = 0;
-
-                return $this->client->callTahsilat('borcSorgula', $params);
-            }
-
-            throw $e;
-        }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildBorcSorgulaParams(int $gensicilno, string $identityNo): array
-    {
-        $identityNo = trim($identityNo);
-
-        $params = array_merge($this->auth->baseParams(), [
-            'indirimliOdenecekMi' => 0,
-            'indirimHakkiVarMi'   => 0,
-        ]);
-
-        if (strlen($identityNo) === 11 && ctype_digit($identityNo)) {
-            return array_merge($params, [
-                'sorguTip'   => (string) config('belsis.borc_sorgu_tip_tc', 'TC'),
-                'sorguNo'    => $identityNo,
-                'gensicilno' => $gensicilno,
-            ]);
-        }
-
-        return array_merge($params, [
-            'sorguTip'   => (string) config('belsis.borc_sorgu_tip_sicil', 'SICIL'),
-            'sorguNo'    => (string) $gensicilno,
-            'gensicilno' => $gensicilno,
-        ]);
-    }
-
-    /**
-     * @param  array<string, mixed>  $params
-     */
-    private function shouldRetryBorcSorgulaWithGensicilnoZero(array $params, BelsisException $e): bool
-    {
-        if (($params['gensicilno'] ?? 0) === 0) {
-            return false;
-        }
-
-        $sorguTip = mb_strtoupper((string) ($params['sorguTip'] ?? ''));
-        $tcTip = mb_strtoupper((string) config('belsis.borc_sorgu_tip_tc', 'TC'));
-
-        if ($sorguTip !== $tcTip) {
-            return false;
-        }
-
-        $message = mb_strtolower($e->getMessage());
-
-        return str_contains($message, 'sicil')
-            || str_contains($message, 'bulunamad')
-            || str_contains($message, 'eşleş');
     }
 
     private function lookupNameFromSicilSorgula(int $gensicilno): ?string

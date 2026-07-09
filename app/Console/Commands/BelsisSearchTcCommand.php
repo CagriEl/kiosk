@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Exceptions\BelsisException;
 use App\Services\Belsis\BelsisAuthService;
+use App\Services\Belsis\BelsisBorcSorgulaService;
 use App\Services\Belsis\BelsisSoapClient;
 use Illuminate\Console\Command;
 
@@ -11,10 +12,13 @@ class BelsisSearchTcCommand extends Command
 {
     protected $signature = 'belsis:search-tc {tc : 11 haneli T.C. Kimlik No}';
 
-    protected $description = 'TC kimlik ile sicil arama (arama + borcSorgula) teşhisi';
+    protected $description = 'TC kimlik ile sicil arama (tüm sorguTip kombinasyonları) teşhisi';
 
-    public function handle(BelsisAuthService $auth, BelsisSoapClient $client): int
-    {
+    public function handle(
+        BelsisAuthService $auth,
+        BelsisSoapClient $client,
+        BelsisBorcSorgulaService $borc,
+    ): int {
         $tc = preg_replace('/\D/', '', $this->argument('tc'));
 
         if (strlen($tc) !== 11) {
@@ -35,7 +39,10 @@ class BelsisSearchTcCommand extends Command
         }
 
         $base = $auth->baseParams();
-        $tips = config('belsis.arama_sorgu_tips', []);
+        $tips = array_values(array_unique(array_merge(
+            config('belsis.borc_sorgu_tips_tc', []),
+            config('belsis.arama_sorgu_tips', []),
+        )));
 
         $this->newLine();
         $this->info('=== arama methodu ===');
@@ -64,13 +71,20 @@ class BelsisSearchTcCommand extends Command
                     'indirimliOdenecekMi' => 0,
                     'indirimHakkiVarMi'   => 0,
                 ]));
-                $sicil = $result['Sicil'] ?? [];
-                $no = is_array($sicil) ? ($sicil['sicilNo'] ?? $sicil['gensicilno'] ?? '-') : '-';
-                $name = is_array($sicil) ? ($sicil['adiSoyadiUnvani'] ?? '-') : '-';
-                $this->line("  sicilNo/gensicil: <info>{$no}</info> — {$name}");
+                $this->dumpBorcResult($result);
             } catch (BelsisException $e) {
                 $this->warn('  Hata: '.$e->getMessage());
             }
+        }
+
+        $this->newLine();
+        $this->info('=== birleşik borc sorgusu (otomatik) ===');
+        try {
+            $result = $borc->query($tc);
+            $this->dumpBorcResult($result);
+            $this->info('Otomatik sorgu başarılı.');
+        } catch (BelsisException $e) {
+            $this->error('Otomatik sorgu başarısız: '.$e->getMessage());
         }
 
         return self::SUCCESS;
@@ -99,5 +113,16 @@ class BelsisSearchTcCommand extends Command
             $ad = trim(($row['adi'] ?? '').' '.($row['soyadi'] ?? ''));
             $this->line("  gensicilno: <info>{$g}</info> — {$ad}");
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    private function dumpBorcResult(array $result): void
+    {
+        $sicil = $result['Sicil'] ?? [];
+        $no = is_array($sicil) ? ($sicil['sicilNo'] ?? $sicil['gensicilno'] ?? '-') : '-';
+        $name = is_array($sicil) ? ($sicil['adiSoyadiUnvani'] ?? '-') : '-';
+        $this->line("  sicilNo: <info>{$no}</info> — {$name}");
     }
 }

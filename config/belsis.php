@@ -25,9 +25,17 @@ return [
         'TC,TcKimlikNo,2,TCKIMLIK,Tc,1,0',
     )))),
 
-    // borcSorgula — onlinetahsilatborcsoruglama SP @sorgutip zorunlu
+    // borcSorgula — onlinetahsilatborcsoruglama SP @sorgutip zorunlu (kuruma göre değişir)
     'borc_sorgu_tip_sicil' => env('BELSIS_BORC_SORGU_TIP_SICIL', 'SICIL'),
     'borc_sorgu_tip_tc'    => env('BELSIS_BORC_SORGU_TIP_TC', 'TC'),
+    'borc_sorgu_tips_sicil' => array_filter(array_map('trim', explode(',', env(
+        'BELSIS_BORC_SORGU_TIPS_SICIL',
+        'SICIL,GENSICIL,Sicil,Gensicil,1,2,0',
+    )))),
+    'borc_sorgu_tips_tc' => array_filter(array_map('trim', explode(',', env(
+        'BELSIS_BORC_SORGU_TIPS_TC',
+        'TC,TcKimlikNo,2,TCKIMLIK,Tc,1',
+    )))),
 
     // 5 = Kredi Kartı (odemeSekilleri), 2 = Banka
     'odeme_sekli' => (int) env('BELSIS_ODEME_SEKLI', 5),
