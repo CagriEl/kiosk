@@ -10,6 +10,8 @@ class BelsisAuthService
 {
     private const CACHE_KEY = 'belsis.session';
 
+    private const CACHE_KEY_TAHAKKUK = 'belsis.session.tahakkuk';
+
     public function __construct(
         private readonly BelsisSoapClient $client,
     ) {}
@@ -24,15 +26,46 @@ class BelsisAuthService
         });
     }
 
+    /**
+     * tahakkukWebServis kendi bağımsız login/oturum mekanizmasına sahiptir —
+     * tahsilatWebServis'ten alınan oturumKimligi burada geçerli değildir.
+     *
+     * @return array<string, mixed>
+     */
+    public function getTahakkukSession(): array
+    {
+        return Cache::remember(self::CACHE_KEY_TAHAKKUK, config('belsis.session_cache_ttl'), function () {
+            return $this->openTahakkukSession();
+        });
+    }
+
     public function forgetSession(): void
     {
         Cache::forget(self::CACHE_KEY);
+        Cache::forget(self::CACHE_KEY_TAHAKKUK);
     }
 
     /**
      * @return array<string, mixed>
      */
     public function openSession(): array
+    {
+        return $this->login($this->client->callTahsilat(...));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function openTahakkukSession(): array
+    {
+        return $this->login($this->client->callTahakkuk(...));
+    }
+
+    /**
+     * @param  callable(string, array<string, mixed>, string): array<string, mixed>  $caller
+     * @return array<string, mixed>
+     */
+    private function login(callable $caller): array
     {
         $username = config('belsis.username');
         $password = config('belsis.password');
@@ -43,10 +76,10 @@ class BelsisAuthService
             );
         }
 
-        $result = $this->client->callTahsilat('login', [
+        $result = $caller('login', [
             'kullaniciAdi' => $username,
             'sifre'        => $password,
-        ], wrapper: 'girdi');
+        ], 'girdi');
 
         $oturumKimligi = $result['oturumKimligi'] ?? null;
 
@@ -70,6 +103,20 @@ class BelsisAuthService
     public function baseParams(): array
     {
         $session = $this->getSession();
+
+        return [
+            'guvenlikKodu'  => $session['guvenlikKodu'],
+            'ipAdresi'      => BelsisIpResolver::resolve(),
+            'oturumKimligi' => $session['oturumKimligi'],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function baseParamsTahakkuk(): array
+    {
+        $session = $this->getTahakkukSession();
 
         return [
             'guvenlikKodu'  => $session['guvenlikKodu'],

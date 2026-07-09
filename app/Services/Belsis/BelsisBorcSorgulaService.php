@@ -624,7 +624,7 @@ class BelsisBorcSorgulaService
     {
         try {
             $result = $service === 'tahakkuk'
-                ? $this->client->callTahakkuk('sicilSorgula', array_merge($this->auth->baseParams(), $params))
+                ? $this->client->callTahakkuk('sicilSorgula', array_merge($this->auth->baseParamsTahakkuk(), $params))
                 : $this->client->callTahsilat('sicilSorgula', array_merge($this->auth->baseParams(), $params));
 
             $siciller = $this->normalizeList($result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? []);

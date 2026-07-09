@@ -64,7 +64,7 @@ class BelsisTahakkukService
     public function getDebtsByGensicil(int $gensicilno): array
     {
         $result = $this->client->callTahakkuk('tahakkukBilgileriniGetir', array_merge(
-            $this->auth->baseParams(),
+            $this->auth->baseParamsTahakkuk(),
             ['gensicilno' => $gensicilno],
         ));
 
@@ -82,7 +82,7 @@ class BelsisTahakkukService
     public function getPaymentHistory(string $recId): array
     {
         $result = $this->client->callTahakkuk('tahakkukOdemeBilgileriniGetir', array_merge(
-            $this->auth->baseParams(),
+            $this->auth->baseParamsTahakkuk(),
             ['recId' => $recId],
         ));
 
@@ -96,7 +96,7 @@ class BelsisTahakkukService
      */
     public function getTahakkukTurleri(): array
     {
-        $result = $this->client->callTahakkuk('tahakkukTurleri', $this->auth->baseParams());
+        $result = $this->client->callTahakkuk('tahakkukTurleri', $this->auth->baseParamsTahakkuk());
 
         return $this->normalizeList($result['tahakkukTurListesi']['tahakkukTurleri'] ?? $result['tahakkukTurListesi'] ?? []);
     }
@@ -106,7 +106,7 @@ class BelsisTahakkukService
      */
     public function getKdvHesaplari(): array
     {
-        $result = $this->client->callTahakkuk('kdvHesaplari', $this->auth->baseParams());
+        $result = $this->client->callTahakkuk('kdvHesaplari', $this->auth->baseParamsTahakkuk());
 
         return $this->normalizeList($result['kdvHesaplariListesi']['kdvHesaplari'] ?? $result['kdvHesaplariListesi'] ?? []);
     }
@@ -116,7 +116,7 @@ class BelsisTahakkukService
      */
     public function getKdvOranlari(): array
     {
-        $result = $this->client->callTahakkuk('kdvOranlari', $this->auth->baseParams());
+        $result = $this->client->callTahakkuk('kdvOranlari', $this->auth->baseParamsTahakkuk());
 
         return $this->normalizeList($result['kdvOranlariListesi']['kdvOranlari'] ?? $result['kdvOranlariListesi'] ?? []);
     }
@@ -128,7 +128,7 @@ class BelsisTahakkukService
     public function tahakkukEkle(array $payload): array
     {
         return $this->client->callTahakkuk('tahakkukEkle', array_merge(
-            $this->auth->baseParams(),
+            $this->auth->baseParamsTahakkuk(),
             $payload,
         ));
     }
@@ -139,7 +139,7 @@ class BelsisTahakkukService
     public function tahakkukIptal(string $tahId): array
     {
         return $this->client->callTahakkuk('tahakkukIptal', array_merge(
-            $this->auth->baseParams(),
+            $this->auth->baseParamsTahakkuk(),
             ['tahId' => $tahId],
         ));
     }
@@ -149,7 +149,7 @@ class BelsisTahakkukService
      */
     public function genmahSorgulaCombo(): array
     {
-        $result = $this->client->callTahakkuk('genmahSorgulaCombo', $this->auth->baseParams());
+        $result = $this->client->callTahakkuk('genmahSorgulaCombo', $this->auth->baseParamsTahakkuk());
 
         return $this->normalizeList($result['genmahListesi']['genmah'] ?? $result['genmahListesi'] ?? []);
     }
@@ -160,7 +160,7 @@ class BelsisTahakkukService
     public function gmkSorgula(int $gensicilno): array
     {
         return $this->client->callTahakkuk('gmkSorgula', array_merge(
-            $this->auth->baseParams(),
+            $this->auth->baseParamsTahakkuk(),
             ['gensicilno' => $gensicilno],
         ));
     }
@@ -172,7 +172,7 @@ class BelsisTahakkukService
     {
         try {
             $result = $this->client->callTahakkuk('sicilSorgula', array_merge(
-                $this->auth->baseParams(),
+                $this->auth->baseParamsTahakkuk(),
                 [
                     'gensicilno' => $gensicilno,
                     'koyID'      => 0,

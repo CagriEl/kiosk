@@ -128,6 +128,7 @@ class BelsisSearchSicilCommand extends Command
 
         $this->newLine();
         $this->info('=== sicilSorgula (tahakkuk) — gensicilno birebir ===');
+        $baseTahakkuk = $auth->baseParamsTahakkuk();
         foreach ([
             ['gensicilno' => $aboneInt, 'koyID' => 0, 'mukellefNo' => $abone],
             ['gensicilno' => $aboneInt, 'koyID' => 0],
@@ -135,7 +136,7 @@ class BelsisSearchSicilCommand extends Command
             $label = json_encode($params, JSON_UNESCAPED_UNICODE);
             $this->line("  <comment>{$label}</comment>");
             try {
-                $result = $client->callTahakkuk('sicilSorgula', array_merge($base, $params));
+                $result = $client->callTahakkuk('sicilSorgula', array_merge($baseTahakkuk, $params));
                 $rows = $result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? [];
                 $rows = is_array($rows) && isset($rows['gensicilno']) ? [$rows] : (array) $rows;
                 if (empty($rows)) {
@@ -158,7 +159,7 @@ class BelsisSearchSicilCommand extends Command
         $this->newLine();
         $this->info('=== tahakkukBilgileriniGetir (tahakkuk) — gensicilno birebir ===');
         try {
-            $result = $client->callTahakkuk('tahakkukBilgileriniGetir', array_merge($base, ['gensicilno' => $aboneInt]));
+            $result = $client->callTahakkuk('tahakkukBilgileriniGetir', array_merge($baseTahakkuk, ['gensicilno' => $aboneInt]));
             $this->line('  <info>OK</info> ham yanıt: '.json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR));
         } catch (BelsisException $e) {
             $this->warn('  Hata: '.$e->getMessage());
