@@ -25,7 +25,7 @@ class BelsisTahsilatQueryService
         $searchType = $searchType ?? (strlen($identityNo) === 11 ? 'tc' : 'abone');
 
         if ($searchType === 'abone' || $searchType === 'sicil') {
-            return $this->getCitizenByAbone($identityNo);
+            return $this->getCitizenByAboneOrSicil($identityNo, $searchType);
         }
 
         $gensicilno = null;
@@ -77,12 +77,18 @@ class BelsisTahsilatQueryService
     }
 
     /**
+     * @param  'abone'|'sicil'  $searchType
      * @return array{aboneNo: string, identityNo: string, gensicilNo: string, fullName: string, searchType: string, adi?: string, soyadi?: string}
      */
-    private function getCitizenByAbone(string $aboneNo): array
+    private function getCitizenByAboneOrSicil(string $identityNo, string $searchType): array
     {
-        $borc = $this->borc->query($aboneNo, 'abone');
-        $gensicilno = $this->borc->resolveGensicilFromAbone($aboneNo, $borc) ?? $aboneNo;
+        $borc = $this->borc->query($identityNo, $searchType);
+
+        // Sicil no zaten gensicilno'nun kendisidir — abone no ise ayrıca çözülmesi gerekir.
+        $gensicilno = $searchType === 'sicil'
+            ? $identityNo
+            : ($this->borc->resolveGensicilFromAbone($identityNo, $borc) ?? $identityNo);
+
         $sicil = $borc['Sicil'] ?? [];
         $fullName = trim((string) ($sicil['adiSoyadiUnvani'] ?? ''));
         $adi = '';
@@ -96,7 +102,7 @@ class BelsisTahsilatQueryService
         }
 
         if ($fullName === '') {
-            $fullName = 'Abone No: '.$aboneNo;
+            $fullName = ($searchType === 'sicil' ? 'Sicil No: ' : 'Abone No: ').$identityNo;
         }
 
         if ($adi === '' && $soyadi === '') {
@@ -104,11 +110,11 @@ class BelsisTahsilatQueryService
         }
 
         return [
-            'aboneNo'    => $aboneNo,
-            'identityNo' => $aboneNo,
+            'aboneNo'    => $identityNo,
+            'identityNo' => $identityNo,
             'gensicilNo' => $gensicilno,
             'fullName'   => $fullName,
-            'searchType' => 'abone',
+            'searchType' => $searchType,
             'adi'        => $adi,
             'soyadi'     => $soyadi,
         ];
@@ -164,7 +170,9 @@ class BelsisTahsilatQueryService
         }
 
         $gensicilno = null;
-        if (in_array($searchType, ['abone', 'sicil'], true)) {
+        if ($searchType === 'sicil') {
+            $gensicilno = $identityNo;
+        } elseif ($searchType === 'abone') {
             $gensicilno = $this->borc->resolveGensicilFromAbone($identityNo, $borc);
         } elseif (strlen($identityNo) === 11) {
             $gensicilno = $this->borc->resolveGensicilFromTc($identityNo)

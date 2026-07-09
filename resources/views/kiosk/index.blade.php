@@ -427,8 +427,18 @@
                         Abone numaranızı veya sicil numaranızı numaratör ya da fiziksel klavye (NumLock) ile giriniz.
                     </p>
                 </div>
+                <div class="flex gap-3 mb-1" role="group" aria-label="Sorgu tipi seçimi">
+                    <button id="btn-type-abone" type="button" data-type="abone"
+                        class="touch-btn identity-type-btn flex-1 py-3 rounded-xl border-2 font-bold text-kiosk-sm bg-municipal-600 text-white border-municipal-600">
+                        ABONE NO
+                    </button>
+                    <button id="btn-type-sicil" type="button" data-type="sicil"
+                        class="touch-btn identity-type-btn flex-1 py-3 rounded-xl border-2 font-bold text-kiosk-sm bg-white text-municipal-700 border-municipal-200">
+                        SİCİL NO
+                    </button>
+                </div>
                 <div class="identity-strip">
-                    <p class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">Abone No / Sicil No</p>
+                    <p id="identity-strip-label" class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">Abone No</p>
                     <div id="digit-row" class="abone-digit-row justify-start flex-wrap" aria-live="polite"></div>
                 </div>
                 <input id="input-identity" type="text" class="sr-only" maxlength="10" readonly aria-label="Abone numarası veya sicil numarası" />
@@ -598,27 +608,27 @@
             }
         }
 
-        async function fetchCitizen(accountNo) {
-            return apiRequest(`${API_BASE}/citizen/${accountNo}`);
+        async function fetchCitizen(accountNo, searchType) {
+            return apiRequest(`${API_BASE}/citizen/${accountNo}?searchType=${encodeURIComponent(searchType || 'abone')}`);
         }
 
-        async function fetchDebts(accountNo) {
-            return apiRequest(`${API_BASE}/debts/${accountNo}`);
+        async function fetchDebts(accountNo, searchType) {
+            return apiRequest(`${API_BASE}/debts/${accountNo}?searchType=${encodeURIComponent(searchType || 'abone')}`);
         }
 
-        async function initiateBankPayment(identityNo, selectedDebtIds) {
+        async function initiateBankPayment(identityNo, selectedDebtIds, searchType) {
             return apiRequest(`${API_BASE}/payment/bank`, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
-                body: JSON.stringify({ identityNo, debtIds: selectedDebtIds }),
+                body: JSON.stringify({ identityNo, debtIds: selectedDebtIds, searchType: searchType || 'abone' }),
             });
         }
 
-        async function confirmPayment(transactionId, identityNo, debtIds) {
+        async function confirmPayment(transactionId, identityNo, debtIds, searchType) {
             return apiRequest(`${API_BASE}/payment/${transactionId}/confirm`, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
-                body: JSON.stringify({ identityNo, debtIds }),
+                body: JSON.stringify({ identityNo, debtIds, searchType: searchType || 'abone' }),
             });
         }
 
@@ -753,6 +763,7 @@
 
         function resetSession() {
             session.citizen = null; session.debts = []; session.selectedIds.clear();
+            setIdentitySearchType('abone');
             setIdentityValue('');
             document.getElementById('login-error').classList.add('hidden');
             document.getElementById('btn-query').disabled = true;
@@ -1079,6 +1090,36 @@
         const MAX_ACCOUNT_DIGITS = 10;
         const MIN_ACCOUNT_DIGITS = 1;
 
+        let identitySearchType = 'abone';
+        const btnTypeAbone = document.getElementById('btn-type-abone');
+        const btnTypeSicil = document.getElementById('btn-type-sicil');
+        const identityStripLabel = document.getElementById('identity-strip-label');
+        const identityHint = document.getElementById('identity-hint');
+
+        function setIdentitySearchType(type) {
+            identitySearchType = type;
+            const isSicil = type === 'sicil';
+            btnTypeSicil.classList.toggle('bg-municipal-600', isSicil);
+            btnTypeSicil.classList.toggle('text-white', isSicil);
+            btnTypeSicil.classList.toggle('border-municipal-600', isSicil);
+            btnTypeSicil.classList.toggle('bg-white', !isSicil);
+            btnTypeSicil.classList.toggle('text-municipal-700', !isSicil);
+            btnTypeSicil.classList.toggle('border-municipal-200', !isSicil);
+            btnTypeAbone.classList.toggle('bg-municipal-600', !isSicil);
+            btnTypeAbone.classList.toggle('text-white', !isSicil);
+            btnTypeAbone.classList.toggle('border-municipal-600', !isSicil);
+            btnTypeAbone.classList.toggle('bg-white', isSicil);
+            btnTypeAbone.classList.toggle('text-municipal-700', isSicil);
+            btnTypeAbone.classList.toggle('border-municipal-200', isSicil);
+            identityStripLabel.textContent = isSicil ? 'Sicil No' : 'Abone No';
+            identityHint.textContent = isSicil
+                ? 'Sicil numaranızı numaratör ya da fiziksel klavye (NumLock) ile giriniz.'
+                : 'Abone numaranızı numaratör ya da fiziksel klavye (NumLock) ile giriniz.';
+        }
+
+        btnTypeAbone.addEventListener('click', () => setIdentitySearchType('abone'));
+        btnTypeSicil.addEventListener('click', () => setIdentitySearchType('sicil'));
+
         function renderIdentityDisplay() {
             const val = inputIdentity.value;
             let html = '';
@@ -1233,14 +1274,16 @@
             loginError.classList.add('hidden');
             onUserActivity();
             try {
-                const citizen = await fetchCitizen(identityNo);
-                const { debts } = await fetchDebts(identityNo);
+                const citizen = await fetchCitizen(identityNo, identitySearchType);
+                const { debts } = await fetchDebts(identityNo, identitySearchType);
                 session.citizen = citizen;
+                session.citizen.searchType = citizen.searchType || identitySearchType;
                 session.debts = debts;
                 session.selectedIds.clear();
                 renderDebtList();
+                const typeLabel = session.citizen.searchType === 'sicil' ? 'Sicil' : 'Abone';
                 document.getElementById('citizen-name').textContent =
-                    subscriberDisplayName(citizen) + ' — Abone ' + (citizen.aboneNo || identityNo);
+                    subscriberDisplayName(citizen) + ` — ${typeLabel} ` + (citizen.aboneNo || identityNo);
                 showScreen('debts');
             } catch (err) {
                 loginError.textContent = err.message;
@@ -1337,7 +1380,7 @@
             btnPay.disabled = true;
             onUserActivity();
             try {
-                const payment = await initiateBankPayment(session.citizen.identityNo, selectedIds);
+                const payment = await initiateBankPayment(session.citizen.identityNo, selectedIds, session.citizen.searchType);
                 session.pendingPayment = { transactionId: payment.transactionId, debtIds: selectedIds };
                 openBankModal(total);
             } catch (err) {
@@ -1377,7 +1420,7 @@
                     showWaterSuccess('Kontör Yüklendi', confirmation.message + ' Makbuz: ' + confirmation.receiptNo);
                 } else if (session.pendingPayment) {
                     const { transactionId, debtIds } = session.pendingPayment;
-                    const confirmation = await confirmPayment(transactionId, session.citizen.identityNo, debtIds);
+                    const confirmation = await confirmPayment(transactionId, session.citizen.identityNo, debtIds, session.citizen.searchType);
                     if (confirmation.status === 'completed') {
                         closeBankModal();
                         const receipt = confirmation.receipt || {};

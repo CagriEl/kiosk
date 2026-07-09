@@ -15,7 +15,7 @@ class BelsisBorcSorgulaService
     ) {}
 
     /**
-     * TC veya abone no ile borç sorgusu — tüm sorguTip kombinasyonları denenir.
+     * TC, abone no veya sicil no ile borç sorgusu — sorgu tipine göre farklı, doğrulamalı yol izlenir.
      *
      * @param  'tc'|'abone'|'sicil'|null  $searchType
      * @return array<string, mixed>
@@ -44,6 +44,10 @@ class BelsisBorcSorgulaService
 
         if (strlen($identityNo) > 10) {
             throw new BelsisException('Abone numarası en fazla 10 haneli olabilir.');
+        }
+
+        if ($searchType === 'sicil') {
+            return $this->querySicil($identityNo);
         }
 
         return $this->queryByAbone($identityNo);
@@ -86,9 +90,79 @@ class BelsisBorcSorgulaService
             throw new BelsisException('Abone numarası giriniz.');
         }
 
+        if ($searchType === 'sicil') {
+            $gensicilInt = (int) $identityNo;
+            if ($gensicilInt <= 0 || $this->fetchSicilByGensicil($gensicilInt) === null) {
+                throw new BelsisException('Sicil numarası belediye kaydınızla eşleştirilemedi.');
+            }
+
+            return $identityNo;
+        }
+
         $this->queryByAbone($identityNo);
 
         return $this->resolveGensicilFromAbone($identityNo) ?? $identityNo;
+    }
+
+    /**
+     * Sicil no ile borç sorgusu — gensicilno birebir birincil anahtar olarak kullanılır,
+     * arama/uyeNo eşleştirme belirsizliğine hiç girilmez (yanlış kişi riski yoktur).
+     *
+     * @return array<string, mixed>
+     */
+    private function querySicil(string $sicilNo): array
+    {
+        $gensicilInt = (int) $sicilNo;
+
+        if ($gensicilInt <= 0) {
+            throw new BelsisException('Sicil numarası giriniz.');
+        }
+
+        $record = $this->fetchSicilByGensicil($gensicilInt);
+        $lastError = null;
+
+        foreach ($this->aboneBorcTips() as $tip) {
+            try {
+                $result = $this->callBorcSorgula($tip, $sicilNo, $gensicilInt);
+                if ($this->isValidBorcResult($result)) {
+                    return $result;
+                }
+            } catch (BelsisException $e) {
+                if ($this->isInfrastructureError($e)) {
+                    throw $e;
+                }
+                if ($this->isRecoverableBorcError($e)) {
+                    $lastError = $e;
+                    continue;
+                }
+                $lastError = $e;
+            }
+        }
+
+        if ($record !== null) {
+            return $this->buildFallbackBorcFromSicil($record);
+        }
+
+        throw new BelsisException(
+            'Sicil numarası bulunamadı. Belsis: '.($lastError?->getMessage() ?? 'Kayıt yok')
+            .' — Numarayı kontrol ediniz.',
+            $lastError?->sonucKodu,
+        );
+    }
+
+    /**
+     * gensicilno ile doğrudan sicilSorgula — arama methoduna hiç başvurmadan kayıt doğrular.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function fetchSicilByGensicil(int $gensicilNo): ?array
+    {
+        $record = $this->trySicilSorgula('tahsilat', ['gensicilno' => $gensicilNo, 'koyID' => 0], $gensicilNo);
+        if ($record !== null) {
+            return $record;
+        }
+
+        return $this->trySicilSorgula('tahakkuk', ['gensicilno' => $gensicilNo, 'koyID' => 0], $gensicilNo);
     }
 
     /**
@@ -121,15 +195,11 @@ class BelsisBorcSorgulaService
 
     /**
      * @param  'tc'|'abone'|'sicil'|null  $searchType
-     * @return 'tc'|'abone'
+     * @return 'tc'|'abone'|'sicil'
      */
     private function resolveSearchType(string $identityNo, ?string $searchType): string
     {
-        if ($searchType === 'sicil') {
-            $searchType = 'abone';
-        }
-
-        if (in_array($searchType, ['tc', 'abone'], true)) {
+        if (in_array($searchType, ['tc', 'abone', 'sicil'], true)) {
             return $searchType;
         }
 
@@ -423,20 +493,8 @@ class BelsisBorcSorgulaService
             $siciller = $result['Siciller'] ?? $result['siciller'] ?? null;
             if (is_array($siciller)) {
                 $items = $siciller['SicilaramaObj'] ?? $siciller['sicilaramaObj'] ?? $siciller;
-                foreach ($this->normalizeList($items) as $row) {
-                    if (! is_array($row)) {
-                        continue;
-                    }
 
-                    $gensicil = (int) ($row['gensicilno'] ?? $row['gensicilNo'] ?? $row['Gensicilno'] ?? 0);
-                    if ($gensicil > 0) {
-                        return [
-                            'gensicilno' => $gensicil,
-                            'adi'        => $row['adi'] ?? '',
-                            'soyadi'     => $row['soyadi'] ?? '',
-                        ];
-                    }
-                }
+                return $this->pickAramaCandidate($this->extractAramaCandidates($items), $sorguNo);
             }
 
             $direct = (int) ($result['gensicilno'] ?? $result['gensicilNo'] ?? 0);
@@ -449,6 +507,65 @@ class BelsisBorcSorgulaService
 
             return null;
         }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function extractAramaCandidates(mixed $items): array
+    {
+        $candidates = [];
+
+        foreach ($this->normalizeList($items) as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $gensicil = (int) ($row['gensicilno'] ?? $row['gensicilNo'] ?? $row['Gensicilno'] ?? 0);
+            if ($gensicil > 0) {
+                $candidates[] = [
+                    'gensicilno' => $gensicil,
+                    'adi'        => $row['adi'] ?? '',
+                    'soyadi'     => $row['soyadi'] ?? '',
+                ];
+            }
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * arama methodu birden fazla aday döndürebilir; SicilaramaObj şemasında girilen numarayı
+     * doğrulayacak bir alan olmadığından, tek aday varsa kabul edilir, birden fazlaysa
+     * sicilSorgula'daki uyeNo ile eşleşen aday aranır. Eşleşme yoksa yanlış kişiye borç
+     * göstermemek için null döner (belirsiz eşleşme kabul edilmez).
+     *
+     * @param  array<int, array<string, mixed>>  $candidates
+     */
+    private function pickAramaCandidate(array $candidates, string $sorguNo): ?array
+    {
+        if ($candidates === []) {
+            return null;
+        }
+
+        if (count($candidates) === 1) {
+            return $candidates[0];
+        }
+
+        $sorguInt = (int) $sorguNo;
+
+        foreach ($candidates as $candidate) {
+            if ((int) $candidate['gensicilno'] === $sorguInt) {
+                return $candidate;
+            }
+
+            $record = $this->fetchSicilByGensicil((int) $candidate['gensicilno']);
+            if ($record !== null && (int) ($record['uyeNo'] ?? -1) === $sorguInt) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -557,23 +674,10 @@ class BelsisBorcSorgulaService
                     continue;
                 }
 
-                $items = $this->normalizeList(
-                    $siciller['SicilaramaObj'] ?? $siciller['sicilaramaObj'] ?? $siciller,
-                );
-
-                foreach ($items as $row) {
-                    if (! is_array($row)) {
-                        continue;
-                    }
-
-                    $gensicil = (int) ($row['gensicilno'] ?? $row['gensicilNo'] ?? $row['Gensicilno'] ?? 0);
-                    if ($gensicil > 0) {
-                        return [
-                            'gensicilno' => $gensicil,
-                            'adi'        => $row['adi'] ?? '',
-                            'soyadi'     => $row['soyadi'] ?? '',
-                        ];
-                    }
+                $items = $siciller['SicilaramaObj'] ?? $siciller['sicilaramaObj'] ?? $siciller;
+                $match = $this->pickAramaCandidate($this->extractAramaCandidates($items), $aboneNo);
+                if ($match !== null) {
+                    return $match;
                 }
             } catch (BelsisException $e) {
                 if ($this->isInfrastructureError($e)) {
