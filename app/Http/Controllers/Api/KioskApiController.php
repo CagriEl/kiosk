@@ -34,6 +34,33 @@ class KioskApiController extends Controller
         }
     }
 
+    public function paymentMethods(): JsonResponse
+    {
+        try {
+            return response()->json($this->belsis->getPaymentMethods());
+        } catch (BelsisException $e) {
+            return $this->belsisError($e);
+        }
+    }
+
+    public function receipt(Request $request, int $makbuzId): JsonResponse
+    {
+        $validated = $request->validate([
+            'seriNo'   => 'nullable|string',
+            'makbuzNo' => 'nullable|integer',
+        ]);
+
+        try {
+            return response()->json($this->belsis->getReceipt(
+                $makbuzId,
+                $validated['seriNo'] ?? null,
+                isset($validated['makbuzNo']) ? (int) $validated['makbuzNo'] : null,
+            ));
+        } catch (BelsisException $e) {
+            return $this->belsisError($e);
+        }
+    }
+
     public function initiatePayment(Request $request): JsonResponse
     {
         $validated = $request->validate([

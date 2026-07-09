@@ -1275,8 +1275,15 @@
                     const confirmation = await confirmPayment(transactionId, session.citizen.identityNo, debtIds);
                     if (confirmation.status === 'completed') {
                         closeBankModal();
+                        const receipt = confirmation.receipt || {};
+                        const receiptLine = confirmation.receiptNo
+                            ? 'Makbuz: ' + confirmation.receiptNo
+                            : 'Makbuzunuz yazdırılıyor...';
+                        const amountLine = receipt.toplamTutarYazi
+                            ? receipt.toplamTutarYazi
+                            : (receipt.toplamTutar ? receipt.toplamTutar + ' TL' : '');
                         document.getElementById('success-title').textContent = 'Ödemeniz Başarıyla Alınmıştır';
-                        document.getElementById('success-message').textContent = 'Makbuzunuz Yazdırılıyor...';
+                        document.getElementById('success-message').textContent = [receiptLine, amountLine].filter(Boolean).join('\n');
                         showSuccessScreen();
                     }
                 }

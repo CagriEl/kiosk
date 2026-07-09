@@ -21,7 +21,7 @@ class BelsisTahsilatQueryService
     public function getCitizen(string $identityNo): array
     {
         $gensicilno = $this->identity->resolveGensicilNo($identityNo);
-        $borc = $this->fetchBorcSorgula((int) $gensicilno);
+        $borc = $this->fetchBorcSorgula((int) $gensicilno, $identityNo);
 
         $sicil = $borc['Sicil'] ?? [];
         $fullName = trim((string) ($sicil['adiSoyadiUnvani'] ?? ''));
@@ -47,7 +47,7 @@ class BelsisTahsilatQueryService
     public function getDebts(string $identityNo): array
     {
         $gensicilno = $this->identity->resolveGensicilNo($identityNo);
-        $borc = $this->fetchBorcSorgula((int) $gensicilno);
+        $borc = $this->fetchBorcSorgula((int) $gensicilno, $identityNo);
 
         $debts = [];
         $sicil = $borc['Sicil'] ?? [];
@@ -230,16 +230,71 @@ class BelsisTahsilatQueryService
     /**
      * @return array<string, mixed>
      */
-    private function fetchBorcSorgula(int $gensicilno): array
+    private function fetchBorcSorgula(int $gensicilno, string $identityNo): array
     {
-        return $this->client->callTahsilat('borcSorgula', array_merge(
-            $this->auth->baseParams(),
-            [
-                'gensicilno'          => $gensicilno,
-                'indirimliOdenecekMi' => 0,
-                'indirimHakkiVarMi'   => 0,
-            ],
-        ));
+        $params = $this->buildBorcSorgulaParams($gensicilno, $identityNo);
+
+        try {
+            return $this->client->callTahsilat('borcSorgula', $params);
+        } catch (BelsisException $e) {
+            if ($this->shouldRetryBorcSorgulaWithGensicilnoZero($params, $e)) {
+                $params['gensicilno'] = 0;
+
+                return $this->client->callTahsilat('borcSorgula', $params);
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildBorcSorgulaParams(int $gensicilno, string $identityNo): array
+    {
+        $identityNo = trim($identityNo);
+
+        $params = array_merge($this->auth->baseParams(), [
+            'indirimliOdenecekMi' => 0,
+            'indirimHakkiVarMi'   => 0,
+        ]);
+
+        if (strlen($identityNo) === 11 && ctype_digit($identityNo)) {
+            return array_merge($params, [
+                'sorguTip'   => (string) config('belsis.borc_sorgu_tip_tc', 'TC'),
+                'sorguNo'    => $identityNo,
+                'gensicilno' => $gensicilno,
+            ]);
+        }
+
+        return array_merge($params, [
+            'sorguTip'   => (string) config('belsis.borc_sorgu_tip_sicil', 'SICIL'),
+            'sorguNo'    => (string) $gensicilno,
+            'gensicilno' => $gensicilno,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    private function shouldRetryBorcSorgulaWithGensicilnoZero(array $params, BelsisException $e): bool
+    {
+        if (($params['gensicilno'] ?? 0) === 0) {
+            return false;
+        }
+
+        $sorguTip = mb_strtoupper((string) ($params['sorguTip'] ?? ''));
+        $tcTip = mb_strtoupper((string) config('belsis.borc_sorgu_tip_tc', 'TC'));
+
+        if ($sorguTip !== $tcTip) {
+            return false;
+        }
+
+        $message = mb_strtolower($e->getMessage());
+
+        return str_contains($message, 'sicil')
+            || str_contains($message, 'bulunamad')
+            || str_contains($message, 'eşleş');
     }
 
     private function lookupNameFromSicilSorgula(int $gensicilno): ?string

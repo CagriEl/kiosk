@@ -10,6 +10,7 @@ class BelsisKioskService
     public function __construct(
         private readonly BelsisTahsilatQueryService $query,
         private readonly BelsisTahsilatService $tahsilat,
+        private readonly BelsisTahsilatCatalogService $catalog,
         private readonly BelsisAuthService $auth,
     ) {}
 
@@ -22,16 +23,7 @@ class BelsisKioskService
             return $this->mockCitizen($identityNo);
         }
 
-        try {
-            return $this->query->getCitizen($identityNo);
-        } catch (BelsisException $e) {
-            if ($this->shouldRetryWithFreshSession($e)) {
-                $this->auth->forgetSession();
-
-                return $this->query->getCitizen($identityNo);
-            }
-            throw $e;
-        }
+        return $this->withSessionRetry(fn () => $this->query->getCitizen($identityNo));
     }
 
     /**
@@ -44,17 +36,43 @@ class BelsisKioskService
         }
 
         try {
-            return ['debts' => $this->query->getDebts($identityNo)];
+            return ['debts' => $this->withSessionRetry(fn () => $this->query->getDebts($identityNo))];
         } catch (BelsisException $e) {
-            if ($this->shouldRetryWithFreshSession($e)) {
-                $this->auth->forgetSession();
-
-                return ['debts' => $this->query->getDebts($identityNo)];
-            }
-
             Log::error('Belsis borç sorgusu hatası', ['message' => $e->getMessage(), 'code' => $e->sonucKodu]);
             throw $e;
         }
+    }
+
+    /**
+     * @return array{methods: array<int, array{id: int, name: string}>}
+     */
+    public function getPaymentMethods(): array
+    {
+        if (config('belsis.mock')) {
+            return [
+                'methods' => [
+                    ['id' => 5, 'name' => 'Kredi Kartı (Demo)'],
+                    ['id' => 2, 'name' => 'Banka (Demo)'],
+                ],
+            ];
+        }
+
+        return ['methods' => $this->withSessionRetry(fn () => $this->catalog->getOdemeSekilleri())];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getReceipt(int $makbuzId, ?string $seriNo = null, ?int $makbuzNo = null): array
+    {
+        $result = $this->withSessionRetry(fn () => $this->query->makbuzSorgula($makbuzId, $seriNo, $makbuzNo));
+        $formatted = $this->query->formatMakbuz($result);
+
+        if ($formatted === null) {
+            throw new BelsisException('Makbuz bilgisi bulunamadı.');
+        }
+
+        return $formatted;
     }
 
     /**
@@ -80,7 +98,7 @@ class BelsisKioskService
 
     /**
      * @param  array<int, string>  $debtIds
-     * @return array{transactionId: string, status: string, receiptNo?: string}
+     * @return array<string, mixed>
      */
     public function confirmPayment(string $identityNo, array $debtIds, string $transactionId): array
     {
@@ -92,28 +110,40 @@ class BelsisKioskService
                 'transactionId' => $transactionId,
                 'status'        => 'completed',
                 'receiptNo'     => 'MKZ-'.random_int(100000, 999999),
+                'makbuzID'      => random_int(1000000, 9999999),
+                'seriNo'        => 'K',
+                'makbuzNo'      => random_int(100, 999),
+                'receipt'       => [
+                    'toplamTutarYazi' => 'DEMO ÖDEME',
+                    'toplamTutar'     => (float) collect($debts)->whereIn('id', $debtIds)->sum('amount'),
+                ],
             ];
         }
 
         $selectedDebts = collect($debts)->whereIn('id', $debtIds)->values()->all();
 
+        return $this->withSessionRetry(fn () => $this->tahsilat->confirmBankPayment(
+            $citizen['sicilNo'],
+            $selectedDebts,
+            $transactionId,
+            $citizen,
+        ));
+    }
+
+    /**
+     * @template T
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    private function withSessionRetry(callable $callback): mixed
+    {
         try {
-            return $this->tahsilat->confirmBankPayment(
-                $citizen['sicilNo'],
-                $selectedDebts,
-                $transactionId,
-                $citizen,
-            );
+            return $callback();
         } catch (BelsisException $e) {
             if ($this->shouldRetryWithFreshSession($e)) {
                 $this->auth->forgetSession();
 
-                return $this->tahsilat->confirmBankPayment(
-                    $citizen['sicilNo'],
-                    $selectedDebts,
-                    $transactionId,
-                    $citizen,
-                );
+                return $callback();
             }
             throw $e;
         }
@@ -138,7 +168,7 @@ class BelsisKioskService
     }
 
     /**
-     * @return array{identityNo: string, fullName: string, sicilNo: string}
+     * @return array{identityNo: string, fullName: string, sicilNo: string, adi?: string, soyadi?: string}
      */
     private function mockCitizen(string $identityNo): array
     {

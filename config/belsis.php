@@ -25,6 +25,10 @@ return [
         'TC,TcKimlikNo,2,TCKIMLIK,Tc,1,0',
     )))),
 
+    // borcSorgula — onlinetahsilatborcsoruglama SP @sorgutip zorunlu
+    'borc_sorgu_tip_sicil' => env('BELSIS_BORC_SORGU_TIP_SICIL', 'SICIL'),
+    'borc_sorgu_tip_tc'    => env('BELSIS_BORC_SORGU_TIP_TC', 'TC'),
+
     // 5 = Kredi Kartı (odemeSekilleri), 2 = Banka
     'odeme_sekli' => (int) env('BELSIS_ODEME_SEKLI', 5),
 

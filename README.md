@@ -102,9 +102,12 @@ Tarayıcı: **http://127.0.0.1:8000**
 
 ```bash
 php artisan belsis:test 89874
+php artisan belsis:webservis-test 89874
 ```
 
-Bu komut sırasıyla:
+`belsis:webservis-test` — `webservis/` dokümantasyonundaki tüm tahsilat ve tahakkuk methodlarını sırayla dener (ödeme/iptal methodları varsayılan olarak atlanır).
+
+`belsis:test` sırasıyla:
 1. `login` ile tahsilat servisinde oturum açar
 2. `arama` / `sicilSorgula` ile vatandaş bilgisini çözer
 3. `borcSorgula` ile ödenmemiş borç listesini çeker
@@ -147,43 +150,47 @@ Tarayıcı: **http://127.0.0.1:8000** (meşgulse 8001)
 1. **Karşılama** — "BAŞLAMAK İÇİN DOKUNUN"
 2. **Kimlik girişi** — Sicil No `89874` veya T.C. Kimlik No (min. 5 hane)
 3. **Borç listesi** — Belsis'ten gelen tahakkuklar
-4. **Banka kartı ödeme** — POS cihazına kart okut → `tahsilatEkle` ile tahsilat kaydı
-5. **Başarı** — 7 sn sonra ana ekrana dönüş
+4. **Banka kartı ödeme** — POS cihazına kart okut → `odemeYap` ile tahsilat kaydı
+5. **Başarı** — Makbuz no + tutar gösterimi, 7 sn sonra ana ekrana dönüş
 
 ## API Uçları
 
 | Method | Endpoint | Belsis Metodu |
 |--------|----------|---------------|
+| GET | `/api/kiosk/payment-methods` | `odemeSekilleri` |
+| GET | `/api/kiosk/receipt/{makbuzId}` | `makbuzSorgula` |
 | GET | `/api/kiosk/citizen/{identityNo}` | `borcSorgula` + `sicilSorgula` |
 | GET | `/api/kiosk/debts/{identityNo}` | `borcSorgula` |
 | POST | `/api/kiosk/payment/bank` | Ödeme başlatma |
-| POST | `/api/kiosk/payment/{id}/confirm` | `odemeYap` |
+| POST | `/api/kiosk/payment/{id}/confirm` | `odemeYap` + `makbuzSorgula` |
 
 ## Belsis Entegrasyon Mimarisi
 
 ```
 app/Services/Belsis/
-  BelsisSoapClient.php      → SOAP envelope + HTTP + XML parse
-  BelsisAuthService.php           → login (tahsilatWebServis)
-  BelsisTahsilatQueryService.php  → arama, borcSorgula, sicilSorgula
-  BelsisTahsilatService.php       → odemeYap (banka/kredi kartı)
-  BelsisKioskService.php          → Kiosk API orchestrator
-config/belsis.php           → URL, kimlik bilgileri
+  BelsisSoapClient.php              → SOAP envelope + HTTP + XML parse
+  BelsisAuthService.php             → login (tahsilatWebServis)
+  BelsisIdentityResolver.php        → TC → sicil (arama + borcSorgula)
+  BelsisTahsilatCatalogService.php  → odemeSekilleri, kdvHesaplari, kdvOranlari, tahakkukTurleri
+  BelsisTahsilatQueryService.php    → arama, borcSorgula, sicilSorgula, makbuzSorgula, tahsilatSorgula...
+  BelsisTahsilatService.php         → odemeYap (tahakkuklu/tahakkuksuz), makbuzIptal
+  BelsisTahakkukService.php         → tahakkukBilgileriniGetir, tahakkukEkle, tahakkukIptal, gmkSorgula...
+  BelsisKioskService.php            → Kiosk API orchestrator
+config/belsis.php                   → URL, kimlik bilgileri
 ```
 
-### Desteklenen Tahakkuk Metodları
+### Tahsilat Web Servisi (`tahsilatWebServis_1.wsdl`)
 
-- `oturumAc` — Oturum açma
-- `tahakkukBilgileriniGetir` — Borç listesi (gensicilno)
-- `tahakkukOdemeBilgileriniGetir` — Ödeme geçmişi
-- `tahakkukTurleri` — Tahakkuk türleri
-- `tahakkukEkle` / `tahakkukIptal` — (servis katmanında hazır)
-- `tcKimlikNoIleGensicilBul` — TC → sicil dönüşümü (varsa)
-- `odenmemisTahakkuklariGetir` — Alternatif borç sorgusu
+- `login`, `odemeSekilleri`, `kdvHesaplari`, `kdvOranlari`, `tahakkukTurleri`
+- `arama`, `borcSorgula`, `sicilSorgula`, `sicilBorcBeyanSorgula`
+- `mukellefMakbuzSorgula`, `tahsilatSorgula`, `tahsilatDetaySorgula`
+- `odemeYap` (tahakkuklu + tahakkuksuz), `makbuzSorgula`, `makbuzIptal`
 
-### Tahsilat
+### Tahakkuk Web Servisi (`tahakkukWebServis_1.wsdl`)
 
-- `tahsilatEkle` — Seçilen tahID'ler için ödeme kaydı
+- `login`, `tahakkukTurleri`, `kdvHesaplari`, `kdvOranlari`, `sicilSorgula`
+- `tahakkukBilgileriniGetir`, `tahakkukOdemeBilgileriniGetir`
+- `tahakkukEkle`, `tahakkukIptal`, `genmahSorgulaCombo`, `gmkSorgula`
 
 ## Dosya Yapısı
 

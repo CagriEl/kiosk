@@ -3,13 +3,19 @@
 namespace App\Services\Belsis;
 
 use App\Exceptions\BelsisException;
-use Illuminate\Support\Arr;
+use App\Services\Belsis\Concerns\NormalizesBelsisLists;
 
+/**
+ * Tahakkuk web servisi — webservis/tahakkuk/tahakkukWebServis_1.wsdl methodları.
+ */
 class BelsisTahakkukService
 {
+    use NormalizesBelsisLists;
+
     public function __construct(
         private readonly BelsisSoapClient $client,
         private readonly BelsisAuthService $auth,
+        private readonly BelsisIdentityResolver $identity,
     ) {}
 
     /**
@@ -17,26 +23,27 @@ class BelsisTahakkukService
      */
     public function getCitizen(string $identityNo): array
     {
-        $gensicilno = $this->resolveGensicilNo($identityNo);
+        $gensicilno = (int) $this->identity->resolveGensicilNo($identityNo);
+        $siciller = $this->sicilSorgula($gensicilno);
 
-        try {
-            $result = $this->client->callTahakkuk('gensicilBilgileriniGetir', array_merge(
-                $this->auth->baseParams(),
-                ['gensicilno' => $gensicilno],
-            ));
-
-            return [
-                'identityNo' => $identityNo,
-                'fullName'   => $this->formatCitizenName($result) ?: 'Vatandaş #'.$gensicilno,
-                'sicilNo'    => (string) ($result['gensicilno'] ?? $gensicilno),
-            ];
-        } catch (BelsisException) {
+        $first = $siciller[0] ?? null;
+        if (! is_array($first)) {
             return [
                 'identityNo' => $identityNo,
                 'fullName'   => 'Sicil No: '.$gensicilno,
-                'sicilNo'    => $gensicilno,
+                'sicilNo'    => (string) $gensicilno,
             ];
         }
+
+        $ad = trim((string) ($first['adi'] ?? ''));
+        $soyad = trim((string) ($first['soyadi'] ?? ''));
+        $unvan = trim((string) ($first['unvan'] ?? ''));
+
+        return [
+            'identityNo' => $identityNo,
+            'fullName'   => $unvan !== '' ? $unvan : trim($ad.' '.$soyad) ?: 'Sicil No: '.$gensicilno,
+            'sicilNo'    => (string) ($first['gensicilno'] ?? $gensicilno),
+        ];
     }
 
     /**
@@ -44,9 +51,12 @@ class BelsisTahakkukService
      */
     public function getDebts(string $identityNo): array
     {
-        $gensicilno = $this->resolveGensicilNo($identityNo);
+        $gensicilno = $this->identity->resolveGensicilNo($identityNo);
+        $result = $this->client->callTahakkuk('tahakkukBilgileriniGetir', array_merge(
+            $this->auth->baseParams(),
+            ['gensicilno' => (int) $gensicilno],
+        ));
 
-        $result = $this->fetchTahakkukList($gensicilno);
         $items = $this->extractTahakkukItems($result);
 
         return array_values(array_filter(
@@ -76,22 +86,92 @@ class BelsisTahakkukService
     public function getTahakkukTurleri(): array
     {
         $result = $this->client->callTahakkuk('tahakkukTurleri', $this->auth->baseParams());
-        $list = $result['tahakkukTurListesi']['tahakkukTurleri'] ?? [];
 
-        return $this->normalizeList($list);
+        return $this->normalizeList($result['tahakkukTurListesi']['tahakkukTurleri'] ?? $result['tahakkukTurListesi'] ?? []);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getKdvHesaplari(): array
+    {
+        $result = $this->client->callTahakkuk('kdvHesaplari', $this->auth->baseParams());
+
+        return $this->normalizeList($result['kdvHesaplariListesi']['kdvHesaplari'] ?? $result['kdvHesaplariListesi'] ?? []);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getKdvOranlari(): array
+    {
+        $result = $this->client->callTahakkuk('kdvOranlari', $this->auth->baseParams());
+
+        return $this->normalizeList($result['kdvOranlariListesi']['kdvOranlari'] ?? $result['kdvOranlariListesi'] ?? []);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function tahakkukEkle(array $payload): array
+    {
+        return $this->client->callTahakkuk('tahakkukEkle', array_merge(
+            $this->auth->baseParams(),
+            $payload,
+        ));
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function fetchTahakkukList(string $gensicilno): array
+    public function tahakkukIptal(string $tahId): array
     {
-        $params = array_merge($this->auth->baseParams(), ['gensicilno' => $gensicilno]);
+        return $this->client->callTahakkuk('tahakkukIptal', array_merge(
+            $this->auth->baseParams(),
+            ['tahId' => $tahId],
+        ));
+    }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function genmahSorgulaCombo(): array
+    {
+        $result = $this->client->callTahakkuk('genmahSorgulaCombo', $this->auth->baseParams());
+
+        return $this->normalizeList($result['genmahListesi']['genmah'] ?? $result['genmahListesi'] ?? []);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function gmkSorgula(int $gensicilno): array
+    {
+        return $this->client->callTahakkuk('gmkSorgula', array_merge(
+            $this->auth->baseParams(),
+            ['gensicilno' => $gensicilno],
+        ));
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function sicilSorgula(int $gensicilno): array
+    {
         try {
-            return $this->client->callTahakkuk('odenmemisTahakkuklariGetir', $params);
+            $result = $this->client->callTahakkuk('sicilSorgula', array_merge(
+                $this->auth->baseParams(),
+                [
+                    'gensicilno' => $gensicilno,
+                    'koyID'      => 0,
+                    'mukellefNo' => (string) $gensicilno,
+                ],
+            ));
+
+            return $this->normalizeList($result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? []);
         } catch (BelsisException) {
-            return $this->client->callTahakkuk('tahakkukBilgileriniGetir', $params);
+            return [];
         }
     }
 
@@ -110,37 +190,6 @@ class BelsisTahakkukService
         return $this->normalizeList($liste);
     }
 
-    private function resolveGensicilNo(string $identityNo): string
-    {
-        $identityNo = trim($identityNo);
-
-        if (! ctype_digit($identityNo)) {
-            throw new BelsisException('Geçersiz kimlik numarası. Sadece rakam giriniz.');
-        }
-
-        if (strlen($identityNo) === 11) {
-            try {
-                $result = $this->client->callTahakkuk('tcKimlikNoIleGensicilBul', array_merge(
-                    $this->auth->baseParams(),
-                    ['tcKimlikNo' => $identityNo],
-                ));
-
-                $gensicil = $result['gensicilno'] ?? $result['gensicilNo'] ?? null;
-                if ($gensicil) {
-                    return (string) $gensicil;
-                }
-            } catch (BelsisException) {
-                // Bazı kurulumlarda TC doğrudan gensicilno olarak kabul edilir.
-            }
-        }
-
-        if (strlen($identityNo) < 5) {
-            throw new BelsisException('Geçersiz kimlik numarası. En az 5 haneli olmalıdır.');
-        }
-
-        return $identityNo;
-    }
-
     /**
      * @param  array<string, mixed>  $item
      * @return array<string, mixed>
@@ -151,8 +200,8 @@ class BelsisTahakkukService
         $amount = (float) ($item['tutar'] ?? $item['borcTutari'] ?? 0);
         $dueDate = $this->normalizeDate($item['sonOdemeTarihi'] ?? $item['tahakkukTarihi'] ?? null);
 
-        $borcYili = $item['borcYili'] ?? '';
-        $borcAyi  = $item['borcAyi'] ?? '';
+        $borcYili = $item['borcYili'] ?? $item['borc_yili'] ?? '';
+        $borcAyi  = $item['borcAyi'] ?? $item['borc_ayi'] ?? '';
         $taksit   = $item['taksit'] ?? '';
 
         $period = trim(implode(' / ', array_filter([
@@ -168,91 +217,16 @@ class BelsisTahakkukService
             'amount'  => $amount,
             'dueDate' => $dueDate,
             'meta'    => [
-                'tahakkukTuru' => $item['tahakkukTuru'] ?? null,
-                'aciklama'     => $item['aciklama'] ?? null,
-                'borcYili'     => $borcYili,
-                'borcAyi'      => $borcAyi,
-                'taksit'       => $taksit,
+                'tahakkukNo'     => $tahId,
+                'tahakkukTutari' => $amount,
+                'gecikmeTutari'  => 0,
+                'odemeTutari'    => $amount,
+                'tahakkukTuru'   => $item['tahakkukTuru'] ?? $item['tturu'] ?? null,
+                'aciklama'       => $item['aciklama'] ?? null,
+                'borcYili'       => $borcYili,
+                'borcAyi'        => $borcAyi,
+                'taksit'         => $taksit,
             ],
         ];
-    }
-
-    /**
-     * @param  array<int|string, mixed>  $list
-     * @return array<int, array<string, mixed>>
-     */
-    private function normalizeList(mixed $list): array
-    {
-        if (empty($list)) {
-            return [];
-        }
-
-        if (Arr::isAssoc($list) && $this->looksLikeRecord($list)) {
-            return [$list];
-        }
-
-        return array_values(array_filter(array_map(function ($item) {
-            return is_array($item) ? $item : null;
-        }, $list)));
-    }
-
-    /**
-     * @param  array<string, mixed>  $row
-     */
-    private function looksLikeRecord(array $row): bool
-    {
-        return isset($row['tahID']) || isset($row['tahId']) || isset($row['tutar']) || isset($row['tturu']);
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @param  array<int, string>  $keys
-     */
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function formatCitizenName(array $data): ?string
-    {
-        $direct = $this->pickString($data, ['adSoyad', 'adiSoyadi', 'adSoyadUnvan', 'unvan']);
-        if ($direct) {
-            return $direct;
-        }
-
-        $ad = $this->pickString($data, ['ad', 'adi', 'isim']);
-        $soyad = $this->pickString($data, ['soyad', 'soyadi', 'soyisim']);
-
-        if ($ad && $soyad) {
-            return trim($ad.' '.$soyad);
-        }
-
-        return $ad ?? $soyad;
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @param  array<int, string>  $keys
-     */
-    private function pickString(array $data, array $keys): ?string
-    {
-        foreach ($keys as $key) {
-            if (! empty($data[$key])) {
-                return (string) $data[$key];
-            }
-        }
-
-        return null;
-    }
-
-    private function normalizeDate(mixed $value): string
-    {
-        if (empty($value)) {
-            return now()->toDateString();
-        }
-
-        try {
-            return \Carbon\Carbon::parse((string) $value)->toDateString();
-        } catch (\Throwable) {
-            return now()->toDateString();
-        }
     }
 }
