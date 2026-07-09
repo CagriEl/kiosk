@@ -127,6 +127,44 @@ class BelsisSearchSicilCommand extends Command
         }
 
         $this->newLine();
+        $this->info('=== sicilSorgula (tahakkuk) — gensicilno birebir ===');
+        foreach ([
+            ['gensicilno' => $aboneInt, 'koyID' => 0, 'mukellefNo' => $abone],
+            ['gensicilno' => $aboneInt, 'koyID' => 0],
+        ] as $params) {
+            $label = json_encode($params, JSON_UNESCAPED_UNICODE);
+            $this->line("  <comment>{$label}</comment>");
+            try {
+                $result = $client->callTahakkuk('sicilSorgula', array_merge($base, $params));
+                $rows = $result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? [];
+                $rows = is_array($rows) && isset($rows['gensicilno']) ? [$rows] : (array) $rows;
+                if (empty($rows)) {
+                    $this->warn('    kayıt yok');
+                    continue;
+                }
+                foreach ($rows as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $ad = trim(($row['adi'] ?? '').' '.($row['soyadi'] ?? ''));
+                    $this->line('    gensicilno: <info>'.($row['gensicilno'] ?? '?').'</info>'
+                        .' uyeNo: '.($row['uyeNo'] ?? '?').' — '.$ad);
+                }
+            } catch (BelsisException $e) {
+                $this->warn('    Hata: '.$e->getMessage());
+            }
+        }
+
+        $this->newLine();
+        $this->info('=== tahakkukBilgileriniGetir (tahakkuk) — gensicilno birebir ===');
+        try {
+            $result = $client->callTahakkuk('tahakkukBilgileriniGetir', array_merge($base, ['gensicilno' => $aboneInt]));
+            $this->line('  <info>OK</info> ham yanıt: '.json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR));
+        } catch (BelsisException $e) {
+            $this->warn('  Hata: '.$e->getMessage());
+        }
+
+        $this->newLine();
         $this->info('=== birleşik borc sorgusu (otomatik, searchType=abone) ===');
         try {
             $result = $borc->query($abone, 'abone');
