@@ -19,28 +19,28 @@ return [
     // Mock yalnızca bu sicil numaraları için kullanılır (gerçek TC her zaman Belsis'e gider)
     'mock_sicils' => array_filter(array_map('trim', explode(',', env('BELSIS_MOCK_SICILS', '89874')))),
 
-    // TC → sicil arama (arama methodu sorguTip değerleri, kuruma göre değişir)
+    // TC → sicil arama (arama methodu — Kırklareli: 2=TCKN)
     'arama_sorgu_tips' => array_filter(array_map('trim', explode(',', env(
         'BELSIS_ARAMA_SORGU_TIPS',
-        'TC,TcKimlikNo,2,TCKIMLIK,Tc,1,0',
+        '2,TC,TcKimlikNo,TCKIMLIK,Tc',
     )))),
 
     // Sicil / üye no → gensicil arama (arama methodu)
     'arama_sorgu_tips_sicil' => array_filter(array_map('trim', explode(',', env(
         'BELSIS_ARAMA_SORGU_TIPS_SICIL',
-        'SICIL,GENSICIL,UYE,UYENO,MUKELLEF,Sicil,Gensicil,1,2,3,0',
+        '1,SICIL,GENSICIL,UYE,UYENO,MUKELLEF,Sicil,Gensicil',
     )))),
 
     // borcSorgula — onlinetahsilatborcsoruglama SP @sorgutip zorunlu (kuruma göre değişir)
-    'borc_sorgu_tip_sicil' => env('BELSIS_BORC_SORGU_TIP_SICIL', 'SICIL'),
-    'borc_sorgu_tip_tc'    => env('BELSIS_BORC_SORGU_TIP_TC', 'TC'),
+    'borc_sorgu_tip_sicil' => env('BELSIS_BORC_SORGU_TIP_SICIL', '1'),
+    'borc_sorgu_tip_tc'    => env('BELSIS_BORC_SORGU_TIP_TC', '2'),
     'borc_sorgu_tips_sicil' => array_filter(array_map('trim', explode(',', env(
         'BELSIS_BORC_SORGU_TIPS_SICIL',
-        'SICIL,GENSICIL,GENSICILNO,UYE,UYENO,MUKELLEF,Sicil,Gensicil,1,2,3,4,0',
+        '1,SICIL,GENSICIL,GENSICILNO,Sicil,Gensicil',
     )))),
     'borc_sorgu_tips_tc' => array_filter(array_map('trim', explode(',', env(
         'BELSIS_BORC_SORGU_TIPS_TC',
-        'TC,TcKimlikNo,2,TCKIMLIK,Tc,1',
+        '2,TC,TcKimlikNo,TCKIMLIK,Tc',
     )))),
 
     // borcSorgula boş dönerse tahakkukWebServis'ten borç çek

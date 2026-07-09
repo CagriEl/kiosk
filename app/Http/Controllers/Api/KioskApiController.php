@@ -266,10 +266,34 @@ class KioskApiController extends Controller
 
     private function belsisError(BelsisException $e): JsonResponse
     {
+        $message = mb_strtolower($e->getMessage());
+        $status = 422;
+
+        if (str_contains($message, '11 haneli')) {
+            $status = 400;
+        } elseif (
+            str_contains($message, 'bulunamad')
+            || str_contains($message, 'kayıt yok')
+            || str_contains($message, 'kayit yok')
+            || str_contains($message, 'sonuç boş')
+            || str_contains($message, 'sonuc bos')
+        ) {
+            $status = 404;
+        } elseif (
+            str_contains($message, 'yetkisiz')
+            || str_contains($message, 'bağlanılamadı')
+            || str_contains($message, 'baglanilamadi')
+            || str_contains($message, 'sistem hatas')
+            || str_contains($message, 'oturum')
+            || str_contains($message, 'ip adresini tanımıyor')
+        ) {
+            $status = 503;
+        }
+
         return response()->json([
             'message'   => $e->getMessage(),
             'sonucKodu' => $e->sonucKodu,
-        ], 422);
+        ], $status);
     }
 
     private function assertTcKimlikNo(string $identityNo): void

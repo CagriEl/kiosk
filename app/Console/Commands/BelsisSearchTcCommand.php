@@ -39,14 +39,12 @@ class BelsisSearchTcCommand extends Command
         }
 
         $base = $auth->baseParams();
-        $tips = array_values(array_unique(array_merge(
-            config('belsis.borc_sorgu_tips_tc', []),
-            config('belsis.arama_sorgu_tips', []),
-        )));
+        $aramaTips = config('belsis.arama_sorgu_tips', ['2', 'TC', 'TcKimlikNo', 'TCKIMLIK']);
+        $borcTips = config('belsis.borc_sorgu_tips_tc', ['2', 'TC', 'TcKimlikNo', 'TCKIMLIK']);
 
         $this->newLine();
-        $this->info('=== arama methodu ===');
-        foreach ($tips as $tip) {
+        $this->info('=== arama methodu (TC → gensicil) ===');
+        foreach ($aramaTips as $tip) {
             $this->line("sorguTip=<comment>{$tip}</comment>");
             try {
                 $result = $client->callTahsilat('arama', array_merge($base, [
@@ -60,8 +58,8 @@ class BelsisSearchTcCommand extends Command
         }
 
         $this->newLine();
-        $this->info('=== borcSorgula (gensicilno=0) ===');
-        foreach ($tips as $tip) {
+        $this->info('=== borcSorgula TC (gensicilno=0) ===');
+        foreach ($borcTips as $tip) {
             $this->line("sorguTip=<comment>{$tip}</comment>");
             try {
                 $result = $client->callTahsilat('borcSorgula', array_merge($base, [
@@ -78,9 +76,9 @@ class BelsisSearchTcCommand extends Command
         }
 
         $this->newLine();
-        $this->info('=== birleşik borc sorgusu (otomatik) ===');
+        $this->info('=== borcSorgula sicil (arama sonrası gensicil ile) ===');
         try {
-            $result = $borc->query($tc);
+            $result = $borc->query($tc, 'tc');
             $this->dumpBorcResult($result);
             $this->info('Otomatik sorgu başarılı.');
         } catch (BelsisException $e) {

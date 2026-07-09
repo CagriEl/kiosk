@@ -24,8 +24,22 @@ class BelsisTahsilatQueryService
         $borc = $this->borc->query($identityNo, $searchType);
 
         $sicil = $borc['Sicil'] ?? [];
-        $gensicilno = $this->borc->extractSicilNo($borc, $identityNo);
         $fullName = trim((string) ($sicil['adiSoyadiUnvani'] ?? ''));
+
+        try {
+            $gensicilno = $this->borc->extractSicilNo($borc, $identityNo);
+        } catch (BelsisException $e) {
+            $gensicilno = $this->borc->resolveGensicilFromTc($identityNo);
+            if ($gensicilno === null) {
+                if ($fullName !== '') {
+                    throw new BelsisException(
+                        'Vatandaş bilgisi alındı ancak sicil numarası çözümlenemedi. Belsis: '.$e->getMessage(),
+                        $e->sonucKodu,
+                    );
+                }
+                throw $e;
+            }
+        }
 
         if ($fullName === '') {
             $fullName = $this->lookupNameFromSicilSorgula((int) $gensicilno) ?? 'Sicil No: '.$gensicilno;

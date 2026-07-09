@@ -584,7 +584,10 @@
                     ...options,
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.message || `Sunucu hatası (${res.status})`);
+                if (!res.ok) {
+                    const detail = data.sonucKodu ? ` (${data.sonucKodu})` : '';
+                    throw new Error((data.message || `Sunucu hatası (${res.status})`) + detail);
+                }
                 return data;
             } catch (err) {
                 if (err instanceof TypeError) {
