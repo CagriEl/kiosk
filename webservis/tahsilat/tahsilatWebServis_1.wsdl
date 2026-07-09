@@ -1,0 +1,1220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions targetNamespace="http://tempuri.org/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://tempuri.org/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://tempuri.org/">
+      <s:element name="login">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdi" type="tns:loginG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="loginG">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="kullaniciAdi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="sifre" type="s:string"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="loginResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="loginResult" type="tns:loginC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="loginC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="oturumKimligi" type="s:string"/>
+              <s:element minOccurs="0" maxOccurs="1" name="seriNo" type="s:string"/>
+              <s:element minOccurs="0" maxOccurs="1" name="kuladi" type="s:string"/>
+              <s:element minOccurs="1" maxOccurs="1" name="kulNo" type="s:int"/>
+              <s:element minOccurs="1" maxOccurs="1" name="belediyeKodu" type="s:int"/>
+              <s:element minOccurs="1" maxOccurs="1" name="pesinOdemeIndirimi" type="s:int"/>
+              <s:element minOccurs="1" maxOccurs="1" name="makbuzNo" type="s:int"/>
+              <s:element minOccurs="1" maxOccurs="1" name="tahsilatHakkiVarmi" type="s:int"/>
+              <s:element minOccurs="1" maxOccurs="1" name="kullaniciGunlukTahsilat" type="s:decimal"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="cCore">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="sonucKodu" type="s:int"/>
+          <s:element minOccurs="0" maxOccurs="1" name="sonucAciklamasi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="hataMesaji" type="s:string"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="tahakkukTurleri">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:genelSorguG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="genelSorguG">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:gBelsisLogin"/>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="gBelsisLogin">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:gCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="oturumKimligi" type="s:string"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="gCore">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="guvenlikKodu" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="ipAdresi" type="s:string"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="tahakkukTurleriResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="tahakkukTurleriResult" type="tns:tahakkukTurC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="tahakkukTurC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="tahakkukTurListesi" type="tns:ArrayOfTahakkukTurleri"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ArrayOfTahakkukTurleri">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="tahakkukTurleri" nillable="true" type="tns:tahakkukTurleri"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="tahakkukTurleri">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="tturu" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="tahakkuklumu" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="mobilTahsilat" type="s:int"/>
+          <s:element minOccurs="0" maxOccurs="1" name="gelirKodu" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="gelirAdi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="fiyati" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="entegrasyonGelirKodu" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="tahakkukTipKodu" type="s:string"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="kdvHesaplari">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:genelSorguG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="kdvHesaplariResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="kdvHesaplariResult" type="tns:kdvHesabiC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="kdvHesabiC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="kdvHesabiListesi" type="tns:ArrayOfKdvHesaplari"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ArrayOfKdvHesaplari">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="kdvHesaplari" nillable="true" type="tns:kdvHesaplari"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="kdvHesaplari">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="tturu" type="s:int"/>
+          <s:element minOccurs="0" maxOccurs="1" name="geladi" type="s:string"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="kdvOranlari">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:genelSorguG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="kdvOranlariResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="kdvOranlariResult" type="tns:kdvOraniC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="kdvOraniC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="kdvOraniListesi" type="tns:ArrayOfKdvOranlari"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ArrayOfKdvOranlari">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="kdvOranlari" nillable="true" type="tns:kdvOranlari"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="kdvOranlari">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="kdvoran" type="s:double"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="odemeSekilleri">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:genelSorguG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="odemeSekilleriResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="odemeSekilleriResult" type="tns:odemeSekliC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="odemeSekliC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="odemeSekliListesi" type="tns:ArrayOfOdemeSekilleri"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ArrayOfOdemeSekilleri">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="odemeSekilleri" nillable="true" type="tns:odemeSekilleri"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="odemeSekilleri">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="ID" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="kullaniciOdemeSekli" type="s:int"/>
+          <s:element minOccurs="0" maxOccurs="1" name="aciklama" type="s:string"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="sicilSorgula">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:sicilG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="sicilG">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:gBelsisLogin">
+            <s:sequence>
+              <s:element minOccurs="1" maxOccurs="1" name="gensicilno" type="s:int"/>
+              <s:element minOccurs="1" maxOccurs="1" name="koyID" type="s:int"/>
+              <s:element minOccurs="0" maxOccurs="1" name="mukellefNo" type="s:string"/>
+              <s:element minOccurs="0" maxOccurs="1" name="ad" type="s:string"/>
+              <s:element minOccurs="0" maxOccurs="1" name="soyad" type="s:string"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:element name="sicilSorgulaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="sicilSorgulaResult" type="tns:sicilC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="sicilC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="sicilListesi" type="tns:ArrayOfSicilAlanlari"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ArrayOfSicilAlanlari">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="sicilAlanlari" nillable="true" type="tns:sicilAlanlari"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="sicilAlanlari">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="gensicilno" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="uyeNo" type="s:int"/>
+          <s:element minOccurs="0" maxOccurs="1" name="adi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="soyadi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="unvan" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="babaAdi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="dogumYeri" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="dogumTarihi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="koyAdi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="tcKimlikNo" type="s:string"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="sicilBorcBeyanSorgula">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:sicilBorcBeyanG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="sicilBorcBeyanG">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:gBelsisLogin">
+            <s:sequence>
+              <s:element minOccurs="1" maxOccurs="1" name="gensicilno" type="s:int"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:element name="sicilBorcBeyanSorgulaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="sicilBorcBeyanSorgulaResult" type="tns:sicilBorcBeyanC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="sicilBorcBeyanC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="sicilBorcBeyanListesi" type="tns:ArrayOfSicilBorcBeyanListesi"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ArrayOfSicilBorcBeyanListesi">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="sicilBorcBeyanListesi" nillable="true" type="tns:sicilBorcBeyanListesi"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="sicilBorcBeyanListesi">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="modulno" type="s:int"/>
+          <s:element minOccurs="0" maxOccurs="1" name="beyanID" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="beyanAciklama" type="s:string"/>
+          <s:element minOccurs="1" maxOccurs="1" name="toplamBorc" type="s:double"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="mukellefMakbuzSorgula">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:mukellefMakbuzG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="mukellefMakbuzG">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:gBelsisLogin">
+            <s:sequence>
+              <s:element minOccurs="1" maxOccurs="1" name="gensicilno" type="s:int"/>
+              <s:element minOccurs="0" maxOccurs="1" name="adi" type="s:string"/>
+              <s:element minOccurs="0" maxOccurs="1" name="soyadi" type="s:string"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:element name="mukellefMakbuzSorgulaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="mukellefMakbuzSorgulaResult" type="tns:mukellefMakbuzC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="mukellefMakbuzC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="makbuzListesi" type="tns:ArrayOfMakbuzListesi"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ArrayOfMakbuzListesi">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="makbuzListesi" nillable="true" type="tns:makbuzListesi"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="makbuzListesi">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="seriNo" type="s:string"/>
+          <s:element minOccurs="1" maxOccurs="1" name="makbuzNo" type="s:int"/>
+          <s:element minOccurs="0" maxOccurs="1" name="odemeTarihi" type="s:string"/>
+          <s:element minOccurs="1" maxOccurs="1" name="odemeTutari" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="masterMakbuz" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="iptalEdilebilir" type="s:int"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="arama">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:aramaG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="aramaG">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:gBelsisLogin">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="sorguTip" type="s:string"/>
+              <s:element minOccurs="0" maxOccurs="1" name="sorguNo" type="s:string"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:element name="aramaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="aramaResult" type="tns:aramaC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="aramaC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="Siciller" type="tns:ArrayOfSicilaramaObj"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ArrayOfSicilaramaObj">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="SicilaramaObj" nillable="true" type="tns:SicilaramaObj"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="SicilaramaObj">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="gensicilno" type="s:int"/>
+          <s:element minOccurs="0" maxOccurs="1" name="adi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="soyadi" type="s:string"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="borcSorgula">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:borcG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="borcG">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:gBelsisLogin">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="sorguTip" type="s:string"/>
+              <s:element minOccurs="0" maxOccurs="1" name="sorguNo" type="s:string"/>
+              <s:element minOccurs="1" maxOccurs="1" name="gensicilno" type="s:int"/>
+              <s:element minOccurs="1" maxOccurs="1" name="indirimliOdenecekMi" type="s:int"/>
+              <s:element minOccurs="1" maxOccurs="1" name="indirimHakkiVarMi" type="s:int"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:element name="borcSorgulaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="borcSorgulaResult" type="tns:borcC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="borcC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="Sicil" type="tns:Sicil"/>
+              <s:element minOccurs="1" maxOccurs="1" name="indirimHakkiVarMi" type="s:int"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="Sicil">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="sicilNo" type="s:int"/>
+          <s:element minOccurs="0" maxOccurs="1" name="adiSoyadiUnvani" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="modulListesi" type="tns:ArrayOfModul"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfModul">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="Modul" nillable="true" type="tns:Modul"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="Modul">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="modulBilgisi" type="s:string"/>
+          <s:element minOccurs="1" maxOccurs="1" name="modulNo" nillable="true" type="s:int"/>
+          <s:element minOccurs="0" maxOccurs="1" name="donemListesi" type="tns:ArrayOfDonem"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfDonem">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="Donem" nillable="true" type="tns:Donem"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="Donem">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="borcYili" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="taksit" type="s:int"/>
+          <s:element minOccurs="0" maxOccurs="1" name="tahakkukListesi" type="tns:ArrayOfTahakkuk"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfTahakkuk">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="Tahakkuk" nillable="true" type="tns:Tahakkuk"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="Tahakkuk">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="tahakkukNo" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="beyanID" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="gensicilNo" type="s:int"/>
+          <s:element minOccurs="0" maxOccurs="1" name="turu" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="beyanBilgisi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="aciklama" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="adi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="soyadi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="vergiNo" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="odemeSekli" type="s:string"/>
+          <s:element minOccurs="1" maxOccurs="1" name="tahakkukTutari" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="indirimTutari" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="gecikmeZammi" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="odenecekTutar" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="odenenTutar" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="sonOdemeTarihi" type="s:dateTime"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="odemeYap">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:odemeG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="odemeG">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:gBelsisLogin">
+            <s:sequence>
+              <s:element minOccurs="1" maxOccurs="1" name="gensicilno" type="s:int"/>
+              <s:element minOccurs="1" maxOccurs="1" name="odemeSekli" type="s:int"/>
+              <s:element minOccurs="0" maxOccurs="1" name="adi" type="s:string"/>
+              <s:element minOccurs="0" maxOccurs="1" name="soyadi" type="s:string"/>
+              <s:element minOccurs="0" maxOccurs="1" name="tahakkukluTahsilat" type="tns:ArrayOfOdemeTahakkukluTahsilat"/>
+              <s:element minOccurs="0" maxOccurs="1" name="tahakkuksuzTahsilat" type="tns:ArrayOfOdemeTahakkuksuzTahsilat"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ArrayOfOdemeTahakkukluTahsilat">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="odemeTahakkukluTahsilat" nillable="true" type="tns:odemeTahakkukluTahsilat"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="odemeTahakkukluTahsilat">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="tahakkukNo" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="tahakkukTutari" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="gecikmeTutari" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="odemeTutari" type="s:double"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfOdemeTahakkuksuzTahsilat">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="odemeTahakkuksuzTahsilat" nillable="true" type="tns:odemeTahakkuksuzTahsilat"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="odemeTahakkuksuzTahsilat">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="tturu" type="s:int"/>
+          <s:element minOccurs="0" maxOccurs="1" name="gelirKodu" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="gelirAdi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="aciklama" type="s:string"/>
+          <s:element minOccurs="1" maxOccurs="1" name="odemeTutari" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="kdvTutar" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="kdvOran" type="s:int"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="odemeYapResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="odemeYapResult" type="tns:odemeC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="odemeC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="1" maxOccurs="1" name="makbuzID" type="s:int"/>
+              <s:element minOccurs="1" maxOccurs="1" name="makbuzNo" type="s:int"/>
+              <s:element minOccurs="1" maxOccurs="1" name="kullaniciGunlukTahsilat" type="s:decimal"/>
+              <s:element minOccurs="0" maxOccurs="1" name="seriNo" type="s:string"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:element name="makbuzSorgula">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:makbuzG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="makbuzG">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:gBelsisLogin">
+            <s:sequence>
+              <s:element minOccurs="1" maxOccurs="1" name="masterMakbuzNo" type="s:int"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:element name="makbuzSorgulaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="makbuzSorgulaResult" type="tns:makbuzC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="makbuzC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="makbuzlar" type="tns:ArrayOfMakbuzlar"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ArrayOfMakbuzlar">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="makbuzlar" nillable="true" type="tns:makbuzlar"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="makbuzlar">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="makbuzID" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="gensicilNo" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="makbuzNo" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="kulNo" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="mobilTahsilatSatirSayisi" type="s:int"/>
+          <s:element minOccurs="1" maxOccurs="1" name="gecikmeZammi" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="tahakkukTutar" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="tahsilatTutar" type="s:double"/>
+          <s:element minOccurs="0" maxOccurs="1" name="adi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="soyadi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="adres1" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="adres2" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="seriNo" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="vergiNo" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="belediyeAdi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="odemeTarihi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="kulAdi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="toplamTutarYazi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="odemeSekli" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="tcNo" type="s:string"/>
+          <s:element minOccurs="1" maxOccurs="1" name="toplamTutar" type="s:decimal"/>
+          <s:element minOccurs="0" maxOccurs="1" name="makbuzDetaylar" type="tns:ArrayOfMakbuzDetaylar"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfMakbuzDetaylar">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="makbuzDetaylar" nillable="true" type="tns:makbuzDetaylar"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="makbuzDetaylar">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="gelirKodu" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="gelirAdi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="yilDonem" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="aciklama" type="s:string"/>
+          <s:element minOccurs="1" maxOccurs="1" name="odemeTutari" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="gecikmeZammi" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="tahakkukTutar" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="tahsilatTutar" type="s:double"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="makbuzIptal">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:makbuzIptalG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="makbuzIptalG">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:gBelsisLogin">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="seriNo" type="s:string"/>
+              <s:element minOccurs="0" maxOccurs="1" name="aciklama" type="s:string"/>
+              <s:element minOccurs="1" maxOccurs="1" name="makbuzNo" type="s:int"/>
+              <s:element minOccurs="1" maxOccurs="1" name="iptalTarihi" type="s:dateTime"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:element name="makbuzIptalResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="makbuzIptalResult" type="tns:makbuzIptalC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="makbuzIptalC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore"/>
+        </s:complexContent>
+      </s:complexType>
+      <s:element name="tahsilatSorgula">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:tahsilatG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="tahsilatG">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:gBelsisLogin">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="gensicilno" type="s:string"/>
+              <s:element minOccurs="0" maxOccurs="1" name="makbuzNo" type="s:string"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:element name="tahsilatSorgulaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="tahsilatSorgulaResult" type="tns:tahsilatC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="tahsilatC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="tahsilatListesi" type="tns:ArrayOfTahsilat"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ArrayOfTahsilat">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="Tahsilat" nillable="true" type="tns:Tahsilat"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="Tahsilat">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="toplamTahakkukTutari" type="s:double"/>
+          <s:element minOccurs="0" maxOccurs="1" name="makbuzBilgisi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="tahsilatNo" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="odemeSekli" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="gensicilNo" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="adi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="soyadi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="vergiNo" type="s:string"/>
+          <s:element minOccurs="1" maxOccurs="1" name="tahsilatTarihi" type="s:dateTime"/>
+        </s:sequence>
+      </s:complexType>
+      <s:element name="tahsilatDetaySorgula">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="girdiParametre" type="tns:tahsilatDetayG"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="tahsilatDetayG">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:gBelsisLogin">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="tahsilatNo" type="s:string"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:element name="tahsilatDetaySorgulaResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="tahsilatDetaySorgulaResult" type="tns:tahsilatDetayC"/>
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="tahsilatDetayC">
+        <s:complexContent mixed="false">
+          <s:extension base="tns:cCore">
+            <s:sequence>
+              <s:element minOccurs="0" maxOccurs="1" name="tahsilatDetayListesi" type="tns:ArrayOfTahsilatDetay"/>
+            </s:sequence>
+          </s:extension>
+        </s:complexContent>
+      </s:complexType>
+      <s:complexType name="ArrayOfTahsilatDetay">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="TahsilatDetay" nillable="true" type="tns:TahsilatDetay"/>
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="TahsilatDetay">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="gecikmeZammi" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="tahakkukTutar" type="s:double"/>
+          <s:element minOccurs="1" maxOccurs="1" name="tahsilatTutar" type="s:double"/>
+          <s:element minOccurs="0" maxOccurs="1" name="aciklama" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="adiSoyadi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="makbuzBilgisi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="sicilNo" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="tahakkukAdi" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="tahsilatNo" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="yilDonem" type="s:string"/>
+          <s:element minOccurs="0" maxOccurs="1" name="odemeSekliya" type="s:string"/>
+          <s:element minOccurs="1" maxOccurs="1" name="tahsilatTarihi" type="s:dateTime"/>
+        </s:sequence>
+      </s:complexType>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="loginSoapIn">
+    <wsdl:part name="parameters" element="tns:login"/>
+  </wsdl:message>
+  <wsdl:message name="loginSoapOut">
+    <wsdl:part name="parameters" element="tns:loginResponse"/>
+  </wsdl:message>
+  <wsdl:message name="tahakkukTurleriSoapIn">
+    <wsdl:part name="parameters" element="tns:tahakkukTurleri"/>
+  </wsdl:message>
+  <wsdl:message name="tahakkukTurleriSoapOut">
+    <wsdl:part name="parameters" element="tns:tahakkukTurleriResponse"/>
+  </wsdl:message>
+  <wsdl:message name="kdvHesaplariSoapIn">
+    <wsdl:part name="parameters" element="tns:kdvHesaplari"/>
+  </wsdl:message>
+  <wsdl:message name="kdvHesaplariSoapOut">
+    <wsdl:part name="parameters" element="tns:kdvHesaplariResponse"/>
+  </wsdl:message>
+  <wsdl:message name="kdvOranlariSoapIn">
+    <wsdl:part name="parameters" element="tns:kdvOranlari"/>
+  </wsdl:message>
+  <wsdl:message name="kdvOranlariSoapOut">
+    <wsdl:part name="parameters" element="tns:kdvOranlariResponse"/>
+  </wsdl:message>
+  <wsdl:message name="odemeSekilleriSoapIn">
+    <wsdl:part name="parameters" element="tns:odemeSekilleri"/>
+  </wsdl:message>
+  <wsdl:message name="odemeSekilleriSoapOut">
+    <wsdl:part name="parameters" element="tns:odemeSekilleriResponse"/>
+  </wsdl:message>
+  <wsdl:message name="sicilSorgulaSoapIn">
+    <wsdl:part name="parameters" element="tns:sicilSorgula"/>
+  </wsdl:message>
+  <wsdl:message name="sicilSorgulaSoapOut">
+    <wsdl:part name="parameters" element="tns:sicilSorgulaResponse"/>
+  </wsdl:message>
+  <wsdl:message name="sicilBorcBeyanSorgulaSoapIn">
+    <wsdl:part name="parameters" element="tns:sicilBorcBeyanSorgula"/>
+  </wsdl:message>
+  <wsdl:message name="sicilBorcBeyanSorgulaSoapOut">
+    <wsdl:part name="parameters" element="tns:sicilBorcBeyanSorgulaResponse"/>
+  </wsdl:message>
+  <wsdl:message name="mukellefMakbuzSorgulaSoapIn">
+    <wsdl:part name="parameters" element="tns:mukellefMakbuzSorgula"/>
+  </wsdl:message>
+  <wsdl:message name="mukellefMakbuzSorgulaSoapOut">
+    <wsdl:part name="parameters" element="tns:mukellefMakbuzSorgulaResponse"/>
+  </wsdl:message>
+  <wsdl:message name="aramaSoapIn">
+    <wsdl:part name="parameters" element="tns:arama"/>
+  </wsdl:message>
+  <wsdl:message name="aramaSoapOut">
+    <wsdl:part name="parameters" element="tns:aramaResponse"/>
+  </wsdl:message>
+  <wsdl:message name="borcSorgulaSoapIn">
+    <wsdl:part name="parameters" element="tns:borcSorgula"/>
+  </wsdl:message>
+  <wsdl:message name="borcSorgulaSoapOut">
+    <wsdl:part name="parameters" element="tns:borcSorgulaResponse"/>
+  </wsdl:message>
+  <wsdl:message name="odemeYapSoapIn">
+    <wsdl:part name="parameters" element="tns:odemeYap"/>
+  </wsdl:message>
+  <wsdl:message name="odemeYapSoapOut">
+    <wsdl:part name="parameters" element="tns:odemeYapResponse"/>
+  </wsdl:message>
+  <wsdl:message name="makbuzSorgulaSoapIn">
+    <wsdl:part name="parameters" element="tns:makbuzSorgula"/>
+  </wsdl:message>
+  <wsdl:message name="makbuzSorgulaSoapOut">
+    <wsdl:part name="parameters" element="tns:makbuzSorgulaResponse"/>
+  </wsdl:message>
+  <wsdl:message name="makbuzIptalSoapIn">
+    <wsdl:part name="parameters" element="tns:makbuzIptal"/>
+  </wsdl:message>
+  <wsdl:message name="makbuzIptalSoapOut">
+    <wsdl:part name="parameters" element="tns:makbuzIptalResponse"/>
+  </wsdl:message>
+  <wsdl:message name="tahsilatSorgulaSoapIn">
+    <wsdl:part name="parameters" element="tns:tahsilatSorgula"/>
+  </wsdl:message>
+  <wsdl:message name="tahsilatSorgulaSoapOut">
+    <wsdl:part name="parameters" element="tns:tahsilatSorgulaResponse"/>
+  </wsdl:message>
+  <wsdl:message name="tahsilatDetaySorgulaSoapIn">
+    <wsdl:part name="parameters" element="tns:tahsilatDetaySorgula"/>
+  </wsdl:message>
+  <wsdl:message name="tahsilatDetaySorgulaSoapOut">
+    <wsdl:part name="parameters" element="tns:tahsilatDetaySorgulaResponse"/>
+  </wsdl:message>
+  <wsdl:portType name="tahsilatWebServisSoap">
+    <wsdl:operation name="login">
+      <wsdl:input message="tns:loginSoapIn"/>
+      <wsdl:output message="tns:loginSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="tahakkukTurleri">
+      <wsdl:input message="tns:tahakkukTurleriSoapIn"/>
+      <wsdl:output message="tns:tahakkukTurleriSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="kdvHesaplari">
+      <wsdl:input message="tns:kdvHesaplariSoapIn"/>
+      <wsdl:output message="tns:kdvHesaplariSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="kdvOranlari">
+      <wsdl:input message="tns:kdvOranlariSoapIn"/>
+      <wsdl:output message="tns:kdvOranlariSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="odemeSekilleri">
+      <wsdl:input message="tns:odemeSekilleriSoapIn"/>
+      <wsdl:output message="tns:odemeSekilleriSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="sicilSorgula">
+      <wsdl:input message="tns:sicilSorgulaSoapIn"/>
+      <wsdl:output message="tns:sicilSorgulaSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="sicilBorcBeyanSorgula">
+      <wsdl:input message="tns:sicilBorcBeyanSorgulaSoapIn"/>
+      <wsdl:output message="tns:sicilBorcBeyanSorgulaSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="mukellefMakbuzSorgula">
+      <wsdl:input message="tns:mukellefMakbuzSorgulaSoapIn"/>
+      <wsdl:output message="tns:mukellefMakbuzSorgulaSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="arama">
+      <wsdl:input message="tns:aramaSoapIn"/>
+      <wsdl:output message="tns:aramaSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="borcSorgula">
+      <wsdl:input message="tns:borcSorgulaSoapIn"/>
+      <wsdl:output message="tns:borcSorgulaSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="odemeYap">
+      <wsdl:input message="tns:odemeYapSoapIn"/>
+      <wsdl:output message="tns:odemeYapSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="makbuzSorgula">
+      <wsdl:input message="tns:makbuzSorgulaSoapIn"/>
+      <wsdl:output message="tns:makbuzSorgulaSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="makbuzIptal">
+      <wsdl:input message="tns:makbuzIptalSoapIn"/>
+      <wsdl:output message="tns:makbuzIptalSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="tahsilatSorgula">
+      <wsdl:input message="tns:tahsilatSorgulaSoapIn"/>
+      <wsdl:output message="tns:tahsilatSorgulaSoapOut"/>
+    </wsdl:operation>
+    <wsdl:operation name="tahsilatDetaySorgula">
+      <wsdl:input message="tns:tahsilatDetaySorgulaSoapIn"/>
+      <wsdl:output message="tns:tahsilatDetaySorgulaSoapOut"/>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="tahsilatWebServisSoap" type="tns:tahsilatWebServisSoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="login">
+      <soap:operation soapAction="http://tempuri.org/login" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="tahakkukTurleri">
+      <soap:operation soapAction="http://tempuri.org/tahakkukTurleri" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="kdvHesaplari">
+      <soap:operation soapAction="http://tempuri.org/kdvHesaplari" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="kdvOranlari">
+      <soap:operation soapAction="http://tempuri.org/kdvOranlari" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="odemeSekilleri">
+      <soap:operation soapAction="http://tempuri.org/odemeSekilleri" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="sicilSorgula">
+      <soap:operation soapAction="http://tempuri.org/sicilSorgula" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="sicilBorcBeyanSorgula">
+      <soap:operation soapAction="http://tempuri.org/sicilBorcBeyanSorgula" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="mukellefMakbuzSorgula">
+      <soap:operation soapAction="http://tempuri.org/mukellefMakbuzSorgula" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="arama">
+      <soap:operation soapAction="http://tempuri.org/arama" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="borcSorgula">
+      <soap:operation soapAction="http://tempuri.org/borcSorgula" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="odemeYap">
+      <soap:operation soapAction="http://tempuri.org/odemeYap" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="makbuzSorgula">
+      <soap:operation soapAction="http://tempuri.org/makbuzSorgula" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="makbuzIptal">
+      <soap:operation soapAction="http://tempuri.org/makbuzIptal" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="tahsilatSorgula">
+      <soap:operation soapAction="http://tempuri.org/tahsilatSorgula" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="tahsilatDetaySorgula">
+      <soap:operation soapAction="http://tempuri.org/tahsilatDetaySorgula" style="document"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="tahsilatWebServisSoap12" type="tns:tahsilatWebServisSoap">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="login">
+      <soap12:operation soapAction="http://tempuri.org/login" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="tahakkukTurleri">
+      <soap12:operation soapAction="http://tempuri.org/tahakkukTurleri" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="kdvHesaplari">
+      <soap12:operation soapAction="http://tempuri.org/kdvHesaplari" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="kdvOranlari">
+      <soap12:operation soapAction="http://tempuri.org/kdvOranlari" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="odemeSekilleri">
+      <soap12:operation soapAction="http://tempuri.org/odemeSekilleri" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="sicilSorgula">
+      <soap12:operation soapAction="http://tempuri.org/sicilSorgula" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="sicilBorcBeyanSorgula">
+      <soap12:operation soapAction="http://tempuri.org/sicilBorcBeyanSorgula" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="mukellefMakbuzSorgula">
+      <soap12:operation soapAction="http://tempuri.org/mukellefMakbuzSorgula" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="arama">
+      <soap12:operation soapAction="http://tempuri.org/arama" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="borcSorgula">
+      <soap12:operation soapAction="http://tempuri.org/borcSorgula" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="odemeYap">
+      <soap12:operation soapAction="http://tempuri.org/odemeYap" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="makbuzSorgula">
+      <soap12:operation soapAction="http://tempuri.org/makbuzSorgula" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="makbuzIptal">
+      <soap12:operation soapAction="http://tempuri.org/makbuzIptal" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="tahsilatSorgula">
+      <soap12:operation soapAction="http://tempuri.org/tahsilatSorgula" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="tahsilatDetaySorgula">
+      <soap12:operation soapAction="http://tempuri.org/tahsilatDetaySorgula" style="document"/>
+      <wsdl:input>
+        <soap12:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="tahsilatWebServis">
+    <wsdl:port name="tahsilatWebServisSoap" binding="tns:tahsilatWebServisSoap">
+      <soap:address location="http://webservis.pursaklar.bel.tr:1685/belsisWebServis/tahsilatWebServis.asmx"/>
+    </wsdl:port>
+    <wsdl:port name="tahsilatWebServisSoap12" binding="tns:tahsilatWebServisSoap12">
+      <soap12:address location="http://webservis.pursaklar.bel.tr:1685/belsisWebServis/tahsilatWebServis.asmx"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

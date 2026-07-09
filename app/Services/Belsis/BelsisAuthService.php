@@ -14,7 +14,7 @@ class BelsisAuthService
     ) {}
 
     /**
-     * @return array{oturumKimligi: string, guvenlikKodu: string}
+     * @return array<string, mixed>
      */
     public function getSession(): array
     {
@@ -29,7 +29,7 @@ class BelsisAuthService
     }
 
     /**
-     * @return array{oturumKimligi: string, guvenlikKodu: string}
+     * @return array<string, mixed>
      */
     public function openSession(): array
     {
@@ -38,14 +38,16 @@ class BelsisAuthService
 
         if (empty($username) || $password === null || $password === '') {
             throw new BelsisException(
-                'Belsis kullanıcı adı veya şifre yapılandırılmamış. .env dosyasında BELSIS_USERNAME ve BELSIS_PASSWORD ayarlayın, ardından: php artisan config:clear',
+                'Belsis kullanıcı adı veya şifre yapılandırılmamış. .env dosyasında BELSIS_USERNAME ve BELSIS_PASSWORD ayarlayın.',
             );
         }
 
-        $result = $this->tryOturumAc($username, $password);
+        $result = $this->client->callTahsilat('login', [
+            'kullaniciAdi' => $username,
+            'sifre'        => $password,
+        ], wrapper: 'girdi');
 
-        $oturumKimligi = $result['oturumKimligi'] ?? $result['OturumKimligi'] ?? null;
-        $guvenlikKodu  = $result['guvenlikKodu'] ?? $result['GuvenlikKodu'] ?? '';
+        $oturumKimligi = $result['oturumKimligi'] ?? null;
 
         if (empty($oturumKimligi)) {
             throw new BelsisException('Belsis oturum kimliği alınamadı.');
@@ -53,33 +55,11 @@ class BelsisAuthService
 
         return [
             'oturumKimligi' => (string) $oturumKimligi,
-            'guvenlikKodu'  => (string) $guvenlikKodu,
+            'guvenlikKodu'  => (string) ($result['guvenlikKodu'] ?? ''),
+            'seriNo'        => (string) ($result['seriNo'] ?? ''),
+            'kulNo'         => (string) ($result['kulNo'] ?? '0'),
+            'makbuzNo'      => (string) ($result['makbuzNo'] ?? '0'),
         ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function tryOturumAc(string $username, string $password): array
-    {
-        $attempts = [
-            ['kullaniciAdi' => $username, 'sifre' => $password],
-            ['kullaniciAdi' => $username, 'kullaniciSifresi' => $password],
-            ['kullaniciAdi' => $username, 'parola' => $password],
-        ];
-
-        $last = null;
-        foreach ($attempts as $params) {
-            try {
-                return $this->client->callTahakkuk('oturumAc', array_merge($params, [
-                    'ipAdresi' => config('belsis.ip_address'),
-                ]), wrapGirdiParametre: false);
-            } catch (BelsisException $e) {
-                $last = $e;
-            }
-        }
-
-        throw $last ?? new BelsisException('Belsis oturum açılamadı.');
     }
 
     /**

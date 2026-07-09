@@ -1,0 +1,539 @@
+makbuzSorgula  methodu
+
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <tem:makbuzSorgula>
+         <!--Optional:-->
+         <tem:girdiParametre>
+            <!--Optional:-->
+            <tem:guvenlikKodu>?</tem:guvenlikKodu>
+            <!--Optional:-->
+            <tem:ipAdresi>1.1.1.1</tem:ipAdresi>
+            <!--Optional:-->
+            <tem:oturumKimligi>SbtPHAS06WsDkLN3J/tYwA==</tem:oturumKimligi>
+            <!--Optional:-->
+            <tem:SeriNo>AF</tem:SeriNo>
+            <tem:MakbuzNo>241277</tem:MakbuzNo>
+            <tem:masterMakbuzNo>147162</tem:masterMakbuzNo>
+         </tem:girdiParametre>
+      </tem:makbuzSorgula>
+   </soapenv:Body>
+</soapenv:Envelope>
+
+
+
+
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <soap:Body>
+      <makbuzSorgulaResponse xmlns="http://tempuri.org/">
+         <makbuzSorgulaResult>
+            <sonucKodu>1001</sonucKodu>
+            <sonucAciklamasi>Başarılı</sonucAciklamasi>
+            <hataMesaji/>
+            <makbuzlar>
+               <makbuzlar>
+                  <makbuzID>147162</makbuzID>
+                  <gensicilNo>100</gensicilNo>
+                  <makbuzNo>241277</makbuzNo>
+                  <kulNo>104</kulNo>
+                  <mobilTahsilatSatirSayisi>8</mobilTahsilatSatirSayisi>
+                  <master_makbuz>0</master_makbuz>
+                  <linkliMakbuzSayisi>0</linkliMakbuzSayisi>
+                  <gecikmeZammi>0</gecikmeZammi>
+                  <tahakkukTutar>0</tahakkukTutar>
+                  <tahsilatTutar>0</tahsilatTutar>
+                  <adi>İSMAİL</adi>
+                  <soyadi>KOBAK</soyadi>
+                  <adres1>BAHÇELİEVLER MAH. ONDOKUZ MAYIS CAD. NO: 26 /</adres1>
+                  <adres2>1 MERKEZ / BİLECİK</adres2>
+                  <seriNo>AF</seriNo>
+                  <vergiNo></vergiNo>
+                  <belediyeAdi>*********</belediyeAdi>
+                  <odemeTarihi>17/03/2004</odemeTarihi>
+                  <kulAdi>Mehmet Sarı</kulAdi>
+                  <toplamTutarYazi>YİRMİ İKİ  TL ALTI  Kr.</toplamTutarYazi>
+                  <odemeSekli>Elden</odemeSekli>
+                  <tcNo>17419732958</tcNo>
+                  <toplamTutar>22.0600</toplamTutar>
+                  <bagliMakbuzlarvarmi>false</bagliMakbuzlarvarmi>
+                  <makbuzDetaylar>
+                     <makbuzDetaylar>
+                        <gelirKodu>01.03.09.57</gelirKodu>
+                        <gelirAdi>Konutlara Ait Çevre Temizlik Vergisi</gelirAdi>
+                        <yilDonem>2004/2</yilDonem>
+                        <aciklama>Taşıma</aciklama>
+                        <ada>0</ada>
+                        <parsel>352</parsel>
+                        <odemeTutari>1.5</odemeTutari>
+                        <gecikmeZammi>0</gecikmeZammi>
+                        <tahakkukTutar>0</tahakkukTutar>
+                        <tahsilatTutar>0</tahsilatTutar>
+                     </makbuzDetaylar>
+                     <makbuzDetaylar>
+                        <gelirKodu>01.09.09.99.01</gelirKodu>
+                        <gelirAdi>ATIK SU ÜCRETİ</gelirAdi>
+                        <yilDonem>2004/2</yilDonem>
+                        <aciklama>Taşıma</aciklama>
+                        <ada>0</ada>
+                        <parsel>352</parsel>
+                        <odemeTutari>1.61</odemeTutari>
+                        <gecikmeZammi>0</gecikmeZammi>
+                        <tahakkukTutar>0</tahakkukTutar>
+                        <tahsilatTutar>0</tahsilatTutar>
+                     </makbuzDetaylar>
+                     <makbuzDetaylar>
+                        <gelirKodu>391</gelirKodu>
+                        <gelirAdi>KDV</gelirAdi>
+                        <yilDonem>2004/2</yilDonem>
+                        <aciklama>Taşıma</aciklama>
+                        <ada>0</ada>
+                        <parsel>352</parsel>
+                        <odemeTutari>2.89</odemeTutari>
+                        <gecikmeZammi>0</gecikmeZammi>
+                        <tahakkukTutar>0</tahakkukTutar>
+                        <tahsilatTutar>0</tahsilatTutar>
+                     </makbuzDetaylar>
+                  </makbuzDetaylar>
+               </makbuzlar>
+            </makbuzlar>
+         </makbuzSorgulaResult>
+      </makbuzSorgulaResponse>
+   </soap:Body>
+</soap:Envelope>
+
+odeme şekilleri methodu
+
+
+
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <tem:odemeSekilleri>
+         <!--Optional:-->
+         <tem:girdiParametre>
+            <!--Optional:-->
+            <tem:guvenlikKodu>?</tem:guvenlikKodu>
+            <!--Optional:-->
+            <tem:ipAdresi>1.1.1.1</tem:ipAdresi>
+            <!--Optional:-->
+            <tem:oturumKimligi>SbtPHAS06WsDkLN3J/tYwA==</tem:oturumKimligi>
+         </tem:girdiParametre>
+      </tem:odemeSekilleri>
+   </soapenv:Body>
+</soapenv:Envelope>
+
+odemesekilleri methodu
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <soap:Body>
+      <odemeSekilleriResponse xmlns="http://tempuri.org/">
+         <odemeSekilleriResult>
+            <sonucKodu>0</sonucKodu>
+            <odemeSekliListesi>
+               <odemeSekilleri>
+                  <ID>1</ID>
+                  <kullaniciOdemeSekli>1</kullaniciOdemeSekli>
+                  <aciklama>1 - Elden</aciklama>
+               </odemeSekilleri>
+               <odemeSekilleri>
+                  <ID>2</ID>
+                  <kullaniciOdemeSekli>1</kullaniciOdemeSekli>
+                  <aciklama>2 - Banka</aciklama>
+               </odemeSekilleri>
+               <odemeSekilleri>
+                  <ID>3</ID>
+                  <kullaniciOdemeSekli>1</kullaniciOdemeSekli>
+                  <aciklama>3 - Posta Çeki</aciklama>
+               </odemeSekilleri>
+               <odemeSekilleri>
+                  <ID>4</ID>
+                  <kullaniciOdemeSekli>1</kullaniciOdemeSekli>
+                  <aciklama>4 - Emanet</aciklama>
+               </odemeSekilleri>
+               <odemeSekilleri>
+                  <ID>5</ID>
+                  <kullaniciOdemeSekli>1</kullaniciOdemeSekli>
+                  <aciklama>5 - Kredi Kartı</aciklama>
+               </odemeSekilleri>
+               <odemeSekilleri>
+                  <ID>6</ID>
+                  <kullaniciOdemeSekli>1</kullaniciOdemeSekli>
+                  <aciklama>6 - İcra</aciklama>
+               </odemeSekilleri>
+               <odemeSekilleri>
+                  <ID>7</ID>
+                  <kullaniciOdemeSekli>1</kullaniciOdemeSekli>
+                  <aciklama>7 - Diğer</aciklama>
+               </odemeSekilleri>
+            </odemeSekliListesi>
+         </odemeSekilleriResult>
+      </odemeSekilleriResponse>
+   </soap:Body>
+</soap:Envelope>
+
+
+login methodu
+
+
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <tem:login>
+         <!--Optional:-->
+         <tem:girdi>
+            <!--Optional:-->
+            <tem:kullaniciAdi>sa</tem:kullaniciAdi>
+            <!--Optional:-->
+            <tem:sifre>ada11sql</tem:sifre>
+         </tem:girdi>
+      </tem:login>
+   </soapenv:Body>
+</soapenv:Envelope>
+
+
+
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <soap:Body>
+      <loginResponse xmlns="http://tempuri.org/">
+         <loginResult>
+            <sonucKodu>1001</sonucKodu>
+            <sonucAciklamasi>Başarılı</sonucAciklamasi>
+            <hataMesaji/>
+            <oturumKimligi>SbtPHAS06WsDkLN3J/tYwA==</oturumKimligi>
+            <seriNo>K</seriNo>
+            <kuladi>sa</kuladi>
+            <kulNo>101</kulNo>
+            <belediyeKodu>1100</belediyeKodu>
+            <pesinOdemeIndirimi>0</pesinOdemeIndirimi>
+            <makbuzNo>605</makbuzNo>
+            <tahsilatHakkiVarmi>0</tahsilatHakkiVarmi>
+            <kullaniciGunlukTahsilat>0.0000</kullaniciGunlukTahsilat>
+         </loginResult>
+      </loginResponse>
+   </soap:Body>
+</soap:Envelope>
+
+
+KDVHESAPLARI METHODU
+
+
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <tem:kdvHesaplari>
+         <!--Optional:-->
+         <tem:girdiParametre>
+            <!--Optional:-->
+            <tem:guvenlikKodu>?</tem:guvenlikKodu>
+            <!--Optional:-->
+            <tem:ipAdresi>1.1.1.1</tem:ipAdresi>
+            <!--Optional:-->
+            <tem:oturumKimligi>SbtPHAS06WsDkLN3J/tYwA==</tem:oturumKimligi>
+         </tem:girdiParametre>
+      </tem:kdvHesaplari>
+   </soapenv:Body>
+</soapenv:Envelope>
+
+
+
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <soap:Body>
+      <kdvHesaplariResponse xmlns="http://tempuri.org/">
+         <kdvHesaplariResult>
+            <sonucKodu>0</sonucKodu>
+            <kdvHesabiListesi>
+               <kdvHesaplari>
+                  <tturu>135</tturu>
+                  <geladi>391-KDV</geladi>
+               </kdvHesaplari>
+            </kdvHesabiListesi>
+         </kdvHesaplariResult>
+      </kdvHesaplariResponse>
+   </soap:Body>
+</soap:Envelope>
+
+KDV ORANLARI
+
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <tem:kdvOranlari>
+         <!--Optional:-->
+         <tem:girdiParametre>
+            <!--Optional:-->
+            <tem:guvenlikKodu>?</tem:guvenlikKodu>
+            <!--Optional:-->
+            <tem:ipAdresi>1.1.1.1</tem:ipAdresi>
+            <!--Optional:-->
+            <tem:oturumKimligi>SbtPHAS06WsDkLN3J/tYwA==</tem:oturumKimligi>
+         </tem:girdiParametre>
+      </tem:kdvOranlari>
+   </soapenv:Body>
+</soapenv:Envelope>
+
+
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <soap:Body>
+      <kdvOranlariResponse xmlns="http://tempuri.org/">
+         <kdvOranlariResult>
+            <sonucKodu>0</sonucKodu>
+            <kdvOraniListesi>
+               <kdvOranlari>
+                  <kdvoran>1</kdvoran>
+               </kdvOranlari>
+               <kdvOranlari>
+                  <kdvoran>8</kdvoran>
+               </kdvOranlari>
+               <kdvOranlari>
+                  <kdvoran>10</kdvoran>
+               </kdvOranlari>
+               <kdvOranlari>
+                  <kdvoran>15</kdvoran>
+               </kdvOranlari>
+               <kdvOranlari>
+                  <kdvoran>18</kdvoran>
+               </kdvOranlari>
+               <kdvOranlari>
+                  <kdvoran>20</kdvoran>
+               </kdvOranlari>
+            </kdvOraniListesi>
+         </kdvOranlariResult>
+      </kdvOranlariResponse>
+   </soap:Body>
+</soap:Envelope>
+
+makbuziptal methodu
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <tem:makbuzIptal>
+         <!--Optional:-->
+         <tem:girdiParametre>
+            <!--Optional:-->
+            <tem:guvenlikKodu>?</tem:guvenlikKodu>
+            <!--Optional:-->
+            <tem:ipAdresi>1.1.1.1</tem:ipAdresi>
+            <!--Optional:-->
+            <tem:oturumKimligi>SbtPHAS06WsDkLN3J/tYwA==</tem:oturumKimligi>
+            <!--Optional:-->
+            <tem:seriNo>AF</tem:seriNo>
+            <!--Optional:-->
+            <tem:aciklama>YANLIŞ İŞLWM</tem:aciklama>
+            <tem:makbuzNo>241277</tem:makbuzNo>
+            <tem:iptalTarihi>2026-09-07</tem:iptalTarihi>
+         </tem:girdiParametre>
+      </tem:makbuzIptal>
+   </soapenv:Body>
+</soapenv:Envelope>
+
+
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <soap:Body>
+      <makbuzIptalResponse xmlns="http://tempuri.org/">
+         <makbuzIptalResult>
+            <sonucKodu>1001</sonucKodu>
+            <sonucAciklamasi>Başarılı</sonucAciklamasi>
+            <hataMesaji/>
+         </makbuzIptalResult>
+      </makbuzIptalResponse>
+   </soap:Body>
+</soap:Envelope>
+
+
+
+SİCİL SORGULA METHODU
+
+
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <tem:sicilSorgula>
+         <!--Optional:-->
+         <tem:girdiParametre>
+            <!--Optional:-->
+            <tem:guvenlikKodu>?</tem:guvenlikKodu>
+            <!--Optional:-->
+            <tem:ipAdresi>1.1.1.1</tem:ipAdresi>
+            <!--Optional:-->
+            <tem:oturumKimligi>SbtPHAS06WsDkLN3J/tYwA==</tem:oturumKimligi>
+            <tem:gensicilno>100</tem:gensicilno>
+            <tem:koyID>0</tem:koyID>
+            <!--Optional:-->
+            <tem:mukellefNo>100</tem:mukellefNo>
+            <!--Optional:-->
+            <tem:ad>İSMAİL</tem:ad>
+            <!--Optional:-->
+            <tem:soyad>KOBAK</tem:soyad>
+         </tem:girdiParametre>
+      </tem:sicilSorgula>
+   </soapenv:Body>
+</soapenv:Envelope>
+
+
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <soap:Body>
+      <sicilSorgulaResponse xmlns="http://tempuri.org/">
+         <sicilSorgulaResult>
+            <sonucKodu>1001</sonucKodu>
+            <sonucAciklamasi>Başarılı</sonucAciklamasi>
+            <hataMesaji/>
+            <sicilListesi>
+               <sicilAlanlari>
+                  <gensicilno>100</gensicilno>
+                  <uyeNo>0</uyeNo>
+                  <adi>*********</adi>
+                  <soyadi>*******</soyadi>
+                  <unvan/>
+                  <babaAdi>HASAN</babaAdi>
+                  <dogumYeri>DÜLGEROĞLU</dogumYeri>
+                  <dogumTarihi>28/12/1939</dogumTarihi>
+                  <koyAdi/>
+                  <tcKimlikNo>17419732958</tcKimlikNo>
+               </sicilAlanlari>
+            </sicilListesi>
+         </sicilSorgulaResult>
+      </sicilSorgulaResponse>
+   </soap:Body>
+</soap:Envelope>
+
+
+TAHSİLAT DETAY SORGULA
+
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <tem:tahsilatDetaySorgula>
+         <!--Optional:-->
+         <tem:girdiParametre>
+            <!--Optional:-->
+            <tem:guvenlikKodu>?</tem:guvenlikKodu>
+            <!--Optional:-->
+            <tem:ipAdresi>1.1.1.1</tem:ipAdresi>
+            <!--Optional:-->
+            <tem:oturumKimligi>SbtPHAS06WsDkLN3J/tYwA==</tem:oturumKimligi>
+            <!--Optional:-->
+            <tem:tahsilatNo>31655</tem:tahsilatNo>
+         </tem:girdiParametre>
+      </tem:tahsilatDetaySorgula>
+   </soapenv:Body>
+</soapenv:Envelope>
+
+
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <soap:Body>
+      <tahsilatDetaySorgulaResponse xmlns="http://tempuri.org/">
+         <tahsilatDetaySorgulaResult>
+            <sonucKodu>1001</sonucKodu>
+            <sonucAciklamasi>Başarılı</sonucAciklamasi>
+            <hataMesaji/>
+            <tahsilatDetayListesi>
+               <TahsilatDetay>
+                  <gecikmeZammi>0</gecikmeZammi>
+                  <tahakkukTutar>0</tahakkukTutar>
+                  <tahsilatTutar>9.06</tahsilatTutar>
+                  <ada>464</ada>
+                  <parsel>59</parsel>
+                  <aciklama>Taşıma</aciklama>
+                  <tahakkukAdi>BiNA VERGiSi</tahakkukAdi>
+                  <yilDonem>2004/1</yilDonem>
+                  <tahsilatTarihi>0001-01-01T00:00:00</tahsilatTarihi>
+               </TahsilatDetay>
+               <TahsilatDetay>
+                  <gecikmeZammi>0</gecikmeZammi>
+                  <tahakkukTutar>0</tahakkukTutar>
+                  <tahsilatTutar>9.06</tahsilatTutar>
+                  <ada>464</ada>
+                  <parsel>59</parsel>
+                  <aciklama>Taşıma</aciklama>
+                  <tahakkukAdi>BiNA VERGiSi</tahakkukAdi>
+                  <yilDonem>2004/2</yilDonem>
+                  <tahsilatTarihi>0001-01-01T00:00:00</tahsilatTarihi>
+               </TahsilatDetay>
+            </tahsilatDetayListesi>
+         </tahsilatDetaySorgulaResult>
+      </tahsilatDetaySorgulaResponse>
+   </soap:Body>
+</soap:Envelope>
+
+
+
+
+ödeme  yap methodu
+
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<soap:Envelope
+    xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+    xmlns:tem="http://tempuri.org/">
+
+    <soap:Header/>
+
+    <soap:Body>
+
+        <tem:odemeYap>
+
+            <tem:girdiParametre>
+
+                <tem:oturumKimligi>SbtPHAS06WsDkLN3J/tYwA==</tem:oturumKimligi>
+
+                <tem:gensicilno>100</tem:gensicilno>
+
+                <tem:odemeSekli>1</tem:odemeSekli>
+
+                <tem:adi>******</tem:adi>
+
+                <tem:soyadi>******</tem:soyadi>
+
+                <tem:tahakkukluTahsilat />
+
+                <tem:tahakkuksuzTahsilat>
+
+                    <tem:odemeTahakkuksuzTahsilat>
+
+                        <tem:tturu>14</tem:tturu>
+
+                        <tem:gelirKodu>01.06.09.53</tem:gelirKodu>
+
+                        <tem:gelirAdi>İŞGAL HARCI</tem:gelirAdi>
+
+                        <tem:aciklama />
+
+                        <tem:odemeTutari>200</tem:odemeTutari>
+
+                        <tem:kdvTutar>0</tem:kdvTutar>
+
+                        <tem:kdvOran>0</tem:kdvOran>
+
+                    </tem:odemeTahakkuksuzTahsilat>
+
+                </tem:tahakkuksuzTahsilat>
+
+            </tem:girdiParametre>
+
+        </tem:odemeYap>
+
+    </soap:Body>
+
+</soap:Envelope>
+
+
+
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+   <soap:Body>
+      <odemeYapResponse xmlns="http://tempuri.org/">
+         <odemeYapResult>
+            <sonucKodu>1001</sonucKodu>
+            <sonucAciklamasi>Başarılı</sonucAciklamasi>
+            <hataMesaji/>
+            <makbuzID>4166601</makbuzID>
+            <makbuzNo>606</makbuzNo>
+            <kullaniciGunlukTahsilat>200.0000</kullaniciGunlukTahsilat>
+            <seriNo>K</seriNo>
+         </odemeYapResult>
+      </odemeYapResponse>
+   </soap:Body>
+</soap:Envelope>
+
+
+

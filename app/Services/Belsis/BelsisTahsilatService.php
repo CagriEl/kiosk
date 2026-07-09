@@ -12,47 +12,6 @@ class BelsisTahsilatService
     ) {}
 
     /**
-     * @param  array<int, array{id: string, amount: float}>  $debts
-     * @return array{transactionId: string, receiptNo: string, total: float, status: string}
-     */
-    public function collectPayment(string $gensicilno, array $debts): array
-    {
-        $receipts = [];
-        $paidTotal = 0.0;
-
-        foreach ($debts as $debt) {
-            $tahId = (string) $debt['id'];
-            $amount = (float) $debt['amount'];
-
-            $result = $this->client->callTahsilat('tahsilatEkle', array_merge(
-                $this->auth->baseParams(),
-                [
-                    'gensicilno'  => $gensicilno,
-                    'tahID'       => $tahId,
-                    'odemeTutari' => $amount,
-                    'odemeTuru'   => 'BANKA',
-                    'aciklama'    => 'Kiosk Banka Kartı Ödemesi',
-                    'kulno'       => 0,
-                ],
-            ));
-
-            $receipts[] = (string) ($result['makbuzNo'] ?? $result['tahsilatId'] ?? $tahId);
-            $paidTotal += (float) ($result['odemeTutari'] ?? $amount);
-        }
-
-        $transactionId = 'TXN-'.now()->timestamp;
-
-        return [
-            'transactionId' => $transactionId,
-            'receiptNo'     => implode(',', $receipts),
-            'total'         => $paidTotal,
-            'status'        => 'completed',
-        ];
-    }
-
-    /**
-     * Banka kartı ödemesi başlatma — POS cihazına yönlendirme için referans üretir.
-     *
      * @param  array<int, string>  $tahIds
      * @return array{transactionId: string, total: float, status: string, paymentMethod: string}
      */
@@ -67,18 +26,81 @@ class BelsisTahsilatService
     }
 
     /**
-     * @param  array<int, array{id: string, amount: float}>  $debts
+     * @param  array<int, array{id: string, amount: float, meta?: array<string, mixed>}>  $debts
+     * @param  array{adi?: string, soyadi?: string, fullName?: string}  $citizen
      * @return array{transactionId: string, receiptNo: string, total: float, status: string}
      */
-    public function confirmBankPayment(string $gensicilno, array $debts, string $transactionId): array
-    {
+    public function confirmBankPayment(
+        string $gensicilno,
+        array $debts,
+        string $transactionId,
+        array $citizen = [],
+    ): array {
         try {
-            $result = $this->collectPayment($gensicilno, $debts);
-            $result['transactionId'] = $transactionId;
+            $result = $this->odemeYap($gensicilno, $debts, $citizen);
 
-            return $result;
+            return [
+                'transactionId' => $transactionId,
+                'receiptNo'     => (string) ($result['seriNo'] ?? '').'-'.($result['makbuzNo'] ?? ''),
+                'total'         => (float) collect($debts)->sum('amount'),
+                'status'        => 'completed',
+                'makbuzID'      => $result['makbuzID'] ?? null,
+            ];
         } catch (BelsisException $e) {
             throw new BelsisException('Ödeme kaydedilemedi: '.$e->getMessage(), $e->sonucKodu, $e->getCode(), $e);
         }
+    }
+
+    /**
+     * @param  array<int, array{id: string, amount: float, meta?: array<string, mixed>}>  $debts
+     * @param  array{adi?: string, soyadi?: string, fullName?: string}  $citizen
+     * @return array<string, mixed>
+     */
+    private function odemeYap(string $gensicilno, array $debts, array $citizen): array
+    {
+        $items = [];
+        foreach ($debts as $debt) {
+            $meta = $debt['meta'] ?? [];
+            $items[] = [
+                'tahakkukNo'     => (int) ($meta['tahakkukNo'] ?? $debt['id']),
+                'tahakkukTutari' => (float) ($meta['tahakkukTutari'] ?? $debt['amount']),
+                'gecikmeTutari'  => (float) ($meta['gecikmeTutari'] ?? 0),
+                'odemeTutari'    => (float) ($meta['odemeTutari'] ?? $debt['amount']),
+            ];
+        }
+
+        [$adi, $soyadi] = $this->resolvePaymentName($citizen);
+
+        return $this->client->callTahsilat('odemeYap', array_merge(
+            $this->auth->baseParams(),
+            [
+                'gensicilno' => (int) $gensicilno,
+                'odemeSekli' => (int) config('belsis.odeme_sekli', 5),
+                'adi'        => $adi,
+                'soyadi'     => $soyadi,
+                'tahakkukluTahsilat' => [
+                    '__list'  => 'odemeTahakkukluTahsilat',
+                    '__items' => $items,
+                ],
+            ],
+        ));
+    }
+
+    /**
+     * @param  array{adi?: string, soyadi?: string, fullName?: string}  $citizen
+     * @return array{0: string, 1: string}
+     */
+    private function resolvePaymentName(array $citizen): array
+    {
+        $adi = trim((string) ($citizen['adi'] ?? ''));
+        $soyadi = trim((string) ($citizen['soyadi'] ?? ''));
+
+        if ($adi !== '') {
+            return [$adi, $soyadi];
+        }
+
+        $parts = preg_split('/\s+/', trim((string) ($citizen['fullName'] ?? '')), 2) ?: [];
+
+        return [$parts[0] ?? 'VATANDAS', $parts[1] ?? ''];
     }
 }

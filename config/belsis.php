@@ -18,5 +18,8 @@ return [
     // Mock yalnızca bu sicil numaraları için kullanılır (gerçek TC her zaman Belsis'e gider)
     'mock_sicils' => array_filter(array_map('trim', explode(',', env('BELSIS_MOCK_SICILS', '89874')))),
 
+    // 5 = Kredi Kartı (odemeSekilleri), 2 = Banka
+    'odeme_sekli' => (int) env('BELSIS_ODEME_SEKLI', 5),
+
     'namespace' => 'http://tempuri.org/',
 ];

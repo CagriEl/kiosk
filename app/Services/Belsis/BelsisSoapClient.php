@@ -10,36 +10,39 @@ class BelsisSoapClient
 {
     private string $namespace;
 
+    /** @var array<int, string> */
+    private array $successCodes = ['0', '1001'];
+
     public function __construct()
     {
         $this->namespace = config('belsis.namespace');
     }
 
     /**
-     * @param  array<string, mixed>  $girdiParametre
+     * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      */
-    public function callTahakkuk(string $method, array $girdiParametre = [], bool $wrapGirdiParametre = true): array
+    public function callTahakkuk(string $method, array $params = [], string $wrapper = 'girdiParametre'): array
     {
-        return $this->call(config('belsis.tahakkuk_url'), $method, $girdiParametre, $wrapGirdiParametre);
+        return $this->call(config('belsis.tahakkuk_url'), $method, $params, $wrapper);
     }
 
     /**
-     * @param  array<string, mixed>  $girdiParametre
+     * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      */
-    public function callTahsilat(string $method, array $girdiParametre = []): array
+    public function callTahsilat(string $method, array $params = [], string $wrapper = 'girdiParametre'): array
     {
-        return $this->call(config('belsis.tahsilat_url'), $method, $girdiParametre);
+        return $this->call(config('belsis.tahsilat_url'), $method, $params, $wrapper);
     }
 
     /**
-     * @param  array<string, mixed>  $girdiParametre
+     * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      */
-    public function call(string $endpoint, string $method, array $girdiParametre = [], bool $wrapGirdiParametre = true): array
+    public function call(string $endpoint, string $method, array $params = [], string $wrapper = 'girdiParametre'): array
     {
-        $body = $this->buildEnvelope($method, $girdiParametre, $wrapGirdiParametre);
+        $body = $this->buildEnvelope($method, $params, $wrapper);
         $soapAction = $this->namespace.$method;
 
         Log::debug('Belsis SOAP request', ['method' => $method, 'endpoint' => $endpoint]);
@@ -58,9 +61,7 @@ class BelsisSoapClient
         $response = $request->post($endpoint);
 
         if (! $response->successful()) {
-            throw new BelsisException(
-                'Belsis servisine bağlanılamadı. HTTP '.$response->status(),
-            );
+            throw new BelsisException('Belsis servisine bağlanılamadı. HTTP '.$response->status());
         }
 
         $raw = $response->body();
@@ -73,23 +74,21 @@ class BelsisSoapClient
     }
 
     /**
-     * @param  array<string, mixed>  $girdiParametre
+     * @param  array<string, mixed>  $params
      */
-    private function buildEnvelope(string $method, array $girdiParametre, bool $wrapGirdiParametre = true): string
+    private function buildEnvelope(string $method, array $params, string $wrapper): string
     {
-        $paramsXml = $this->buildParamsXml($girdiParametre);
+        $paramsXml = $this->buildParamsXml($params);
 
-        $methodBody = $wrapGirdiParametre
-            ? '<tem:'.$method.'><tem:girdiParametre>'.$paramsXml.'</tem:girdiParametre></tem:'.$method.'>'
-            : '<tem:'.$method.'>'.$paramsXml.'</tem:'.$method.'>';
+        $inner = $wrapper === ''
+            ? $paramsXml
+            : '<tem:'.$wrapper.'>'.$paramsXml.'</tem:'.$wrapper.'>';
 
         return '<?xml version="1.0" encoding="utf-8"?>'
             .'<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="'.$this->namespace.'">'
-            .'<soapenv:Header/>'
-            .'<soapenv:Body>'
-            .$methodBody
-            .'</soapenv:Body>'
-            .'</soapenv:Envelope>';
+            .'<soapenv:Header/><soapenv:Body>'
+            .'<tem:'.$method.'>'.$inner.'</tem:'.$method.'>'
+            .'</soapenv:Body></soapenv:Envelope>';
     }
 
     /**
@@ -101,6 +100,17 @@ class BelsisSoapClient
 
         foreach ($params as $key => $value) {
             if ($value === null) {
+                continue;
+            }
+
+            if (is_array($value) && isset($value['__list'])) {
+                $itemTag = (string) $value['__list'];
+                foreach ($value['__items'] as $item) {
+                    if (! is_array($item)) {
+                        continue;
+                    }
+                    $xml .= '<tem:'.$key.'><tem:'.$itemTag.'>'.$this->buildParamsXml($item).'</tem:'.$itemTag.'></tem:'.$key.'>';
+                }
                 continue;
             }
 
@@ -138,11 +148,22 @@ class BelsisSoapClient
 
         $result = $this->domNodeToArray($nodes->item(0));
 
-        if (isset($result['sonucKodu']) && (string) $result['sonucKodu'] !== '1001') {
-            throw new BelsisException(
-                $result['sonucAciklama'] ?? $result['mesaj'] ?? 'Belsis işlemi başarısız.',
-                (string) $result['sonucKodu'],
-            );
+        if (! is_array($result)) {
+            return [];
+        }
+
+        if (isset($result['sonucKodu']) && ! in_array((string) $result['sonucKodu'], $this->successCodes, true)) {
+            $message = $result['sonucAciklamasi']
+                ?? $result['sonucAciklama']
+                ?? $result['hataMesaji']
+                ?? $result['mesaj']
+                ?? 'Belsis işlemi başarısız.';
+
+            if (! empty($result['hataMesaji']) && $result['hataMesaji'] !== $message) {
+                $message .= ' — '.$result['hataMesaji'];
+            }
+
+            throw new BelsisException((string) $message, (string) $result['sonucKodu']);
         }
 
         return $result;

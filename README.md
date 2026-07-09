@@ -105,9 +105,34 @@ php artisan belsis:test 89874
 ```
 
 Bu komut sırasıyla:
-1. `oturumAc` ile SOAP oturumu açar
-2. `gensicilBilgileriniGetir` ile vatandaş bilgisini dener
-3. `tahakkukBilgileriniGetir` ile borç listesini çeker
+1. `login` ile tahsilat servisinde oturum açar
+2. `arama` / `sicilSorgula` ile vatandaş bilgisini çözer
+3. `borcSorgula` ile ödenmemiş borç listesini çeker
+4. Ödeme: `odemeYap` (banka/kredi kartı, `BELSIS_ODEME_SEKLI=5`)
+
+## Canlı Sunucu (Kırklareli)
+
+```
+https://kiosk.kirklareli.bel.tr/public/
+```
+
+`.env` ayarları:
+
+```env
+APP_URL=https://kiosk.kirklareli.bel.tr/public
+APP_DEBUG=false
+BELSIS_MOCK=false
+BELSIS_IP_ADDRESS=<sunucunun yerel IP adresi>
+BELSIS_ODEME_SEKLI=5
+```
+
+Sunucuda:
+
+```bash
+php artisan config:clear
+php artisan view:clear
+php artisan belsis:test 89874
+```
 
 ## Hızlı Başlat
 
@@ -129,20 +154,20 @@ Tarayıcı: **http://127.0.0.1:8000** (meşgulse 8001)
 
 | Method | Endpoint | Belsis Metodu |
 |--------|----------|---------------|
-| GET | `/api/kiosk/citizen/{identityNo}` | `gensicilBilgileriniGetir` |
-| GET | `/api/kiosk/debts/{identityNo}` | `tahakkukBilgileriniGetir` |
-| POST | `/api/kiosk/payment/bank` | Banka ödeme başlatma |
-| POST | `/api/kiosk/payment/{id}/confirm` | `tahsilatEkle` |
+| GET | `/api/kiosk/citizen/{identityNo}` | `borcSorgula` + `sicilSorgula` |
+| GET | `/api/kiosk/debts/{identityNo}` | `borcSorgula` |
+| POST | `/api/kiosk/payment/bank` | Ödeme başlatma |
+| POST | `/api/kiosk/payment/{id}/confirm` | `odemeYap` |
 
 ## Belsis Entegrasyon Mimarisi
 
 ```
 app/Services/Belsis/
   BelsisSoapClient.php      → SOAP envelope + HTTP + XML parse
-  BelsisAuthService.php     → oturumAc, oturum cache
-  BelsisTahakkukService.php → tahakkuk sorguları
-  BelsisTahsilatService.php → tahsilatEkle, banka kartı ödeme
-  BelsisKioskService.php    → Kiosk API orchestrator
+  BelsisAuthService.php           → login (tahsilatWebServis)
+  BelsisTahsilatQueryService.php  → arama, borcSorgula, sicilSorgula
+  BelsisTahsilatService.php       → odemeYap (banka/kredi kartı)
+  BelsisKioskService.php          → Kiosk API orchestrator
 config/belsis.php           → URL, kimlik bilgileri
 ```
 

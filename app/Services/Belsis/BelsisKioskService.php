@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 class BelsisKioskService
 {
     public function __construct(
-        private readonly BelsisTahakkukService $tahakkuk,
+        private readonly BelsisTahsilatQueryService $query,
         private readonly BelsisTahsilatService $tahsilat,
         private readonly BelsisAuthService $auth,
     ) {}
@@ -23,12 +23,12 @@ class BelsisKioskService
         }
 
         try {
-            return $this->tahakkuk->getCitizen($identityNo);
+            return $this->query->getCitizen($identityNo);
         } catch (BelsisException $e) {
             if ($this->shouldRetryWithFreshSession($e)) {
                 $this->auth->forgetSession();
 
-                return $this->tahakkuk->getCitizen($identityNo);
+                return $this->query->getCitizen($identityNo);
             }
             throw $e;
         }
@@ -44,14 +44,12 @@ class BelsisKioskService
         }
 
         try {
-            $debts = $this->tahakkuk->getDebts($identityNo);
-
-            return ['debts' => $debts];
+            return ['debts' => $this->query->getDebts($identityNo)];
         } catch (BelsisException $e) {
             if ($this->shouldRetryWithFreshSession($e)) {
                 $this->auth->forgetSession();
 
-                return ['debts' => $this->tahakkuk->getDebts($identityNo)];
+                return ['debts' => $this->query->getDebts($identityNo)];
             }
 
             Log::error('Belsis borç sorgusu hatası', ['message' => $e->getMessage(), 'code' => $e->sonucKodu]);
@@ -73,9 +71,11 @@ class BelsisKioskService
             throw new BelsisException('Seçilen borç bulunamadı.');
         }
 
-        $total = $selected->sum('amount');
-
-        return $this->tahsilat->initiateBankPayment($citizen['sicilNo'], $debtIds, $total);
+        return $this->tahsilat->initiateBankPayment(
+            $citizen['sicilNo'],
+            $debtIds,
+            (float) $selected->sum('amount'),
+        );
     }
 
     /**
@@ -95,16 +95,14 @@ class BelsisKioskService
             ];
         }
 
-        $selectedDebts = collect($debts)->whereIn('id', $debtIds)->map(fn ($d) => [
-            'id'     => (string) $d['id'],
-            'amount' => (float) $d['amount'],
-        ])->values()->all();
+        $selectedDebts = collect($debts)->whereIn('id', $debtIds)->values()->all();
 
         try {
             return $this->tahsilat->confirmBankPayment(
                 $citizen['sicilNo'],
                 $selectedDebts,
                 $transactionId,
+                $citizen,
             );
         } catch (BelsisException $e) {
             if ($this->shouldRetryWithFreshSession($e)) {
@@ -114,6 +112,7 @@ class BelsisKioskService
                     $citizen['sicilNo'],
                     $selectedDebts,
                     $transactionId,
+                    $citizen,
                 );
             }
             throw $e;
@@ -126,10 +125,7 @@ class BelsisKioskService
             return false;
         }
 
-        $identityNo = trim($identityNo);
-        $mockSicils = config('belsis.mock_sicils', []);
-
-        return in_array($identityNo, $mockSicils, true);
+        return in_array(trim($identityNo), config('belsis.mock_sicils', []), true);
     }
 
     private function shouldRetryWithFreshSession(BelsisException $e): bool
@@ -150,6 +146,8 @@ class BelsisKioskService
             'identityNo' => $identityNo,
             'fullName'   => 'Ahmet YILMAZ (Demo)',
             'sicilNo'    => $identityNo,
+            'adi'        => 'Ahmet',
+            'soyadi'     => 'YILMAZ (Demo)',
         ];
     }
 
@@ -159,9 +157,16 @@ class BelsisKioskService
     private function mockDebts(): array
     {
         return [
-            ['id' => '33430362', 'type' => 'GAYRİSIHHİ İŞYERLERİ İÇİN TETKİK VE KONTROL ÜCRETİ', 'period' => '2024 Yılı / Taksit 1', 'amount' => 2250.00, 'dueDate' => '2024-05-27'],
-            ['id' => '38024491', 'type' => 'Emlak Vergisi', 'period' => '2024 / 1. Taksit', 'amount' => 2450.00, 'dueDate' => '2024-03-31'],
-            ['id' => '38024492', 'type' => 'Çevre Temizlik Vergisi', 'period' => '2024 Yılı', 'amount' => 380.50, 'dueDate' => '2024-12-31'],
+            [
+                'id' => '33430362', 'type' => 'GAYRİSIHHİ İŞYERLERİ İÇİN TETKİK VE KONTROL ÜCRETİ',
+                'period' => '2024 Yılı / Taksit 1', 'amount' => 2250.00, 'dueDate' => '2024-05-27',
+                'meta' => ['tahakkukNo' => '33430362', 'tahakkukTutari' => 2250, 'gecikmeTutari' => 0, 'odemeTutari' => 2250],
+            ],
+            [
+                'id' => '38024491', 'type' => 'Emlak Vergisi',
+                'period' => '2024 / 1. Taksit', 'amount' => 2450.00, 'dueDate' => '2024-03-31',
+                'meta' => ['tahakkukNo' => '38024491', 'tahakkukTutari' => 2450, 'gecikmeTutari' => 0, 'odemeTutari' => 2450],
+            ],
         ];
     }
 }

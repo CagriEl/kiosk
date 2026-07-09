@@ -9,24 +9,22 @@ use Illuminate\Console\Command;
 
 class BelsisTestCommand extends Command
 {
-    protected $signature = 'belsis:test {sicil=89874 : Sorgulanacak gensicilno}';
+    protected $signature = 'belsis:test {sicil=89874 : Sorgulanacak sicil veya TC}';
 
-    protected $description = 'Belsis SOAP bağlantısını ve borç sorgusunu test eder';
+    protected $description = 'Belsis SOAP bağlantısını test eder (login → borcSorgula)';
 
     public function handle(BelsisAuthService $auth, BelsisKioskService $kiosk): int
     {
         $sicil = $this->argument('sicil');
 
         try {
-            $mockSicils = config('belsis.mock_sicils', []);
-            if (config('belsis.mock') && in_array($sicil, $mockSicils, true)) {
+            if ($this->shouldUseMock($sicil)) {
                 $this->warn('Demo sicil ('.$sicil.') — mock verisi kullanılıyor.');
-            } elseif (config('belsis.mock')) {
-                $this->info('BELSIS_MOCK=true ancak '.$sicil.' demo listesinde değil — canlı Belsis sorgulanıyor.');
             } else {
-                $this->info('Belsis oturum açılıyor...');
+                $this->info('Belsis login (tahsilatWebServis)...');
                 $session = $auth->openSession();
-                $this->line('Oturum: '.substr($session['oturumKimligi'], 0, 12).'...');
+                $this->line('Oturum: '.substr($session['oturumKimligi'], 0, 16).'...');
+                $this->line('Seri No: '.($session['seriNo'] ?? '-'));
             }
 
             $citizen = $kiosk->getCitizen($sicil);
@@ -35,11 +33,11 @@ class BelsisTestCommand extends Command
             $debts = $kiosk->getDebts($sicil)['debts'];
             $this->info('Borç sayısı: '.count($debts));
 
-            foreach (array_slice($debts, 0, 5) as $debt) {
+            foreach (array_slice($debts, 0, 8) as $debt) {
                 $this->line(sprintf(
                     ' - [%s] %s: %s ₺',
                     $debt['id'],
-                    $debt['type'],
+                    mb_substr($debt['type'], 0, 50),
                     number_format($debt['amount'], 2, ',', '.'),
                 ));
             }
@@ -53,5 +51,14 @@ class BelsisTestCommand extends Command
 
             return self::FAILURE;
         }
+    }
+
+    private function shouldUseMock(string $identityNo): bool
+    {
+        if (! config('belsis.mock')) {
+            return false;
+        }
+
+        return in_array(trim($identityNo), config('belsis.mock_sicils', []), true);
     }
 }

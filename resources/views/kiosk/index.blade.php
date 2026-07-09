@@ -353,7 +353,7 @@
     (function () {
         'use strict';
 
-        const API_BASE = '{{ url('/api/kiosk') }}';
+        const API_BASE = @json(rtrim(config('app.url'), '/').'/api/kiosk');
         const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
 
         async function apiRequest(url, options = {}) {
