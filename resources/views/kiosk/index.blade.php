@@ -353,17 +353,30 @@
     (function () {
         'use strict';
 
-        const API_BASE = @json(rtrim(config('app.url'), '/').'/api/kiosk');
+        function resolveApiBase() {
+            const path = window.location.pathname.replace(/\/kiosk\/?$/, '').replace(/\/?$/, '');
+            return window.location.origin + path + '/api/kiosk';
+        }
+
+        const API_BASE = resolveApiBase();
         const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
 
         async function apiRequest(url, options = {}) {
-            const res = await fetch(url, {
-                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...options.headers },
-                ...options,
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.message || 'Bir hata oluştu. Lütfen tekrar deneyiniz.');
-            return data;
+            try {
+                const res = await fetch(url, {
+                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...options.headers },
+                    credentials: 'same-origin',
+                    ...options,
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.message || `Sunucu hatası (${res.status})`);
+                return data;
+            } catch (err) {
+                if (err instanceof TypeError) {
+                    throw new Error('API bağlantısı kurulamadı. Adres: ' + url);
+                }
+                throw err;
+            }
         }
 
         async function fetchCitizen(identityNo) {
