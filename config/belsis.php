@@ -4,10 +4,11 @@ return [
     'username' => env('BELSIS_USERNAME', 'sa'),
     'password' => env('BELSIS_PASSWORD', ''),
 
-    'tahakkuk_url' => env('BELSIS_TAHAKKUK_URL', 'http://aykome.belsis.uygulama.belsis.com.tr/tahakkukWebServis.asmx'),
-    'tahsilat_url' => env('BELSIS_TAHSILAT_URL', 'http://aykome.belsis.uygulama.belsis.com.tr/tahsilatWebServis.asmx'),
+    'tahakkuk_url' => env('BELSIS_TAHAKKUK_URL', 'https://aykome.belsis.uygulama.belsis.com.tr/tahakkukWebServis.asmx'),
+    'tahsilat_url' => env('BELSIS_TAHSILAT_URL', 'https://aykome.belsis.uygulama.belsis.com.tr/tahsilatWebServis.asmx'),
 
-    'ip_address' => env('BELSIS_IP_ADDRESS', '127.0.0.1'),
+    // Sunucu IP'si veya "auto" (otomatik tespit)
+    'ip_address' => env('BELSIS_IP_ADDRESS', 'auto'),
     'timeout'    => (int) env('BELSIS_TIMEOUT', 30),
     'verify_ssl' => filter_var(env('BELSIS_VERIFY_SSL', false), FILTER_VALIDATE_BOOLEAN),
 
@@ -22,4 +23,11 @@ return [
     'odeme_sekli' => (int) env('BELSIS_ODEME_SEKLI', 5),
 
     'namespace' => 'http://tempuri.org/',
+
+    // Kartlı su (Baylan / Metlab) — test modu
+    'water_mock' => filter_var(env('BELSIS_WATER_MOCK', true), FILTER_VALIDATE_BOOLEAN),
+    'water_mock_aboneler' => [
+        'baylan' => array_filter(array_map('trim', explode(',', env('BELSIS_WATER_MOCK_BAYLAN', '12345,27126')))),
+        'metlab' => array_filter(array_map('trim', explode(',', env('BELSIS_WATER_MOCK_METLAB', '67890,54321')))),
+    ],
 ];

@@ -1,0 +1,171 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="kiosk.master.cs" Inherits="kiosk.kioskmaster" %>
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title>Belsis Kiosk Uygulaması</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet" />
+    <link href="css/reset.css" rel="stylesheet" />
+
+    <link href="css/bootstrap.min.css" rel="stylesheet" />    
+    <link href="css/font-awesome.css" rel="stylesheet" />
+    <link href="css/uniform.default.css" rel="stylesheet" />
+    <link href="css/bootstrap-switch.min.css" rel="stylesheet" />
+    <link href="css/select2.min.css" rel="stylesheet" />
+    <link href="css/select2-bootstrap.min.css" rel="stylesheet" />
+    <link href="css/components.min.css" rel="stylesheet" />
+    <link href="css/plugins.min.css" rel="stylesheet" />
+    <link href="css/sweetalert.css" rel="stylesheet" />
+    <link href="css/kiosk.css" rel="stylesheet" />
+ 
+
+    <script src="js/jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/jquery.slimscroll.min.js"></script>
+    <script src="js/jquery.blockui.min.js"></script>
+    <script src="js/jquery.uniform.min.js"></script>
+    <script src="js/bootstrap-switch.min.js"></script>
+    <script src="js/select2.full.min.js"></script>
+    <script src="js/jquery.validate.min.js"></script>
+    <script src="js/additional-methods.min.js"></script>
+    <script src="js/jquery.bootstrap.wizard.min.js"></script>
+    <script src="js/app.min.js"></script>
+    <script src="js/form-wizard.min.js"></script>
+    <%--<script src="js/sweetalert-dev.js"></script>--%>
+    <script src="js/jquery.inputmask.bundle.min.js"></script>
+    <script src="js/form-input-mask.min.js"></script>
+    <script src="js/kiosk.js"></script>
+
+
+
+    <asp:ContentPlaceHolder ID="head" runat="server"></asp:ContentPlaceHolder>
+</head>
+<body class="body">
+
+    <div class="header">
+        <i class="fa fa-clock-o" aria-hidden="true"></i>&nbsp;
+        <span id="tarihMaster" runat="server"></span>
+
+        <span style="float: right; position: absolute; right: 30px;" id="belediyeAdiMaster" runat="server"></span>
+        <i class="fa fa-home" aria-hidden="true" style="float: right; margin-top: 2px;"></i>
+    </div>
+
+    <div id="backButton" runat="server" style="display: none;">
+        <img src="images/back.png" class="backButton" onclick="backDoWork();" />
+    </div>
+
+    <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server"></asp:ContentPlaceHolder>
+
+    <div class="footer">
+        <div style="text-align: center;">
+            <img src="images/belsis_logo.png" style="width: 40px;" />
+        </div>
+    </div>
+
+
+
+</body>
+
+</html>
+
+<script type="text/javascript">
+
+
+    if ("onhelp" in window)
+        window.onhelp = function () {
+            return false;
+        }
+
+    //ctrl tuşunu kullanamasın
+    //alt için evt.altKey
+    document.ondblclick = function () { return false; }
+    document.onkeydown = function (e) {
+
+        var evtobj = window.event ? event : e
+
+        if (!evtobj) evtobj = window.event;
+        if (!evtobj) return;
+
+        var keyCode = evtobj.keyCode ? evtobj.keyCode : evtobj.charCode;
+
+        if ((keyCode >= 112 && keyCode <= 123) || keyCode == 91 || keyCode == 93 || keyCode == 17 || keyCode == 18
+            ) {
+            // Standart DOM (Mozilla):
+            if (evtobj.preventDefault)
+                evtobj.preventDefault();
+            //IE 
+            if (document.all && window.evtobj && !evtobj.preventDefault) {
+
+                evtobj.cancelBubble = true;
+
+                evtobj.returnValue = false;
+
+                evtobj.keyCode = 0;
+            }
+            //alert('F5 Tuşu Kullanamazsınız');
+            return false;
+        }
+
+        
+        if (evtobj.keyCode && evtobj.ctrlKey) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }
+        
+    /* Kullanıcı ekranda herhangibir işlem yapmazsa anasayfaya yönlendirmesi ile ilgili fonksiyonlar.
+       Anasasayfada da  olmasının sebebi sunucuya erişimi kontrol etmesidir.
+       Bekleme süresi totalMin değişkeni ile dakika cinsinden atanır. Varsayılan değer 10 olarak atanmıştır. */
+    
+    var totalMin = 10;
+    var sayacDurumu = 1;
+    var totalSeconds = totalMin * 9, totalMillis = 1000 * 9 * totalMin;
+
+    function setDate() {
+        window.setInterval(function () {
+           
+            if (sayacDurumu == 1) {
+                console.log(totalSeconds);
+                totalSeconds -= 1;
+            }
+            if (totalSeconds == 0) {
+                sayacDurumu = 0;
+                totalSeconds = totalMin * 9;
+                totalMillis = 1000 * 9 * totalMin;
+                $.ajax({
+                    type: "POST",
+                    url: "kontrol.aspx/belsisWebServis",
+                    contentType: "application/json",
+                    dataType: "json",
+                    success: function (cevap) {
+
+                        if (cevap.d == "1") {
+                            yukleniyor.goster();
+                            window.location.href = "default.aspx";
+                        }
+                        else {
+                            baglaniyor.goster();
+                            //setDate();
+                        }
+                        sayacDurumu = 1;
+                    },
+                    error: function (cevap) {
+                        alert("İşlem Yapılamadı.");
+                        sayacDurumu = 1;
+                    }
+                });               
+            }
+        }, 1000);
+    }
+
+    $(document).ready(function () {
+        setDate();
+        $(window).click(function () {
+            totalSeconds = totalMin * 9;
+            totalMillis = 1000 * 9 * totalMin;
+        });
+    });
+   
+</script>

@@ -14,4 +14,15 @@ Route::prefix('api/kiosk')->group(function () {
     Route::get('/debts/{identityNo}', [KioskApiController::class, 'debts']);
     Route::post('/payment/bank', [KioskApiController::class, 'initiatePayment']);
     Route::post('/payment/{transactionId}/confirm', [KioskApiController::class, 'paymentStatus']);
+
+    Route::post('/water/card-read', [KioskApiController::class, 'waterCardRead']);
+    Route::get('/water/kontor-options', [KioskApiController::class, 'waterKontorOptions']);
+    Route::get('/water/{vendor}/subscriber/{aboneNo}', [KioskApiController::class, 'waterSubscriber']);
+    Route::get('/water/{vendor}/invoices/{aboneNo}', [KioskApiController::class, 'waterInvoices']);
+    Route::post('/water/calculate-kontor', [KioskApiController::class, 'waterCalculateKontor']);
+    Route::post('/water/pay-invoices', [KioskApiController::class, 'waterPayInvoices']);
+    Route::post('/water/pay-invoices/{transactionId}/confirm', [KioskApiController::class, 'waterConfirmInvoicePayment']);
+    Route::post('/water/advance-load', [KioskApiController::class, 'waterAdvanceLoad']);
+    Route::post('/water/kontor/pay', [KioskApiController::class, 'waterInitiateKontor']);
+    Route::post('/water/kontor/{transactionId}/confirm', [KioskApiController::class, 'waterConfirmKontor']);
 });

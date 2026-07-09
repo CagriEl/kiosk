@@ -1,0 +1,187 @@
+﻿.body {
+    font-family: "Arial" !important;
+    font-size: 12px !important;
+    background: url("bg.jpg") no-repeat center center fixed !important;
+    background-size: cover !important;
+    padding-bottom: 60px !important;
+}
+
+.header {
+    padding: 12px !important;
+    background-color: #2b3643 !important;
+    color: #b4bcc8 !important;
+    border-bottom-style: solid !important;
+    border-bottom-color: #DAA520 !important;
+    border-bottom-width: 3px !important;
+    margin-bottom: 30px !important;
+}
+
+.footer {
+    padding: 10px;
+    background-color: #2b3643;
+    color: #b4bcc8;
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    border-top-style: solid;
+    border-top-color: #DAA520;
+    border-top-width: 3px;
+}
+
+.masterMenu {
+    width: 95%;
+    margin: auto;
+    margin-top: 10px;
+    text-align: center;
+    color: white;
+    font-size: 25px;
+    padding-top: 30px;
+    padding-bottom: 30px;
+    cursor: pointer;
+    /*background: -webkit-gradient(linear, left top, left bottom, color-stop(4%,#8bacc5), color-stop(50%,#004d87), color-stop(51%,#004a81), color-stop(100%,#002643));*/
+    background-color: #023257;
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#666666', endColorstr='#131313',GradientType=0 );
+}
+
+.altMenu {
+    width: 95%;
+    margin: auto;
+    text-align: justify;
+    color: white;
+    font-size: 15px;
+    min-height: 150px;
+    cursor: pointer;
+    border-top-style: solid;
+    border-top-color: #DAA520;
+    border-top-width: 3px;
+    background-color: #002643;
+}
+
+.innerFrame {
+    margin: 0;
+    padding: 0;
+    border: none;
+    position: relative;
+    top: -30px;
+    width: 100%;
+    z-index: 8888 !important;
+}
+
+.clear-padding {
+    padding: 0 !important;
+}
+
+.yuvarlaUst {
+    border-radius: 10px 0px 0px 0px !important;
+    -webkit-border-radius: 10px !important;
+    -moz-border-radius: 10px !important;
+    /*border-top-left-radius: 10px !important;
+    border-top-right-radius: 10px !important;*/
+}
+
+.yuvarlaAlt {
+    border-bottom-left-radius: 10px !important;
+    border-bottom-right-radius: 10px !important;
+}
+
+#backButton {
+    position: fixed;
+    top: 60px;
+    left: 16px;
+    z-index: 9999 !important;
+}
+
+.backButton {
+    width: 50px;
+    cursor: pointer;
+}
+
+.icon-pos {
+    width: 100%;
+    position: relative;
+}
+
+    .icon-pos .btn {
+        position: absolute;
+        top: 1px;
+        right: 1px;
+        width: 40px;
+        height: calc(100% - 2px);
+        border-left: 1px solid #c2cad8 !important;
+    }
+
+    .icon-pos .fa {
+        position: relative;
+        top: -1px;
+    }
+
+.menuAltYazi {
+    float: left;
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+.altButon {
+    background-color: #3598dc;
+    padding: 20px;
+    border: none;
+    color: white;
+    font-size: 20px;
+    width: 250px;
+}
+
+.minusPlusButton {
+    height: 45px;
+    width: 60px;
+    font-size: 20px;
+    background-color: #3598dc;
+    color: white;
+    border: none;
+    position: relative;
+    top: -6px;
+}
+
+/*sol nav ayarları başlangıç*/
+.list-group {
+    min-width: 150px;
+    position: fixed;
+    left: 16px;
+    top: 156px;
+}
+
+.list-group-item.active {
+    border-right: none;
+}
+
+.list-group-item.active:after {
+    content: ' ';
+    display: inline-block;
+    width: 0 !important;
+    height: 0 !important;
+    border-style: solid !important;
+    border-width: 19.5px 0 19.5px 22px !important;
+    border-color: transparent transparent transparent rgba(92,184,92, 0.65) !important;
+    line-height: 0px !important;
+    _border-color: #000000 #000000 #000000 #5cb85c !important;
+    _filter: progid:DXImageTransform.Microsoft.Chroma(color='#5cb85c') !important;
+    position: absolute;
+    top: -1px;
+    right: -22px;
+}
+
+.list-group-item {
+    background: rgba(255,255,255,.65);
+    border-color: rgba(221,221,221,.65);
+}
+
+.list-group-item.active, .list-group-item.active:focus, .list-group-item.active:hover {
+    color: #272;
+    font-weight: bolder;
+    background-color: rgba(92,184,92, 0.65);
+    border-color: rgba(92,184,92, 0.65);
+}
+/*sol nav ayarları başlangıç*/
+

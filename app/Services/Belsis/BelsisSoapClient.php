@@ -42,15 +42,39 @@ class BelsisSoapClient
      */
     public function call(string $endpoint, string $method, array $params = [], string $wrapper = 'girdiParametre'): array
     {
+        $lastError = null;
+
+        foreach ($this->endpointCandidates($endpoint) as $candidate) {
+            try {
+                return $this->sendRequest($candidate, $method, $params, $wrapper);
+            } catch (BelsisException $e) {
+                $lastError = $e;
+                if ($this->isIpAuthorizationError($e->getMessage())) {
+                    throw $e;
+                }
+            }
+        }
+
+        throw $lastError ?? new BelsisException('Belsis servisine bağlanılamadı.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array<string, mixed>
+     */
+    private function sendRequest(string $endpoint, string $method, array $params, string $wrapper): array
+    {
         $body = $this->buildEnvelope($method, $params, $wrapper);
         $soapAction = $this->namespace.$method;
 
         Log::debug('Belsis SOAP request', ['method' => $method, 'endpoint' => $endpoint]);
 
         $request = Http::timeout(config('belsis.timeout'))
+            ->withOptions(['allow_redirects' => false])
             ->withHeaders([
-                'Content-Type' => 'text/xml; charset=utf-8',
-                'SOAPAction'   => '"'.$soapAction.'"',
+                'Content-Type'   => 'text/xml; charset=utf-8',
+                'Content-Length' => (string) strlen($body),
+                'SOAPAction'     => '"'.$soapAction.'"',
             ])
             ->withBody($body, 'text/xml');
 
@@ -59,18 +83,91 @@ class BelsisSoapClient
         }
 
         $response = $request->post($endpoint);
+        $raw = $response->body();
+        $status = $response->status();
 
-        if (! $response->successful()) {
-            throw new BelsisException('Belsis servisine bağlanılamadı. HTTP '.$response->status());
+        if (in_array($status, [301, 302, 303, 307, 308], true)) {
+            throw new BelsisException($this->explainRedirect($response->header('Location') ?? '', $endpoint));
         }
 
-        $raw = $response->body();
+        if (! $response->successful()) {
+            if ($this->looksLikeHtml($raw)) {
+                throw new BelsisException($this->explainHtmlResponse($raw, $endpoint));
+            }
+            throw new BelsisException('Belsis servisine bağlanılamadı. HTTP '.$status);
+        }
 
-        if (str_contains($raw, '<html') || str_contains($raw, 'loginform')) {
-            throw new BelsisException('Belsis servisi kimlik doğrulama sayfası döndürdü. IP erişimi veya URL kontrol edin.');
+        if ($this->looksLikeHtml($raw)) {
+            throw new BelsisException($this->explainHtmlResponse($raw, $endpoint));
         }
 
         return $this->parseResponse($raw, $method);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function endpointCandidates(string $endpoint): array
+    {
+        $candidates = [$endpoint];
+
+        if (str_starts_with($endpoint, 'http://')) {
+            $candidates[] = 'https://'.substr($endpoint, 7);
+        }
+
+        return array_values(array_unique($candidates));
+    }
+
+    private function looksLikeHtml(string $raw): bool
+    {
+        $sample = strtolower(substr(ltrim($raw), 0, 200));
+
+        return str_contains($sample, '<html')
+            || str_contains($sample, '<!doctype')
+            || str_contains($sample, 'loginform')
+            || str_contains($sample, 'length required');
+    }
+
+    private function explainRedirect(string $location, string $endpoint): string
+    {
+        if (str_contains($location, 'yetkisiz_ip')) {
+            return 'Belsis sunucusu bu makinenin IP adresini tanımıyor (yetkisiz_ip). '
+                .'Kiosk sunucunuzun IP adresini Belsis/belediye IT\'ye bildirin. '
+                .'Tespit: '.BelsisIpResolver::detect();
+        }
+
+        return 'Belsis isteği yönlendirildi ('.$location.'). '
+            .'.env içinde HTTPS URL kullanın: '.$this->suggestHttpsUrl($endpoint);
+    }
+
+    private function explainHtmlResponse(string $raw, string $endpoint): string
+    {
+        if (str_contains(strtolower($raw), 'length required')) {
+            return 'Belsis sunucusu HTTP 411 döndürdü. Content-Length düzeltmesi uygulandı; '
+                .'php artisan config:clear sonrası tekrar deneyin.';
+        }
+
+        if (str_contains(strtolower($raw), 'yetkisiz_ip')) {
+            return 'Belsis IP yetkisi yok. Sunucu IP: '.BelsisIpResolver::detect();
+        }
+
+        return 'Belsis servisi SOAP yerine HTML sayfası döndürdü. '
+            .'URL: '.$endpoint.' | Sunucu IP: '.BelsisIpResolver::detect().' '
+            .'— Belsis IT\'den bu IP için aykome web servis erişimi isteyin.';
+    }
+
+    private function suggestHttpsUrl(string $endpoint): string
+    {
+        return str_starts_with($endpoint, 'http://')
+            ? 'https://'.substr($endpoint, 7)
+            : $endpoint;
+    }
+
+    private function isIpAuthorizationError(string $message): bool
+    {
+        return str_contains($message, 'yetkisiz_ip')
+            || str_contains($message, 'IP adresini tanımıyor')
+            || str_contains($message, 'IP yetkisi yok');
     }
 
     /**

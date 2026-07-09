@@ -71,7 +71,7 @@ class BelsisAuthService
 
         return [
             'guvenlikKodu'  => $session['guvenlikKodu'],
-            'ipAdresi'      => config('belsis.ip_address'),
+            'ipAdresi'      => BelsisIpResolver::resolve(),
             'oturumKimligi' => $session['oturumKimligi'],
         ];
     }

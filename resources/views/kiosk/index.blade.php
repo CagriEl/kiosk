@@ -149,8 +149,22 @@
         .inactivity-overlay { backdrop-filter: blur(6px); }
         .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0; }
         .debt-type-clamp { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-        #debt-list { overflow-y:auto; scrollbar-width:none; }
-        #debt-list::-webkit-scrollbar { display:none; }
+        .vendor-card.selected { border-color: #1e5a9e; background: #eff6ff; box-shadow: 0 0 0 3px rgba(30,90,158,.2); }
+        .water-card-slot {
+            width: 280px; height: 180px; margin: 0 auto;
+            border: 3px dashed #93c5fd; border-radius: 1.25rem;
+            background: linear-gradient(135deg, #eff6ff 0%, #fff 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .abone-digit-row { display: flex; gap: 8px; justify-content: center; }
+        .abone-digit {
+            width: 52px; height: 64px; border: 2px solid #bfdbfe; border-radius: 0.75rem;
+            background: #f8fafc; display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; font-weight: 700; color: #123a6b;
+        }
+        .abone-digit.filled { background: #eff6ff; border-color: #1e5a9e; }
+        #debt-list, #water-invoice-list { overflow-y:auto; scrollbar-width:none; }
+        #debt-list::-webkit-scrollbar, #water-invoice-list::-webkit-scrollbar { display:none; }
     </style>
 </head>
 <body oncontextmenu="return false;" ondragstart="return false;">
@@ -190,6 +204,201 @@
             BAŞLAMAK İÇİN DOKUNUN
         </button>
         <p class="absolute bottom-6 text-white/60 text-kiosk-xs">Dokunmatik ekranı kullanarak işleminizi tamamlayın</p>
+    </section>
+
+    {{-- EKRAN 1b: HİZMET MENÜSÜ --}}
+    <section id="screen-menu" class="kiosk-screen flex-col bg-gray-50">
+        <header class="bg-municipal-600 text-white px-8 py-4 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-3">
+                <button id="btn-menu-back" type="button" class="touch-btn w-11 h-11 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <h2 class="text-kiosk-lg font-bold">Hizmet Seçimi</h2>
+            </div>
+        </header>
+        <div class="flex-1 flex items-center justify-center px-10 gap-8">
+            <button id="btn-menu-debt" type="button" class="touch-btn flex-1 max-w-md bg-white border-3 border-municipal-300 rounded-3xl p-10 shadow-xl hover:border-municipal-500 text-left">
+                <div class="w-16 h-16 rounded-2xl bg-municipal-100 flex items-center justify-center mb-5">
+                    <svg class="w-9 h-9 text-municipal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                </div>
+                <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-2">Borç Ödeme &amp; Sorgulama</h3>
+                <p class="text-kiosk-sm text-municipalGray-600">T.C. Kimlik / sicil ile belediye borçlarınızı görüntüleyin ve ödeyin.</p>
+            </button>
+            <button id="btn-menu-water" type="button" class="touch-btn flex-1 max-w-md bg-white border-3 border-cyan-400 rounded-3xl p-10 shadow-xl hover:border-cyan-600 text-left">
+                <div class="w-16 h-16 rounded-2xl bg-cyan-100 flex items-center justify-center mb-5">
+                    <svg class="w-9 h-9 text-cyan-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3c-4 4-6 7-6 10a6 6 0 1012 0c0-3-2-6-6-10z"/></svg>
+                </div>
+                <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-2">Kartlı Su Sayacı</h3>
+                <p class="text-kiosk-sm text-municipalGray-600">Baylan veya Metlab kartınızla fatura ödeyin, avans veya kontör yükleyin.</p>
+            </button>
+        </div>
+    </section>
+
+    {{-- EKRAN: SU — MARKA SEÇİMİ --}}
+    <section id="screen-water-vendor" class="kiosk-screen flex-col bg-gray-50">
+        <header class="bg-cyan-700 text-white px-8 py-4 flex items-center gap-3 shrink-0">
+            <button id="btn-water-vendor-back" type="button" class="touch-btn w-11 h-11 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <h2 class="text-kiosk-lg font-bold">Sayaç Markası</h2>
+        </header>
+        <div class="flex-1 flex flex-col items-center justify-center px-10">
+            <p class="text-kiosk-base text-municipalGray-600 mb-8 text-center">Abonelik kartınızın markasını seçiniz</p>
+            <div class="flex gap-8 w-full max-w-3xl justify-center">
+                <button type="button" data-vendor="baylan" class="vendor-card touch-btn flex-1 max-w-sm bg-white border-3 border-municipal-200 rounded-3xl p-8 text-center shadow-lg">
+                    <div class="text-kiosk-2xl font-black text-municipal-700 mb-2">BAYLAN</div>
+                    <p class="text-kiosk-sm text-municipalGray-500">Ön ödemeli NFC kart</p>
+                    <p class="text-kiosk-xs text-municipalGray-400 mt-3">Test: 12345, 27126</p>
+                </button>
+                <button type="button" data-vendor="metlab" class="vendor-card touch-btn flex-1 max-w-sm bg-white border-3 border-municipal-200 rounded-3xl p-8 text-center shadow-lg">
+                    <div class="text-kiosk-2xl font-black text-emerald-700 mb-2">METLAB</div>
+                    <p class="text-kiosk-sm text-municipalGray-500">IC akıllı kart</p>
+                    <p class="text-kiosk-xs text-municipalGray-400 mt-3">Test: 67890, 54321</p>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    {{-- EKRAN: SU — İŞLEM TÜRÜ --}}
+    <section id="screen-water-action" class="kiosk-screen flex-col bg-gray-50">
+        <header class="bg-cyan-700 text-white px-8 py-4 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-3">
+                <button id="btn-water-action-back" type="button" class="touch-btn w-11 h-11 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <div>
+                    <h2 class="text-kiosk-lg font-bold">İşlem Türü</h2>
+                    <p id="water-vendor-label" class="text-kiosk-xs opacity-80"></p>
+                </div>
+            </div>
+        </header>
+        <div class="flex-1 flex flex-col items-center justify-center px-10 gap-5 max-w-2xl mx-auto w-full">
+            <button type="button" data-action="invoice" class="water-action-btn touch-btn w-full bg-white border-2 border-municipal-200 rounded-2xl px-8 py-6 text-left shadow-md hover:border-municipal-400">
+                <p class="text-kiosk-lg font-bold text-municipalGray-800">Su Faturası Öde</p>
+                <p class="text-kiosk-sm text-municipalGray-500 mt-1">Ödenmemiş su ve atık su faturalarınızı ödeyin</p>
+            </button>
+            <button type="button" data-action="advance" class="water-action-btn touch-btn w-full bg-white border-2 border-amber-200 rounded-2xl px-8 py-6 text-left shadow-md hover:border-amber-400">
+                <p class="text-kiosk-lg font-bold text-municipalGray-800">Avans Kredi Yükle</p>
+                <p class="text-kiosk-sm text-municipalGray-500 mt-1">Karta kontör yükleyin, 7 gün içinde ödeyin</p>
+            </button>
+            <button type="button" data-action="kontor" class="water-action-btn touch-btn w-full bg-white border-2 border-cyan-200 rounded-2xl px-8 py-6 text-left shadow-md hover:border-cyan-400">
+                <p class="text-kiosk-lg font-bold text-municipalGray-800">Kontör Yükle (Ödemeli)</p>
+                <p class="text-kiosk-sm text-municipalGray-500 mt-1">Kredi kartı ile kontör satın alıp karta yazın</p>
+            </button>
+        </div>
+    </section>
+
+    {{-- EKRAN: SU — KART OKUMA --}}
+    <section id="screen-water-card" class="kiosk-screen flex-col bg-gray-50">
+        <header class="bg-cyan-700 text-white px-8 py-3 flex items-center justify-between shrink-0 h-14">
+            <div class="flex items-center gap-3">
+                <button id="btn-water-card-back" type="button" class="touch-btn w-10 h-10 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <h2 class="text-kiosk-base font-bold">Kart Okuma</h2>
+            </div>
+            <span id="water-step-label" class="text-kiosk-xs opacity-75">Adım 1</span>
+        </header>
+        <div class="flex-1 grid grid-cols-2 min-h-0">
+            <div class="p-8 flex flex-col justify-center gap-5 border-r border-municipal-200">
+                <div class="water-card-slot">
+                    <svg class="w-16 h-16 text-municipal-400 mb-3" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                    <p class="text-kiosk-sm font-semibold text-municipalGray-700">Kartı okuyucuya yerleştirin</p>
+                </div>
+                <button id="btn-water-read-card" type="button" class="touch-btn w-full bg-cyan-600 text-white font-bold text-kiosk-base py-4 rounded-2xl shadow-lg hover:bg-cyan-700">KARTI OKUT</button>
+                <p class="text-kiosk-xs text-municipalGray-500 text-center">veya test için abone no girin →</p>
+                <p id="water-card-error" class="text-kiosk-sm text-red-600 font-medium hidden" role="alert"></p>
+                <div id="water-card-loading" class="hidden flex items-center gap-3 justify-center">
+                    <div class="loading-spinner w-8 h-8" style="border-width:3px"></div>
+                    <span class="text-kiosk-sm text-municipalGray-600">Kart okunuyor...</span>
+                </div>
+            </div>
+            <aside class="p-6 flex flex-col justify-center bg-white">
+                <p class="text-kiosk-xs text-municipalGray-500 mb-3 font-medium uppercase tracking-wide text-center">Test Abone No</p>
+                <div id="water-abone-row" class="abone-digit-row mb-4" aria-live="polite"></div>
+                <input id="input-water-abone" type="text" class="sr-only" maxlength="8" readonly />
+                <div class="grid grid-cols-3 gap-2 max-w-xs mx-auto">
+                    @foreach (['1','2','3','4','5','6','7','8','9'] as $key)
+                    <button type="button" data-water-key="{{ $key }}" class="water-numpad touch-btn bg-municipal-50 hover:bg-municipal-100 text-municipal-700 font-bold text-kiosk-lg py-3 rounded-xl border-2 border-municipal-200">{{ $key }}</button>
+                    @endforeach
+                    <button type="button" data-water-key="clear" class="water-numpad touch-btn bg-red-50 text-red-600 font-bold text-kiosk-xs py-3 rounded-xl border-2 border-red-200">TEMİZ</button>
+                    <button type="button" data-water-key="0" class="water-numpad touch-btn bg-municipal-50 text-municipal-700 font-bold text-kiosk-lg py-3 rounded-xl border-2 border-municipal-200">0</button>
+                    <button type="button" data-water-key="back" class="water-numpad touch-btn bg-municipalGray-100 text-municipalGray-700 font-bold text-kiosk-xs py-3 rounded-xl border-2 border-municipalGray-300">←</button>
+                </div>
+                <button id="btn-water-abone-query" type="button" disabled class="touch-btn mt-4 w-full max-w-xs mx-auto bg-municipal-600 text-white font-bold py-3 rounded-xl disabled:opacity-40">ABONE SORGULA</button>
+            </aside>
+        </div>
+    </section>
+
+    {{-- EKRAN: SU — ABONE ÖZET (avans onay) --}}
+    <section id="screen-water-advance" class="kiosk-screen flex-col bg-gray-50">
+        <header class="bg-cyan-700 text-white px-8 py-4 flex items-center gap-3 shrink-0">
+            <button id="btn-water-advance-back" type="button" class="touch-btn w-11 h-11 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <h2 class="text-kiosk-lg font-bold">Avans Kredi Yükleme</h2>
+        </header>
+        <div class="flex-1 flex flex-col items-center justify-center px-10 text-center max-w-2xl mx-auto">
+            <div id="water-advance-info" class="bg-white rounded-3xl border-2 border-amber-200 p-8 shadow-lg w-full mb-8 text-left space-y-3"></div>
+            <p class="text-kiosk-sm text-municipalGray-600 mb-6">Kartınız okuyucuda kalsın. Onayladığınızda karta kredi yazılacaktır.</p>
+            <button id="btn-water-advance-confirm" type="button" class="touch-btn bg-amber-500 text-white font-bold text-kiosk-lg px-12 py-5 rounded-2xl shadow-xl hover:bg-amber-600">YÜKLE</button>
+            <p id="water-advance-error" class="mt-4 text-kiosk-sm text-red-600 hidden" role="alert"></p>
+        </div>
+    </section>
+
+    {{-- EKRAN: SU — FATURA LİSTESİ --}}
+    <section id="screen-water-invoices" class="kiosk-screen bg-gray-50">
+        <header class="bg-cyan-700 text-white px-8 py-4 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
+                <button id="btn-water-invoices-back" type="button" class="touch-btn w-11 h-11 shrink-0 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <div class="min-w-0">
+                    <h2 class="text-kiosk-lg font-bold">Su Faturaları</h2>
+                    <p id="water-invoice-subscriber" class="text-kiosk-xs opacity-80 truncate"></p>
+                </div>
+            </div>
+        </header>
+        <div class="flex-1 flex overflow-hidden min-h-0">
+            <div class="flex-1 px-6 py-4 overflow-hidden flex flex-col min-w-0">
+                <div id="water-invoice-list" class="flex-1 min-h-0 space-y-2 overflow-y-auto" role="list"></div>
+            </div>
+            <aside class="w-[290px] shrink-0 bg-white border-l-2 border-cyan-200 flex flex-col items-center justify-center px-5 py-6">
+                <p class="text-kiosk-xs text-municipalGray-500 mb-1">Seçilen Toplam</p>
+                <p id="water-invoice-total" class="text-kiosk-xl font-bold text-cyan-700 mb-5">0,00 ₺</p>
+                <button id="btn-water-pay-invoice" type="button" disabled class="touch-btn w-full bg-cyan-600 text-white font-bold text-kiosk-sm py-5 rounded-2xl disabled:opacity-40">BANKA KARTI İLE ÖDE</button>
+                <p id="water-invoice-error" class="mt-3 text-kiosk-xs text-red-600 text-center hidden" role="alert"></p>
+            </aside>
+        </div>
+    </section>
+
+    {{-- EKRAN: SU — KONTÖR SEÇİMİ --}}
+    <section id="screen-water-kontor" class="kiosk-screen flex-col bg-gray-50">
+        <header class="bg-cyan-700 text-white px-8 py-4 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
+                <button id="btn-water-kontor-back" type="button" class="touch-btn w-11 h-11 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <div class="min-w-0">
+                    <h2 class="text-kiosk-lg font-bold">Kontör Yükleme</h2>
+                    <p id="water-kontor-subscriber" class="text-kiosk-xs opacity-80 truncate"></p>
+                </div>
+            </div>
+        </header>
+        <div class="flex-1 flex flex-col items-center justify-center px-10">
+            <p class="text-kiosk-base text-municipalGray-600 mb-6">Yüklemek istediğiniz kontör miktarını (ton) seçiniz</p>
+            <div class="flex items-center gap-4 mb-6">
+                <button id="btn-kontor-minus" type="button" class="touch-btn w-14 h-14 rounded-xl bg-municipal-100 text-municipal-700 font-bold text-kiosk-xl">−</button>
+                <div class="text-center min-w-[120px]">
+                    <p id="water-kontor-tons" class="text-kiosk-3xl font-bold text-cyan-700">5</p>
+                    <p class="text-kiosk-xs text-municipalGray-500">ton</p>
+                </div>
+                <button id="btn-kontor-plus" type="button" class="touch-btn w-14 h-14 rounded-xl bg-municipal-100 text-municipal-700 font-bold text-kiosk-xl">+</button>
+            </div>
+            <p id="water-kontor-amount" class="text-kiosk-2xl font-bold text-municipalGray-800 mb-8">—</p>
+            <button id="btn-water-kontor-pay" type="button" disabled class="touch-btn bg-cyan-600 text-white font-bold text-kiosk-lg px-14 py-5 rounded-2xl shadow-xl disabled:opacity-40">BANKA KARTI İLE ÖDE</button>
+            <p id="water-kontor-error" class="mt-4 text-kiosk-sm text-red-600 hidden" role="alert"></p>
+        </div>
     </section>
 
     {{-- EKRAN 2: VATANDAŞ GİRİŞİ — sol: uzun numara alanı, sağ: numaratör --}}
@@ -294,8 +503,8 @@
                 <svg class="w-20 h-20 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
             </div>
         </div>
-        <h2 class="text-kiosk-xl font-bold text-green-700 mb-4 text-center">Ödemeniz Başarıyla Alınmıştır</h2>
-        <p class="text-kiosk-base text-municipalGray-600 text-center">Makbuzunuz Yazdırılıyor...</p>
+        <h2 id="success-title" class="text-kiosk-xl font-bold text-green-700 mb-4 text-center">Ödemeniz Başarıyla Alınmıştır</h2>
+        <p id="success-message" class="text-kiosk-base text-municipalGray-600 text-center">Makbuzunuz Yazdırılıyor...</p>
         <div class="mt-10 flex items-center gap-4 text-kiosk-sm text-municipalGray-500">
             <div class="loading-spinner w-8 h-8" style="border-width:3px;border-top-color:#16a34a"></div>
             <span id="success-countdown">7 saniye içinde ana ekrana dönülecek</span>
@@ -403,6 +612,66 @@
             });
         }
 
+        async function waterCardRead(vendor, aboneNo) {
+            return apiRequest(`${API_BASE}/water/card-read`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
+                body: JSON.stringify({ vendor, aboneNo: aboneNo || null }),
+            });
+        }
+
+        async function waterFetchInvoices(vendor, aboneNo) {
+            return apiRequest(`${API_BASE}/water/${vendor}/invoices/${aboneNo}`);
+        }
+
+        async function waterCalculateKontor(vendor, aboneNo, tons) {
+            return apiRequest(`${API_BASE}/water/calculate-kontor`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
+                body: JSON.stringify({ vendor, aboneNo, tons }),
+            });
+        }
+
+        async function waterPayInvoices(vendor, aboneNo, invoiceIds) {
+            return apiRequest(`${API_BASE}/water/pay-invoices`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
+                body: JSON.stringify({ vendor, aboneNo, invoiceIds }),
+            });
+        }
+
+        async function waterConfirmInvoicePayment(transactionId, vendor, aboneNo, invoiceIds) {
+            return apiRequest(`${API_BASE}/water/pay-invoices/${transactionId}/confirm`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
+                body: JSON.stringify({ vendor, aboneNo, invoiceIds }),
+            });
+        }
+
+        async function waterAdvanceLoad(vendor, aboneNo) {
+            return apiRequest(`${API_BASE}/water/advance-load`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
+                body: JSON.stringify({ vendor, aboneNo }),
+            });
+        }
+
+        async function waterInitiateKontor(vendor, aboneNo, tons) {
+            return apiRequest(`${API_BASE}/water/kontor/pay`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
+                body: JSON.stringify({ vendor, aboneNo, tons }),
+            });
+        }
+
+        async function waterConfirmKontor(transactionId, vendor, aboneNo, tons) {
+            return apiRequest(`${API_BASE}/water/kontor/${transactionId}/confirm`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
+                body: JSON.stringify({ vendor, aboneNo, tons }),
+            });
+        }
+
         function formatCurrency(amount) {
             return amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
         }
@@ -412,13 +681,27 @@
         }
 
         const SCREENS = {
-            welcome: document.getElementById('screen-welcome'),
-            login:   document.getElementById('screen-login'),
-            debts:   document.getElementById('screen-debts'),
-            success: document.getElementById('screen-success'),
+            welcome:       document.getElementById('screen-welcome'),
+            menu:          document.getElementById('screen-menu'),
+            login:         document.getElementById('screen-login'),
+            debts:         document.getElementById('screen-debts'),
+            success:       document.getElementById('screen-success'),
+            waterVendor:   document.getElementById('screen-water-vendor'),
+            waterAction:   document.getElementById('screen-water-action'),
+            waterCard:     document.getElementById('screen-water-card'),
+            waterAdvance:  document.getElementById('screen-water-advance'),
+            waterInvoices: document.getElementById('screen-water-invoices'),
+            waterKontor:   document.getElementById('screen-water-kontor'),
         };
 
+        const KONTOR_OPTIONS = [5, 10, 20, 30, 40, 50];
+
         const session = { citizen: null, debts: [], selectedIds: new Set(), currentScreen: 'welcome', pendingPayment: null };
+        const water = {
+            vendor: null, action: null, subscriber: null,
+            invoices: [], selectedInvoiceIds: new Set(),
+            kontorIndex: 0, kontorAmount: 0, pendingPayment: null,
+        };
         const INACTIVITY_MS = 45000, WARNING_COUNTDOWN_S = 15, SUCCESS_REDIRECT_MS = 7000;
         let inactivityTimer, warningInterval, successTimer, successCountdownIv;
 
@@ -428,6 +711,18 @@
             session.currentScreen = name;
             resetInactivityTimer();
             if (name === 'login') renderIdentityDisplay();
+        }
+
+        function resetWaterSession() {
+            water.vendor = null; water.action = null; water.subscriber = null;
+            water.invoices = []; water.selectedInvoiceIds.clear();
+            water.kontorIndex = 0; water.kontorAmount = 0; water.pendingPayment = null;
+            setWaterAboneValue('');
+            document.getElementById('water-card-error').classList.add('hidden');
+            document.getElementById('water-advance-error').classList.add('hidden');
+            document.getElementById('water-invoice-error').classList.add('hidden');
+            document.getElementById('water-kontor-error').classList.add('hidden');
+            document.querySelectorAll('.vendor-card').forEach(el => el.classList.remove('selected'));
         }
 
         function resetSession() {
@@ -442,6 +737,7 @@
             document.getElementById('btn-pay-bank').disabled = true;
             document.getElementById('payment-error').classList.add('hidden');
             session.pendingPayment = null;
+            resetWaterSession();
             closeBankModal();
             document.getElementById('btn-select-all').textContent = 'TÜMÜNÜ SEÇ';
             clearTimeout(successTimer); clearInterval(successCountdownIv);
@@ -450,6 +746,155 @@
         }
 
         function goHome() { resetSession(); showScreen('welcome'); }
+
+        function vendorLabel(v) {
+            return v === 'baylan' ? 'BAYLAN' : v === 'metlab' ? 'METLAB' : '';
+        }
+
+        function showWaterSuccess(title, message) {
+            document.getElementById('success-title').textContent = title;
+            document.getElementById('success-message').textContent = message;
+            showSuccessScreen();
+        }
+
+        function afterWaterCardRead(subscriber) {
+            water.subscriber = subscriber;
+            if (water.action === 'invoice') {
+                loadWaterInvoices();
+            } else if (water.action === 'advance') {
+                renderWaterAdvanceInfo();
+                showScreen('waterAdvance');
+            } else if (water.action === 'kontor') {
+                water.kontorIndex = 0;
+                document.getElementById('water-kontor-subscriber').textContent =
+                    subscriber.fullName + ' — Abone ' + subscriber.aboneNo;
+                updateKontorDisplay();
+                showScreen('waterKontor');
+            }
+        }
+
+        async function loadWaterInvoices() {
+            const { invoices } = await waterFetchInvoices(water.vendor, water.subscriber.aboneNo);
+            water.invoices = invoices;
+            water.selectedInvoiceIds.clear();
+            document.getElementById('water-invoice-subscriber').textContent =
+                water.subscriber.fullName + ' — Abone ' + water.subscriber.aboneNo;
+            renderWaterInvoiceList();
+            showScreen('waterInvoices');
+        }
+
+        function renderWaterAdvanceInfo() {
+            const s = water.subscriber;
+            document.getElementById('water-advance-info').innerHTML = `
+                <p class="text-kiosk-lg font-bold text-municipalGray-800">${s.fullName}</p>
+                <p class="text-kiosk-sm text-municipalGray-600">Abone No: <strong>${s.aboneNo}</strong> · ${vendorLabel(water.vendor)}</p>
+                <p class="text-kiosk-sm text-municipalGray-600">Sayaç: ${s.sayacNo} · Kart: ${s.kartTipi}</p>
+                <p class="text-kiosk-sm text-municipalGray-600">Mevcut kredi: <strong>${s.anaKredi} ton</strong> (yedek: ${s.yedekKredi} ton)</p>
+                <p class="text-kiosk-sm text-amber-700 font-medium mt-4">Yüklenecek avans: ${s.advanceTons || 3} kontör</p>
+            `;
+        }
+
+        function renderWaterInvoiceList() {
+            const container = document.getElementById('water-invoice-list');
+            if (!water.invoices.length) {
+                container.innerHTML = '<p class="text-kiosk-sm text-municipalGray-500 text-center py-8">Ödenmemiş fatura bulunamadı.</p>';
+                updateWaterInvoicePanel();
+                return;
+            }
+            container.innerHTML = water.invoices.map(inv => `
+                <label class="block cursor-pointer" role="listitem">
+                    <input type="checkbox" class="water-invoice-cb sr-only" data-id="${inv.id}" />
+                    <div class="water-inv-card flex items-center gap-3 bg-white border-2 border-municipalGray-400/30 rounded-2xl px-4 py-3 shadow-sm">
+                        <div class="w-9 h-9 rounded-lg border-2 border-cyan-300 flex items-center justify-center shrink-0 water-inv-check">
+                            <svg class="w-5 h-5 text-cyan-600 hidden water-check-icon" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-kiosk-sm font-bold text-municipalGray-800">${inv.type}</p>
+                            <p class="text-kiosk-xs text-municipalGray-500">${inv.period} · ${formatDate(inv.dueDate)}</p>
+                        </div>
+                        <p class="text-kiosk-base font-bold text-cyan-700 shrink-0">${formatCurrency(inv.amount)}</p>
+                    </div>
+                </label>
+            `).join('');
+            container.querySelectorAll('.water-invoice-cb').forEach(cb => {
+                cb.addEventListener('change', () => {
+                    const card = cb.closest('label').querySelector('.water-inv-card');
+                    if (cb.checked) {
+                        water.selectedInvoiceIds.add(cb.dataset.id);
+                        card.classList.add('border-cyan-500', 'bg-cyan-50');
+                        card.querySelector('.water-check-icon').classList.remove('hidden');
+                    } else {
+                        water.selectedInvoiceIds.delete(cb.dataset.id);
+                        card.classList.remove('border-cyan-500', 'bg-cyan-50');
+                        card.querySelector('.water-check-icon').classList.add('hidden');
+                    }
+                    updateWaterInvoicePanel();
+                    onUserActivity();
+                });
+            });
+            updateWaterInvoicePanel();
+        }
+
+        function updateWaterInvoicePanel() {
+            const selected = water.invoices.filter(i => water.selectedInvoiceIds.has(i.id));
+            const total = selected.reduce((s, i) => s + i.amount, 0);
+            document.getElementById('water-invoice-total').textContent = formatCurrency(total);
+            document.getElementById('btn-water-pay-invoice').disabled = selected.length === 0;
+        }
+
+        function updateKontorDisplay() {
+            const tons = KONTOR_OPTIONS[water.kontorIndex];
+            document.getElementById('water-kontor-tons').textContent = tons;
+            document.getElementById('btn-kontor-minus').disabled = water.kontorIndex <= 0;
+            document.getElementById('btn-kontor-plus').disabled = water.kontorIndex >= KONTOR_OPTIONS.length - 1;
+            waterCalculateKontor(water.vendor, water.subscriber.aboneNo, tons)
+                .then(calc => {
+                    water.kontorAmount = calc.amount;
+                    document.getElementById('water-kontor-amount').textContent = formatCurrency(calc.amount);
+                    document.getElementById('btn-water-kontor-pay').disabled = false;
+                })
+                .catch(err => {
+                    document.getElementById('water-kontor-error').textContent = err.message;
+                    document.getElementById('water-kontor-error').classList.remove('hidden');
+                });
+        }
+
+        const inputWaterAbone = document.getElementById('input-water-abone');
+        const waterAboneRow = document.getElementById('water-abone-row');
+        const MAX_ABONE = 8;
+
+        function renderWaterAboneDisplay() {
+            const val = inputWaterAbone.value;
+            let html = '';
+            const slots = Math.max(5, val.length || 5);
+            for (let i = 0; i < slots; i++) {
+                html += `<div class="abone-digit${val[i] ? ' filled' : ''}">${val[i] || ''}</div>`;
+            }
+            waterAboneRow.innerHTML = html;
+            document.getElementById('btn-water-abone-query').disabled = val.length < 4;
+        }
+
+        function setWaterAboneValue(val) {
+            inputWaterAbone.value = val;
+            renderWaterAboneDisplay();
+        }
+
+        async function processWaterCardRead(aboneNo) {
+            const errEl = document.getElementById('water-card-error');
+            const loading = document.getElementById('water-card-loading');
+            errEl.classList.add('hidden');
+            loading.classList.remove('hidden');
+            onUserActivity();
+            try {
+                const data = await waterCardRead(water.vendor, aboneNo || null);
+                afterWaterCardRead(data.subscriber);
+            } catch (err) {
+                errEl.textContent = err.message;
+                errEl.classList.remove('hidden');
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
 
         function resetInactivityTimer() {
             clearTimeout(inactivityTimer); clearInterval(warningInterval);
@@ -520,8 +965,110 @@
             });
         });
 
-        document.getElementById('btn-start').addEventListener('click', () => { showScreen('login'); onUserActivity(); });
-        document.getElementById('btn-back-welcome').addEventListener('click', goHome);
+        document.getElementById('btn-start').addEventListener('click', () => { showScreen('menu'); onUserActivity(); });
+        document.getElementById('btn-menu-back').addEventListener('click', goHome);
+        document.getElementById('btn-menu-debt').addEventListener('click', () => { showScreen('login'); onUserActivity(); });
+        document.getElementById('btn-menu-water').addEventListener('click', () => { resetWaterSession(); showScreen('waterVendor'); onUserActivity(); });
+
+        document.querySelectorAll('.vendor-card').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.vendor-card').forEach(el => el.classList.remove('selected'));
+                btn.classList.add('selected');
+                water.vendor = btn.dataset.vendor;
+                document.getElementById('water-vendor-label').textContent = vendorLabel(water.vendor) + ' kartlı sayaç';
+                setTimeout(() => showScreen('waterAction'), 200);
+                onUserActivity();
+            });
+        });
+
+        document.getElementById('btn-water-vendor-back').addEventListener('click', () => showScreen('menu'));
+        document.getElementById('btn-water-action-back').addEventListener('click', () => showScreen('waterVendor'));
+
+        document.querySelectorAll('.water-action-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                water.action = btn.dataset.action;
+                document.getElementById('water-step-label').textContent =
+                    water.action === 'invoice' ? 'Fatura Öde' : water.action === 'advance' ? 'Avans Yükle' : 'Kontör Yükle';
+                showScreen('waterCard');
+                onUserActivity();
+            });
+        });
+
+        document.getElementById('btn-water-card-back').addEventListener('click', () => showScreen('waterAction'));
+        document.getElementById('btn-water-read-card').addEventListener('click', () => processWaterCardRead(inputWaterAbone.value.trim() || null));
+        document.getElementById('btn-water-abone-query').addEventListener('click', () => {
+            const abone = inputWaterAbone.value.trim();
+            if (abone.length >= 4) processWaterCardRead(abone);
+        });
+
+        document.querySelectorAll('.water-numpad').forEach(key => {
+            key.addEventListener('click', () => {
+                const action = key.dataset.waterKey;
+                let val = inputWaterAbone.value;
+                if (action === 'clear') val = '';
+                else if (action === 'back') val = val.slice(0, -1);
+                else if (val.length < MAX_ABONE) val += action;
+                setWaterAboneValue(val);
+                document.getElementById('water-card-error').classList.add('hidden');
+                onUserActivity();
+            });
+        });
+
+        document.getElementById('btn-water-advance-back').addEventListener('click', () => showScreen('waterCard'));
+        document.getElementById('btn-water-advance-confirm').addEventListener('click', async () => {
+            const errEl = document.getElementById('water-advance-error');
+            errEl.classList.add('hidden');
+            const btn = document.getElementById('btn-water-advance-confirm');
+            btn.disabled = true;
+            try {
+                const result = await waterAdvanceLoad(water.vendor, water.subscriber.aboneNo);
+                showWaterSuccess('Avans Yüklendi', result.message);
+            } catch (err) {
+                errEl.textContent = err.message;
+                errEl.classList.remove('hidden');
+                btn.disabled = false;
+            }
+        });
+
+        document.getElementById('btn-water-invoices-back').addEventListener('click', () => showScreen('waterCard'));
+        document.getElementById('btn-water-pay-invoice').addEventListener('click', async () => {
+            const ids = [...water.selectedInvoiceIds];
+            if (!ids.length) return;
+            const errEl = document.getElementById('water-invoice-error');
+            errEl.classList.add('hidden');
+            const total = water.invoices.filter(i => water.selectedInvoiceIds.has(i.id)).reduce((s, i) => s + i.amount, 0);
+            try {
+                const payment = await waterPayInvoices(water.vendor, water.subscriber.aboneNo, ids);
+                water.pendingPayment = { transactionId: payment.transactionId, invoiceIds: ids, mode: 'invoice' };
+                openBankModal(total);
+            } catch (err) {
+                errEl.textContent = err.message;
+                errEl.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('btn-water-kontor-back').addEventListener('click', () => showScreen('waterCard'));
+        document.getElementById('btn-kontor-minus').addEventListener('click', () => {
+            if (water.kontorIndex > 0) { water.kontorIndex--; updateKontorDisplay(); onUserActivity(); }
+        });
+        document.getElementById('btn-kontor-plus').addEventListener('click', () => {
+            if (water.kontorIndex < KONTOR_OPTIONS.length - 1) { water.kontorIndex++; updateKontorDisplay(); onUserActivity(); }
+        });
+        document.getElementById('btn-water-kontor-pay').addEventListener('click', async () => {
+            const tons = KONTOR_OPTIONS[water.kontorIndex];
+            const errEl = document.getElementById('water-kontor-error');
+            errEl.classList.add('hidden');
+            try {
+                const payment = await waterInitiateKontor(water.vendor, water.subscriber.aboneNo, tons);
+                water.pendingPayment = { transactionId: payment.transactionId, tons, mode: 'kontor' };
+                openBankModal(payment.total);
+            } catch (err) {
+                errEl.textContent = err.message;
+                errEl.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('btn-back-welcome').addEventListener('click', () => showScreen('menu'));
 
         btnQuery.addEventListener('click', async () => {
             const identityNo = inputIdentity.value.trim();
@@ -647,22 +1194,38 @@
             closeBankModal();
             document.getElementById('btn-pay-bank').disabled = session.selectedIds.size === 0;
             session.pendingPayment = null;
+            water.pendingPayment = null;
             onUserActivity();
         });
 
         document.getElementById('btn-confirm-bank').addEventListener('click', async () => {
-            if (!session.pendingPayment) return;
+            const pending = session.pendingPayment || water.pendingPayment;
+            if (!pending) return;
             const btnConfirm = document.getElementById('btn-confirm-bank');
             btnConfirm.disabled = true;
             document.getElementById('bank-modal-loading').classList.remove('hidden');
             document.getElementById('bank-modal-error').classList.add('hidden');
             onUserActivity();
             try {
-                const { transactionId, debtIds } = session.pendingPayment;
-                const confirmation = await confirmPayment(transactionId, session.citizen.identityNo, debtIds);
-                if (confirmation.status === 'completed') {
+                if (water.pendingPayment?.mode === 'invoice') {
+                    const { transactionId, invoiceIds } = water.pendingPayment;
+                    const confirmation = await waterConfirmInvoicePayment(transactionId, water.vendor, water.subscriber.aboneNo, invoiceIds);
                     closeBankModal();
-                    showSuccessScreen();
+                    showWaterSuccess('Su Faturası Ödendi', confirmation.message + ' Makbuz: ' + confirmation.receiptNo);
+                } else if (water.pendingPayment?.mode === 'kontor') {
+                    const { transactionId, tons } = water.pendingPayment;
+                    const confirmation = await waterConfirmKontor(transactionId, water.vendor, water.subscriber.aboneNo, tons);
+                    closeBankModal();
+                    showWaterSuccess('Kontör Yüklendi', confirmation.message + ' Makbuz: ' + confirmation.receiptNo);
+                } else if (session.pendingPayment) {
+                    const { transactionId, debtIds } = session.pendingPayment;
+                    const confirmation = await confirmPayment(transactionId, session.citizen.identityNo, debtIds);
+                    if (confirmation.status === 'completed') {
+                        closeBankModal();
+                        document.getElementById('success-title').textContent = 'Ödemeniz Başarıyla Alınmıştır';
+                        document.getElementById('success-message').textContent = 'Makbuzunuz Yazdırılıyor...';
+                        showSuccessScreen();
+                    }
                 }
             } catch (err) {
                 document.getElementById('bank-modal-error').textContent = err.message;
@@ -697,6 +1260,7 @@
         });
 
         renderIdentityDisplay();
+        renderWaterAboneDisplay();
         showScreen('welcome');
     })();
     </script>
