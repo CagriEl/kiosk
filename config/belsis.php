@@ -43,6 +43,13 @@ return [
         '2,TC,TcKimlikNo,TCKIMLIK,Tc',
     )))),
 
+    // borcSorgula / arama — 1004: kayıt var, online borç yok veya kısmi yanıt
+    'soft_success_codes' => array_filter(array_map('trim', explode(',', env(
+        'BELSIS_SOFT_SUCCESS_CODES',
+        '1004',
+    )))),
+    'soft_success_methods' => ['borcSorgula', 'arama'],
+
     // borcSorgula boş dönerse tahakkukWebServis'ten borç çek
     'tahakkuk_fallback' => filter_var(env('BELSIS_TAHAKKUK_FALLBACK', true), FILTER_VALIDATE_BOOLEAN),
 

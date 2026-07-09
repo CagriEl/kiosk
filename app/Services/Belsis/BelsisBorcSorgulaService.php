@@ -67,7 +67,19 @@ class BelsisBorcSorgulaService
                 throw new BelsisException('T.C. Kimlik No 11 haneli olmalıdır.');
             }
 
-            return $this->extractSicilNo($this->queryByTc($identityNo), $identityNo);
+            $fromArama = $this->resolveGensicilFromTc($identityNo);
+            if ($fromArama !== null) {
+                return $fromArama;
+            }
+
+            $fromBorc = $this->resolveGensicilFromTcBorcResponse($identityNo);
+            if ($fromBorc !== null) {
+                return $fromBorc;
+            }
+
+            throw new BelsisException(
+                'T.C. Kimlik No belediye sicilinizle eşleştirilemedi. Sicilinizdeki TC güncel olmayabilir.',
+            );
         }
 
         if (strlen($identityNo) < 1) {
@@ -77,6 +89,34 @@ class BelsisBorcSorgulaService
         $this->queryBySicil($identityNo);
 
         return $identityNo;
+    }
+
+    /**
+     * borcSorgula (TC) yanıtından gensicilno — 1004 dahil kısmi yanıtlar.
+     */
+    public function resolveGensicilFromTcBorcResponse(string $tcKimlikNo): ?string
+    {
+        $tcKimlikNo = preg_replace('/\D/', '', trim($tcKimlikNo));
+
+        if (strlen($tcKimlikNo) !== 11) {
+            return null;
+        }
+
+        foreach ($this->tcBorcTips() as $tip) {
+            try {
+                $result = $this->callBorcSorgula($tip, $tcKimlikNo, 0);
+                $fromBorc = $this->extractGensicilFromBorc($result);
+                if ($fromBorc !== null) {
+                    return $fromBorc;
+                }
+            } catch (BelsisException $e) {
+                if ($this->isInfrastructureError($e)) {
+                    throw $e;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -152,10 +192,21 @@ class BelsisBorcSorgulaService
         }
 
         throw new BelsisException(
-            'T.C. Kimlik No ile kayıt bulunamadı. Belsis: '.($lastError?->getMessage() ?? 'Sonuç boş')
-            .' — Numarayı kontrol ediniz.',
+            $this->formatTcNotFoundMessage($lastError),
             $lastError?->sonucKodu,
         );
+    }
+
+    private function formatTcNotFoundMessage(?BelsisException $lastError): string
+    {
+        if ($lastError?->sonucKodu === '1004') {
+            return 'Belediye kaydınız bulundu ancak online tahsilatta görüntülenecek borç yok (Belsis: 1004). '
+                .'T.C. Kimlik sicilinize tanımlı değilse belediye veznemize başvurunuz.';
+        }
+
+        return 'T.C. Kimlik No ile kayıt bulunamadı. Belsis: '
+            .($lastError?->getMessage() ?? 'Sonuç boş')
+            .' — Numarayı kontrol ediniz.';
     }
 
     /**
@@ -753,7 +804,8 @@ class BelsisBorcSorgulaService
             || str_contains($message, 'commandtext')
             || str_contains($message, 'command text')
             || str_contains($message, 'not been initialized')
-            || str_contains($message, 'sistem hatas');
+            || str_contains($message, 'sistem hatas')
+            || $e->sonucKodu === '1004';
     }
 
     private function isInfrastructureError(BelsisException $e): bool

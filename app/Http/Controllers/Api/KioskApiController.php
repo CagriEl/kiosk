@@ -277,6 +277,13 @@ class KioskApiController extends Controller
             || str_contains($message, 'kayit yok')
             || str_contains($message, 'sonuç boş')
             || str_contains($message, 'sonuc bos')
+            || str_contains($message, 'eşleştirilemedi')
+            || str_contains($message, 'eslestirilemedi')
+        ) {
+            $status = 404;
+        } elseif (
+            $e->sonucKodu === '1004'
+            || str_contains($message, 'online tahsilatta görüntülenecek borç yok')
         ) {
             $status = 404;
         } elseif (

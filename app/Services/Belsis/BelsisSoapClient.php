@@ -259,6 +259,12 @@ class BelsisSoapClient
         }
 
         if (isset($result['sonucKodu']) && ! in_array((string) $result['sonucKodu'], $this->successCodes, true)) {
+            $code = (string) $result['sonucKodu'];
+
+            if ($this->isSoftSuccess($method, $code)) {
+                return $result;
+            }
+
             $message = $result['sonucAciklamasi']
                 ?? $result['sonucAciklama']
                 ?? $result['hataMesaji']
@@ -319,5 +325,13 @@ class BelsisSoapClient
         }
 
         return $output;
+    }
+
+    private function isSoftSuccess(string $method, string $code): bool
+    {
+        $methods = config('belsis.soft_success_methods', ['borcSorgula', 'arama']);
+        $codes = config('belsis.soft_success_codes', ['1004']);
+
+        return in_array($method, $methods, true) && in_array($code, $codes, true);
     }
 }

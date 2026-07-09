@@ -54,9 +54,18 @@ class BelsisTahakkukService
     public function getDebts(string $identityNo, ?string $searchType = null): array
     {
         $gensicilno = $this->identity->resolveGensicilNo($identityNo, $searchType);
+
+        return $this->getDebtsByGensicil((int) $gensicilno);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getDebtsByGensicil(int $gensicilno): array
+    {
         $result = $this->client->callTahakkuk('tahakkukBilgileriniGetir', array_merge(
             $this->auth->baseParams(),
-            ['gensicilno' => (int) $gensicilno],
+            ['gensicilno' => $gensicilno],
         ));
 
         $items = $this->extractTahakkukItems($result);

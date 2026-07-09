@@ -21,38 +21,81 @@ class BelsisTahsilatQueryService
      */
     public function getCitizen(string $identityNo, ?string $searchType = null): array
     {
-        $borc = $this->borc->query($identityNo, $searchType);
+        $identityNo = trim($identityNo);
+        $gensicilno = null;
+        $fullName = '';
+        $adi = '';
+        $soyadi = '';
 
-        $sicil = $borc['Sicil'] ?? [];
-        $fullName = trim((string) ($sicil['adiSoyadiUnvani'] ?? ''));
+        if (strlen($identityNo) === 11 && ctype_digit($identityNo)) {
+            $gensicilno = $this->borc->resolveGensicilFromTc($identityNo)
+                ?? $this->borc->resolveGensicilFromTcBorcResponse($identityNo);
+        }
 
-        try {
+        if ($gensicilno !== null) {
+            $profile = $this->fetchSicilProfile((int) $gensicilno);
+            $gensicilno = (string) $profile['gensicilno'];
+            $fullName = $profile['fullName'];
+            $adi = $profile['adi'];
+            $soyadi = $profile['soyadi'];
+        } else {
+            $borc = $this->borc->query($identityNo, $searchType);
             $gensicilno = $this->borc->extractSicilNo($borc, $identityNo);
-        } catch (BelsisException $e) {
-            $gensicilno = $this->borc->resolveGensicilFromTc($identityNo);
-            if ($gensicilno === null) {
-                if ($fullName !== '') {
-                    throw new BelsisException(
-                        'Vatandaş bilgisi alındı ancak sicil numarası çözümlenemedi. Belsis: '.$e->getMessage(),
-                        $e->sonucKodu,
-                    );
-                }
-                throw $e;
+            $sicil = $borc['Sicil'] ?? [];
+            $fullName = trim((string) ($sicil['adiSoyadiUnvani'] ?? ''));
+
+            if ($fullName === '') {
+                $profile = $this->fetchSicilProfile((int) $gensicilno);
+                $fullName = $profile['fullName'];
+                $adi = $profile['adi'];
+                $soyadi = $profile['soyadi'];
             }
         }
 
-        if ($fullName === '') {
-            $fullName = $this->lookupNameFromSicilSorgula((int) $gensicilno) ?? 'Sicil No: '.$gensicilno;
+        if ($fullName === '' && $gensicilno !== null) {
+            $fullName = 'Sicil No: '.$gensicilno;
         }
 
-        [$adi, $soyadi] = $this->splitName($fullName);
+        if ($adi === '' && $soyadi === '') {
+            [$adi, $soyadi] = $this->splitName($fullName);
+        }
 
         return [
             'identityNo' => $identityNo,
             'fullName'   => $fullName,
-            'sicilNo'    => $gensicilno,
+            'sicilNo'    => $gensicilno ?? $identityNo,
             'searchType' => 'tc',
             'adi'        => $adi,
+            'soyadi'     => $soyadi,
+        ];
+    }
+
+    /**
+     * @return array{gensicilno: int, fullName: string, adi: string, soyadi: string}
+     */
+    private function fetchSicilProfile(int $gensicilno): array
+    {
+        $siciller = $this->sicilSorgula($gensicilno);
+        $first = $siciller[0] ?? null;
+
+        if (! is_array($first)) {
+            return [
+                'gensicilno' => $gensicilno,
+                'fullName'   => 'Sicil No: '.$gensicilno,
+                'adi'        => '',
+                'soyadi'     => '',
+            ];
+        }
+
+        $ad = trim((string) ($first['adi'] ?? ''));
+        $soyad = trim((string) ($first['soyadi'] ?? ''));
+        $unvan = trim((string) ($first['unvan'] ?? ''));
+        $fullName = $unvan !== '' ? $unvan : (trim($ad.' '.$soyad) ?: 'Sicil No: '.$gensicilno);
+
+        return [
+            'gensicilno' => (int) ($first['gensicilno'] ?? $gensicilno),
+            'fullName'   => $fullName,
+            'adi'        => $ad,
             'soyadi'     => $soyadi,
         ];
     }
@@ -62,18 +105,93 @@ class BelsisTahsilatQueryService
      */
     public function getDebts(string $identityNo, ?string $searchType = null): array
     {
-        $borc = $this->borc->query($identityNo, $searchType);
-        $debts = $this->extractDebtsFromBorc($borc);
+        $identityNo = trim($identityNo);
+        $debts = [];
+
+        try {
+            $borc = $this->borc->query($identityNo, $searchType);
+            $debts = $this->extractDebtsFromBorc($borc);
+        } catch (BelsisException $e) {
+            if ($e->sonucKodu !== '1004' && ! $this->isOnlyEmptyDebtError($e)) {
+                throw $e;
+            }
+        }
+
+        $gensicilno = null;
+        if (strlen($identityNo) === 11) {
+            $gensicilno = $this->borc->resolveGensicilFromTc($identityNo)
+                ?? $this->borc->resolveGensicilFromTcBorcResponse($identityNo);
+        }
+
+        if ($debts === [] && $gensicilno !== null) {
+            $debts = $this->fetchSicilBorcBeyanDebts((int) $gensicilno);
+        }
 
         if ($debts === [] && config('belsis.tahakkuk_fallback', true)) {
             try {
-                $debts = $this->tahakkuk->getDebts($identityNo, $searchType);
+                if ($gensicilno !== null) {
+                    $debts = $this->tahakkuk->getDebtsByGensicil((int) $gensicilno);
+                } else {
+                    $debts = $this->tahakkuk->getDebts($identityNo, $searchType);
+                }
             } catch (BelsisException) {
-                // borcSorgula fallback yanıtı ile devam
+                // tahakkuk da boşsa boş liste
             }
         }
 
         return $debts;
+    }
+
+    private function isOnlyEmptyDebtError(BelsisException $e): bool
+    {
+        $message = mb_strtolower($e->getMessage());
+
+        return in_array($e->sonucKodu, ['1004'], true)
+            || str_contains($message, 'online tahsilatta görüntülenecek borç yok');
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchSicilBorcBeyanDebts(int $gensicilno): array
+    {
+        try {
+            $result = $this->sicilBorcBeyanSorgula($gensicilno);
+            $items = $this->normalizeList(
+                $result['sicilBorcBeyanListesi']['sicilBorcBeyanListesi'] ?? $result['sicilBorcBeyanListesi'] ?? [],
+            );
+
+            $debts = [];
+            foreach ($items as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+
+                $amount = (float) ($item['toplamBorc'] ?? 0);
+                if ($amount <= 0) {
+                    continue;
+                }
+
+                $modulno = (string) ($item['modulno'] ?? '');
+                $beyanId = (string) ($item['beyanID'] ?? $modulno);
+                $debts[] = [
+                    'id'      => $beyanId !== '' ? $beyanId : 'beyan-'.$modulno,
+                    'type'    => (string) ($item['beyanAciklama'] ?? 'Borç Beyanı'),
+                    'period'  => '',
+                    'amount'  => $amount,
+                    'dueDate' => null,
+                    'meta'    => [
+                        'modulno'  => $modulno,
+                        'beyanID'  => $item['beyanID'] ?? null,
+                        'kaynak'   => 'sicilBorcBeyanSorgula',
+                    ],
+                ];
+            }
+
+            return $debts;
+        } catch (BelsisException) {
+            return [];
+        }
     }
 
     /**
