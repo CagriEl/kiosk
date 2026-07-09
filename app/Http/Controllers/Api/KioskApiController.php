@@ -19,9 +19,9 @@ class KioskApiController extends Controller
     public function citizen(Request $request, string $identityNo): JsonResponse
     {
         try {
-            $this->assertAccountNo($identityNo);
+            $this->assertAboneNo($identityNo);
 
-            return response()->json($this->belsis->getCitizen($identityNo, 'sicil'));
+            return response()->json($this->belsis->getCitizen($identityNo, 'abone'));
         } catch (BelsisException $e) {
             return $this->belsisError($e);
         }
@@ -30,9 +30,9 @@ class KioskApiController extends Controller
     public function debts(Request $request, string $identityNo): JsonResponse
     {
         try {
-            $this->assertAccountNo($identityNo);
+            $this->assertAboneNo($identityNo);
 
-            return response()->json($this->belsis->getDebts($identityNo, 'sicil'));
+            return response()->json($this->belsis->getDebts($identityNo, 'abone'));
         } catch (BelsisException $e) {
             return $this->belsisError($e);
         }
@@ -78,7 +78,7 @@ class KioskApiController extends Controller
                 $this->belsis->initiatePayment(
                     $validated['identityNo'],
                     $validated['debtIds'],
-                    'sicil',
+                    'abone',
                 ),
             );
         } catch (BelsisException $e) {
@@ -100,7 +100,7 @@ class KioskApiController extends Controller
                     $validated['identityNo'],
                     $validated['debtIds'],
                     $transactionId,
-                    'sicil',
+                    'abone',
                 ),
             );
         } catch (BelsisException $e) {
@@ -269,7 +269,7 @@ class KioskApiController extends Controller
         $message = mb_strtolower($e->getMessage());
         $status = 422;
 
-        if (str_contains($message, '11 haneli') || str_contains($message, 'abone') || str_contains($message, 'sicil no')) {
+        if (str_contains($message, '11 haneli') || str_contains($message, 'abone numarası')) {
             $status = 400;
         } elseif (
             str_contains($message, 'bulunamad')
@@ -303,12 +303,12 @@ class KioskApiController extends Controller
         ], $status);
     }
 
-    private function assertAccountNo(string $identityNo): void
+    private function assertAboneNo(string $aboneNo): void
     {
-        $identityNo = trim($identityNo);
+        $aboneNo = trim($aboneNo);
 
-        if (! ctype_digit($identityNo) || strlen($identityNo) < 1 || strlen($identityNo) > 10) {
-            throw new BelsisException('Abone / sicil numarası 1–10 haneli olmalıdır.');
+        if (! ctype_digit($aboneNo) || strlen($aboneNo) < 1 || strlen($aboneNo) > 10) {
+            throw new BelsisException('Abone numarası 1–10 haneli olmalıdır.');
         }
     }
 }

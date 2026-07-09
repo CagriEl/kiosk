@@ -10,19 +10,21 @@ use Illuminate\Console\Command;
 
 class BelsisSearchSicilCommand extends Command
 {
-    protected $signature = 'belsis:search-sicil {sicil : Sicil numarası}';
+    protected $signature = 'belsis:search-abone {abone : Abone numarası}';
 
-    protected $description = 'Sicil ile borç sorgusu (tüm sorguTip kombinasyonları) teşhisi';
+    protected $aliases = ['belsis:search-sicil'];
+
+    protected $description = 'Abone no ile borç sorgusu (tüm sorguTip kombinasyonları) teşhisi';
 
     public function handle(
         BelsisAuthService $auth,
         BelsisSoapClient $client,
         BelsisBorcSorgulaService $borc,
     ): int {
-        $sicil = trim($this->argument('sicil'));
+        $abone = trim($this->argument('abone'));
 
-        if (! ctype_digit($sicil) || strlen($sicil) < 1) {
-            $this->error('Geçerli bir sicil numarası giriniz.');
+        if (! ctype_digit($abone) || strlen($abone) < 1) {
+            $this->error('Geçerli bir abone numarası giriniz.');
 
             return self::FAILURE;
         }
@@ -39,16 +41,16 @@ class BelsisSearchSicilCommand extends Command
         }
 
         $base = $auth->baseParams();
-        $tips = config('belsis.borc_sorgu_tips_sicil', ['SICIL', 'GENSICIL', '1', '2', '0']);
-        $aramaTips = config('belsis.arama_sorgu_tips_sicil', ['SICIL', 'GENSICIL', 'UYE', '1', '2', '0']);
-        $sicilInt = (int) $sicil;
+        $tips = config('belsis.borc_sorgu_tips_abone', config('belsis.borc_sorgu_tips_sicil', ['UYE', 'UYENO', 'ABONE', '1']));
+        $aramaTips = config('belsis.arama_sorgu_tips_abone', config('belsis.arama_sorgu_tips_sicil', ['UYE', 'UYENO', 'ABONE', '1']));
+        $aboneInt = (int) $abone;
 
         $this->newLine();
         $this->info('=== sicilSorgula (tahsilat) — parametre varyantları ===');
         foreach ([
-            ['gensicilno' => $sicilInt, 'koyID' => 0, 'mukellefNo' => $sicil],
-            ['gensicilno' => $sicilInt, 'koyID' => 0],
-            ['gensicilno' => 0, 'koyID' => 0, 'mukellefNo' => $sicil],
+            ['gensicilno' => $aboneInt, 'koyID' => 0, 'mukellefNo' => $abone],
+            ['gensicilno' => $aboneInt, 'koyID' => 0],
+            ['gensicilno' => 0, 'koyID' => 0, 'mukellefNo' => $abone],
         ] as $params) {
             $label = json_encode($params, JSON_UNESCAPED_UNICODE);
             $this->line("  <comment>{$label}</comment>");
@@ -74,13 +76,13 @@ class BelsisSearchSicilCommand extends Command
         }
 
         $this->newLine();
-        $this->info('=== arama (sicil tipleri) ===');
+        $this->info('=== arama (abone tipleri) ===');
         foreach ($aramaTips as $tip) {
             $this->line("sorguTip=<comment>{$tip}</comment>");
             try {
                 $result = $client->callTahsilat('arama', array_merge($base, [
                     'sorguTip' => $tip,
-                    'sorguNo'  => $sicil,
+                    'sorguNo'  => $abone,
                 ]));
                 $siciller = $result['Siciller'] ?? $result['siciller'] ?? [];
                 $items = $siciller['SicilaramaObj'] ?? $siciller['sicilaramaObj'] ?? $siciller;
@@ -104,12 +106,12 @@ class BelsisSearchSicilCommand extends Command
         $this->newLine();
         $this->info('=== borcSorgula kombinasyonları ===');
         foreach ($tips as $tip) {
-            foreach ([$sicilInt, 0] as $gensicilno) {
+            foreach ([$aboneInt, 0] as $gensicilno) {
                 $this->line("sorguTip=<comment>{$tip}</comment> gensicilno=<comment>{$gensicilno}</comment>");
                 try {
                     $result = $client->callTahsilat('borcSorgula', array_merge($base, [
                         'sorguTip'            => $tip,
-                        'sorguNo'             => $sicil,
+                        'sorguNo'             => $abone,
                         'gensicilno'          => $gensicilno,
                         'indirimliOdenecekMi' => 0,
                         'indirimHakkiVarMi'   => 0,
@@ -127,7 +129,7 @@ class BelsisSearchSicilCommand extends Command
         $this->newLine();
         $this->info('=== birleşik borc sorgusu (otomatik) ===');
         try {
-            $result = $borc->query($sicil);
+            $result = $borc->query($abone, 'abone');
             $s = $result['Sicil'] ?? [];
             $no = is_array($s) ? ($s['sicilNo'] ?? $s['gensicilno'] ?? '-') : '-';
             $name = is_array($s) ? ($s['adiSoyadiUnvani'] ?? '-') : '-';

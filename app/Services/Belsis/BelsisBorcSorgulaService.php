@@ -15,9 +15,9 @@ class BelsisBorcSorgulaService
     ) {}
 
     /**
-     * TC veya sicil ile borç sorgusu — tüm sorguTip kombinasyonları denenir.
+     * TC veya abone no ile borç sorgusu — tüm sorguTip kombinasyonları denenir.
      *
-     * @param  'tc'|'sicil'|null  $searchType
+     * @param  'tc'|'abone'|'sicil'|null  $searchType
      * @return array<string, mixed>
      */
     public function query(string $identityNo, ?string $searchType = null): array
@@ -25,7 +25,7 @@ class BelsisBorcSorgulaService
         $identityNo = trim($identityNo);
 
         if (! ctype_digit($identityNo)) {
-            throw new BelsisException('Geçersiz kimlik numarası. Sadece rakam giriniz.');
+            throw new BelsisException('Geçersiz abone numarası. Sadece rakam giriniz.');
         }
 
         $searchType = $this->resolveSearchType($identityNo, $searchType);
@@ -39,25 +39,25 @@ class BelsisBorcSorgulaService
         }
 
         if (strlen($identityNo) < 1) {
-            throw new BelsisException('Sicil numarası giriniz.');
+            throw new BelsisException('Abone numarası giriniz.');
         }
 
         if (strlen($identityNo) > 10) {
-            throw new BelsisException('Sicil numarası en fazla 10 haneli olabilir.');
+            throw new BelsisException('Abone numarası en fazla 10 haneli olabilir.');
         }
 
-        return $this->queryBySicil($identityNo);
+        return $this->queryByAbone($identityNo);
     }
 
     /**
-     * @param  'tc'|'sicil'|null  $searchType
+     * @param  'tc'|'abone'|'sicil'|null  $searchType
      */
     public function resolveGensicilNo(string $identityNo, ?string $searchType = null): string
     {
         $identityNo = trim($identityNo);
 
         if (! ctype_digit($identityNo)) {
-            throw new BelsisException('Geçersiz kimlik numarası. Sadece rakam giriniz.');
+            throw new BelsisException('Geçersiz abone numarası. Sadece rakam giriniz.');
         }
 
         $searchType = $this->resolveSearchType($identityNo, $searchType);
@@ -78,17 +78,17 @@ class BelsisBorcSorgulaService
             }
 
             throw new BelsisException(
-                'T.C. Kimlik No belediye sicilinizle eşleştirilemedi. Sicilinizdeki TC güncel olmayabilir.',
+                'T.C. Kimlik No belediye kaydınızla eşleştirilemedi. Kayıtlarınızdaki TC güncel olmayabilir.',
             );
         }
 
         if (strlen($identityNo) < 1) {
-            throw new BelsisException('Sicil numarası giriniz.');
+            throw new BelsisException('Abone numarası giriniz.');
         }
 
-        $this->queryBySicil($identityNo);
+        $this->queryByAbone($identityNo);
 
-        return $identityNo;
+        return $this->resolveGensicilFromAbone($identityNo) ?? $identityNo;
     }
 
     /**
@@ -120,16 +120,20 @@ class BelsisBorcSorgulaService
     }
 
     /**
-     * @param  'tc'|'sicil'|null  $searchType
-     * @return 'tc'|'sicil'
+     * @param  'tc'|'abone'|'sicil'|null  $searchType
+     * @return 'tc'|'abone'
      */
     private function resolveSearchType(string $identityNo, ?string $searchType): string
     {
-        if (in_array($searchType, ['tc', 'sicil'], true)) {
+        if ($searchType === 'sicil') {
+            $searchType = 'abone';
+        }
+
+        if (in_array($searchType, ['tc', 'abone'], true)) {
             return $searchType;
         }
 
-        return strlen($identityNo) === 11 ? 'tc' : 'sicil';
+        return strlen($identityNo) === 11 ? 'tc' : 'abone';
     }
 
     /**
@@ -214,14 +218,15 @@ class BelsisBorcSorgulaService
      *
      * @return array<string, mixed>|null
      */
-    private function queryBorcByGensicil(string $gensicilNo, ?BelsisException &$lastError = null): ?array
+    private function queryBorcByGensicil(string $gensicilNo, ?BelsisException &$lastError = null, ?string $sorguNo = null): ?array
     {
         $gensicilInt = (int) $gensicilNo;
+        $sorguNo = $sorguNo ?? $gensicilNo;
 
-        foreach ($this->sicilBorcTips() as $tip) {
-            foreach ($this->gensicilnoCandidatesForSicil($gensicilInt) as $gensicilno) {
+        foreach ($this->aboneBorcTips() as $tip) {
+            foreach ($this->gensicilnoCandidatesForAbone($gensicilInt) as $gensicilno) {
                 try {
-                    $result = $this->callBorcSorgula($tip, $gensicilNo, $gensicilno);
+                    $result = $this->callBorcSorgula($tip, $sorguNo, $gensicilno);
                     if ($this->isValidBorcResult($result)) {
                         return $result;
                     }
@@ -242,17 +247,51 @@ class BelsisBorcSorgulaService
     }
 
     /**
+     * Abone no ile borç sorgusu (tahsilat: arama → borcSorgula, sicilSorgula uyeNo/mukellefNo eşleşmesi).
+     *
      * @return array<string, mixed>
      */
-    private function queryBySicil(string $sicilNo, bool $allowResolve = true): array
+    private function queryByAbone(string $aboneNo, bool $allowResolve = true): array
     {
-        $sicilInt = (int) $sicilNo;
+        $aboneInt = (int) $aboneNo;
         $lastError = null;
 
-        foreach ($this->sicilBorcTips() as $tip) {
-            foreach ($this->gensicilnoCandidatesForSicil($sicilInt) as $gensicilno) {
+        foreach ($this->aboneAramaTips() as $tip) {
+            try {
+                $record = $this->tryAramaRecord($tip, $aboneNo);
+                if ($record === null) {
+                    continue;
+                }
+
+                $gensicil = (string) ($record['gensicilno'] ?? $record['gensicilNo'] ?? '');
+                if ($gensicil === '' || $gensicil === '0') {
+                    continue;
+                }
+
+                $borc = $this->queryBorcByGensicil($gensicil, $lastError, $aboneNo);
+                if ($borc !== null) {
+                    return $borc;
+                }
+
+                $enriched = $this->resolveAboneRecord($aboneNo) ?? $record;
+
+                return $this->buildFallbackBorcFromSicil($enriched);
+            } catch (BelsisException $e) {
+                if ($this->isInfrastructureError($e)) {
+                    throw $e;
+                }
+                if ($this->isRecoverableBorcError($e)) {
+                    $lastError = $e;
+                    continue;
+                }
+                $lastError = $e;
+            }
+        }
+
+        foreach ($this->aboneBorcTips() as $tip) {
+            foreach ($this->gensicilnoCandidatesForAbone($aboneInt) as $gensicilno) {
                 try {
-                    $result = $this->callBorcSorgula($tip, $sicilNo, $gensicilno);
+                    $result = $this->callBorcSorgula($tip, $aboneNo, $gensicilno);
                     if ($this->isValidBorcResult($result)) {
                         return $result;
                     }
@@ -271,19 +310,19 @@ class BelsisBorcSorgulaService
 
         if (! $allowResolve) {
             throw new BelsisException(
-                'Sicil numarası bulunamadı. Belsis: '.($lastError?->getMessage() ?? 'Kayıt yok')
+                'Abone numarası bulunamadı. Belsis: '.($lastError?->getMessage() ?? 'Kayıt yok')
                 .' — Numarayı kontrol ediniz.',
                 $lastError?->sonucKodu,
             );
         }
 
-        if ($sicilRecord = $this->resolveSicilRecord($sicilNo)) {
-            $resolvedGensicil = (int) ($sicilRecord['gensicilno'] ?? $sicilRecord['gensicilNo'] ?? 0);
+        if ($aboneRecord = $this->resolveAboneRecord($aboneNo)) {
+            $resolvedGensicil = (int) ($aboneRecord['gensicilno'] ?? $aboneRecord['gensicilNo'] ?? 0);
 
-            if ($resolvedGensicil > 0 && $resolvedGensicil !== $sicilInt) {
-                foreach ($this->sicilBorcTips() as $tip) {
-                    foreach ($this->gensicilnoCandidatesForSicil($resolvedGensicil) as $gensicilno) {
-                        foreach ([(string) $resolvedGensicil, $sicilNo] as $sorguNo) {
+            if ($resolvedGensicil > 0 && $resolvedGensicil !== $aboneInt) {
+                foreach ($this->aboneBorcTips() as $tip) {
+                    foreach ($this->gensicilnoCandidatesForAbone($resolvedGensicil) as $gensicilno) {
+                        foreach ([(string) $resolvedGensicil, $aboneNo] as $sorguNo) {
                             try {
                                 $result = $this->callBorcSorgula($tip, $sorguNo, $gensicilno);
                                 if ($this->isValidBorcResult($result)) {
@@ -300,16 +339,16 @@ class BelsisBorcSorgulaService
                 }
 
                 try {
-                    return $this->queryBySicil((string) $resolvedGensicil, false);
+                    return $this->queryByAbone((string) $resolvedGensicil, false);
                 } catch (BelsisException $e) {
                     $lastError = $e;
                 }
             }
 
-            $tc = preg_replace('/\D/', '', (string) ($sicilRecord['tcKimlikNo'] ?? ''));
+            $tc = preg_replace('/\D/', '', (string) ($aboneRecord['tcKimlikNo'] ?? ''));
             if (strlen($tc) === 11) {
                 foreach ($this->tcBorcTips() as $tip) {
-                    foreach ([0, $resolvedGensicil > 0 ? $resolvedGensicil : $sicilInt] as $gensicilno) {
+                    foreach ([0, $resolvedGensicil > 0 ? $resolvedGensicil : $aboneInt] as $gensicilno) {
                         try {
                             $result = $this->callBorcSorgula($tip, $tc, $gensicilno);
                             if ($this->isValidBorcResult($result)) {
@@ -325,14 +364,20 @@ class BelsisBorcSorgulaService
                 }
             }
 
-            return $this->buildFallbackBorcFromSicil($sicilRecord);
+            return $this->buildFallbackBorcFromSicil($aboneRecord);
         }
 
         throw new BelsisException(
-            'Sicil numarası bulunamadı. Belsis: '.($lastError?->getMessage() ?? 'Kayıt yok')
+            'Abone numarası bulunamadı. Belsis: '.($lastError?->getMessage() ?? 'Kayıt yok')
             .' — Numarayı kontrol ediniz.',
             $lastError?->sonucKodu,
         );
+    }
+
+    /** @deprecated */
+    private function queryBySicil(string $sicilNo, bool $allowResolve = true): array
+    {
+        return $this->queryByAbone($sicilNo, $allowResolve);
     }
 
     /**
@@ -407,39 +452,51 @@ class BelsisBorcSorgulaService
     }
 
     /**
-     * Girilen sicil/üye numarasından kayıt çözer (tahsilat/tahakkuk sicilSorgula + arama).
+     * Girilen abone numarasından kayıt çözer (tahsilat/tahakkuk sicilSorgula uyeNo/mukellefNo + arama).
      *
      * @return array<string, mixed>|null
      */
-    private function resolveSicilRecord(string $sicilNo): ?array
+    private function resolveAboneRecord(string $aboneNo): ?array
     {
-        $sicilInt = (int) $sicilNo;
+        $aboneInt = (int) $aboneNo;
 
-        foreach ($this->sicilSorgulaParamVariants($sicilNo, $sicilInt) as $params) {
-            $record = $this->trySicilSorgula('tahsilat', $params, $sicilInt);
+        foreach ($this->aboneSorgulaParamVariants($aboneNo, $aboneInt) as $params) {
+            $record = $this->trySicilSorgula('tahsilat', $params, $aboneInt);
             if ($record !== null) {
                 return $record;
             }
 
-            $record = $this->trySicilSorgula('tahakkuk', $params, $sicilInt);
+            $record = $this->trySicilSorgula('tahakkuk', $params, $aboneInt);
             if ($record !== null) {
                 return $record;
             }
         }
 
-        return $this->tryResolveSicilViaArama($sicilNo);
+        return $this->tryResolveAboneViaArama($aboneNo);
+    }
+
+    /** @deprecated */
+    private function resolveSicilRecord(string $sicilNo): ?array
+    {
+        return $this->resolveAboneRecord($sicilNo);
     }
 
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function sicilSorgulaParamVariants(string $sicilNo, int $sicilInt): array
+    private function aboneSorgulaParamVariants(string $aboneNo, int $aboneInt): array
     {
         return [
-            ['gensicilno' => $sicilInt, 'koyID' => 0, 'mukellefNo' => $sicilNo],
-            ['gensicilno' => $sicilInt, 'koyID' => 0],
-            ['gensicilno' => 0, 'koyID' => 0, 'mukellefNo' => $sicilNo],
+            ['gensicilno' => 0, 'koyID' => 0, 'mukellefNo' => $aboneNo],
+            ['gensicilno' => $aboneInt, 'koyID' => 0, 'mukellefNo' => $aboneNo],
+            ['gensicilno' => $aboneInt, 'koyID' => 0],
         ];
+    }
+
+    /** @deprecated */
+    private function sicilSorgulaParamVariants(string $sicilNo, int $sicilInt): array
+    {
+        return $this->aboneSorgulaParamVariants($sicilNo, $sicilInt);
     }
 
     /**
@@ -486,13 +543,13 @@ class BelsisBorcSorgulaService
     /**
      * @return array<string, mixed>|null
      */
-    private function tryResolveSicilViaArama(string $sicilNo): ?array
+    private function tryResolveAboneViaArama(string $aboneNo): ?array
     {
-        foreach ($this->sicilAramaTips() as $tip) {
+        foreach ($this->aboneAramaTips() as $tip) {
             try {
                 $result = $this->client->callTahsilat('arama', array_merge(
                     $this->auth->baseParams(),
-                    ['sorguTip' => $tip, 'sorguNo' => $sicilNo],
+                    ['sorguTip' => $tip, 'sorguNo' => $aboneNo],
                 ));
 
                 $siciller = $result['Siciller'] ?? $result['siciller'] ?? null;
@@ -649,7 +706,7 @@ class BelsisBorcSorgulaService
         }
 
         if (strlen($identityNo) >= 1 && ctype_digit($identityNo) && strlen($identityNo) !== 11) {
-            foreach ($this->sicilAramaTips() as $tip) {
+            foreach ($this->aboneAramaTips() as $tip) {
                 try {
                     $gensicil = $this->tryArama($tip, $identityNo);
                     if ($gensicil !== null && (int) $gensicil > 0) {
@@ -662,7 +719,7 @@ class BelsisBorcSorgulaService
                 }
             }
 
-            if ($record = $this->resolveSicilRecord($identityNo)) {
+            if ($record = $this->resolveAboneRecord($identityNo)) {
                 $resolved = (int) ($record['gensicilno'] ?? $record['gensicilNo'] ?? 0);
                 if ($resolved > 0) {
                     return (string) $resolved;
@@ -672,17 +729,17 @@ class BelsisBorcSorgulaService
             return $identityNo;
         }
 
-        throw new BelsisException('Abone / sicil numarası ile kayıt çözümlenemedi.');
+        throw new BelsisException('Abone numarası ile kayıt çözümlenemedi.');
     }
 
     /**
-     * Abone veya sicil numarasından gensicilno çıkarır (borc yanıtı varsa önce onu kullanır).
+     * Abone numarasından gensicilno çıkarır (borc yanıtı varsa önce onu kullanır).
      */
-    public function resolveGensicilFromAccount(string $accountNo, ?array $borcResult = null): ?string
+    public function resolveGensicilFromAbone(string $aboneNo, ?array $borcResult = null): ?string
     {
-        $accountNo = trim($accountNo);
+        $aboneNo = trim($aboneNo);
 
-        if ($accountNo === '' || ! ctype_digit($accountNo)) {
+        if ($aboneNo === '' || ! ctype_digit($aboneNo)) {
             return null;
         }
 
@@ -694,15 +751,15 @@ class BelsisBorcSorgulaService
         }
 
         try {
-            return $this->extractSicilNo($borcResult ?? $this->query($accountNo, 'sicil'), $accountNo);
+            return $this->extractSicilNo($borcResult ?? $this->query($aboneNo, 'abone'), $aboneNo);
         } catch (BelsisException $e) {
             if ($this->isInfrastructureError($e)) {
                 throw $e;
             }
 
-            foreach ($this->sicilAramaTips() as $tip) {
+            foreach ($this->aboneAramaTips() as $tip) {
                 try {
-                    $gensicil = $this->tryArama($tip, $accountNo);
+                    $gensicil = $this->tryArama($tip, $aboneNo);
                     if ($gensicil !== null && (int) $gensicil > 0) {
                         return $gensicil;
                     }
@@ -713,15 +770,21 @@ class BelsisBorcSorgulaService
                 }
             }
 
-            if ($record = $this->resolveSicilRecord($accountNo)) {
+            if ($record = $this->resolveAboneRecord($aboneNo)) {
                 $resolved = (int) ($record['gensicilno'] ?? $record['gensicilNo'] ?? 0);
                 if ($resolved > 0) {
                     return (string) $resolved;
                 }
             }
 
-            return strlen($accountNo) <= 10 ? $accountNo : null;
+            return strlen($aboneNo) <= 10 ? $aboneNo : null;
         }
+    }
+
+    /** @deprecated */
+    public function resolveGensicilFromAccount(string $accountNo, ?array $borcResult = null): ?string
+    {
+        return $this->resolveGensicilFromAbone($accountNo, $borcResult);
     }
 
     /**
@@ -751,13 +814,19 @@ class BelsisBorcSorgulaService
     /**
      * @return array<int, string>
      */
-    private function sicilBorcTips(): array
+    private function aboneBorcTips(): array
     {
         return $this->filterUnsafeBorcTips($this->uniqueTips(
-            config('belsis.borc_sorgu_tips_sicil'),
+            config('belsis.borc_sorgu_tips_abone', config('belsis.borc_sorgu_tips_sicil')),
             [],
-            [config('belsis.borc_sorgu_tip_sicil', '1'), 'SICIL', 'GENSICIL', 'Sicil'],
+            [config('belsis.borc_sorgu_tip_abone', '1'), 'UYE', 'UYENO', 'ABONE', 'MUKELLEF'],
         ));
+    }
+
+    /** @deprecated */
+    private function sicilBorcTips(): array
+    {
+        return $this->aboneBorcTips();
     }
 
     /**
@@ -777,13 +846,19 @@ class BelsisBorcSorgulaService
     /**
      * @return array<int, string>
      */
-    private function sicilAramaTips(): array
+    private function aboneAramaTips(): array
     {
         return $this->uniqueTips(
-            config('belsis.arama_sorgu_tips_sicil'),
-            config('belsis.borc_sorgu_tips_sicil'),
-            ['SICIL', 'GENSICIL', 'UYE', 'UYENO', 'MUKELLEF', 'Sicil', '1'],
+            config('belsis.arama_sorgu_tips_abone', config('belsis.arama_sorgu_tips_sicil')),
+            config('belsis.borc_sorgu_tips_abone', config('belsis.borc_sorgu_tips_sicil')),
+            ['UYE', 'UYENO', 'ABONE', 'MUKELLEF', '1'],
         );
+    }
+
+    /** @deprecated */
+    private function sicilAramaTips(): array
+    {
+        return $this->aboneAramaTips();
     }
 
     /**
@@ -830,9 +905,15 @@ class BelsisBorcSorgulaService
     /**
      * @return array<int, int>
      */
+    private function gensicilnoCandidatesForAbone(int $abone): array
+    {
+        return array_values(array_unique([$abone, 0]));
+    }
+
+    /** @deprecated */
     private function gensicilnoCandidatesForSicil(int $sicil): array
     {
-        return array_values(array_unique([$sicil, 0]));
+        return $this->gensicilnoCandidatesForAbone($sicil);
     }
 
     private function isRecoverableBorcError(BelsisException $e): bool

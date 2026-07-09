@@ -229,7 +229,7 @@
                     <svg class="w-9 h-9 text-municipal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                 </div>
                 <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-2">Borç Ödeme &amp; Sorgulama</h3>
-                <p class="text-kiosk-sm text-municipalGray-600">Abone veya sicil numaranızla belediye borçlarınızı görüntüleyin ve ödeyin.</p>
+                <p class="text-kiosk-sm text-municipalGray-600">Abone numaranızla belediye borçlarınızı görüntüleyin ve ödeyin.</p>
             </button>
             <button id="btn-menu-water" type="button" class="touch-btn flex-1 max-w-md bg-white border-3 border-cyan-400 rounded-3xl p-10 shadow-xl hover:border-cyan-600 text-left">
                 <div class="w-16 h-16 rounded-2xl bg-cyan-100 flex items-center justify-center mb-5">
@@ -424,14 +424,14 @@
                 <div>
                     <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-3">Borç Sorgulama</h3>
                     <p id="identity-hint" class="text-kiosk-sm text-municipalGray-600 leading-snug">
-                        Abone veya sicil numaranızı numaratör veya fiziksel klavye (NumLock) ile giriniz.
+                        Abone numaranızı numaratör veya fiziksel klavye (NumLock) ile giriniz.
                     </p>
                 </div>
                 <div class="identity-strip">
-                    <p class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">Abone / Sicil No</p>
+                    <p class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">Abone No</p>
                     <div id="digit-row" class="abone-digit-row justify-start flex-wrap" aria-live="polite"></div>
                 </div>
-                <input id="input-identity" type="text" class="sr-only" maxlength="10" readonly aria-label="Abone veya sicil numarası" />
+                <input id="input-identity" type="text" class="sr-only" maxlength="10" readonly aria-label="Abone numarası" />
                 <p id="login-error" class="text-kiosk-sm text-red-600 font-medium hidden" role="alert"></p>
                 <button id="btn-query" type="button" disabled
                     class="touch-btn btn-query-wide bg-municipal-600 text-white font-bold rounded-2xl shadow-xl hover:bg-municipal-700 disabled:opacity-40">
@@ -1239,9 +1239,8 @@
                 session.debts = debts;
                 session.selectedIds.clear();
                 renderDebtList();
-                const sicilLabel = citizen.sicilNo ? 'Sicil: ' + citizen.sicilNo : 'Abone: ' + identityNo;
                 document.getElementById('citizen-name').textContent =
-                    subscriberDisplayName(citizen) + ' — ' + sicilLabel;
+                    subscriberDisplayName(citizen) + ' — Abone ' + (citizen.aboneNo || identityNo);
                 showScreen('debts');
             } catch (err) {
                 loginError.textContent = err.message;

@@ -90,7 +90,7 @@ class BelsisKioskService
         }
 
         return $this->tahsilat->initiateBankPayment(
-            $citizen['sicilNo'],
+            $citizen['gensicilNo'] ?? $citizen['aboneNo'] ?? $identityNo,
             $debtIds,
             (float) $selected->sum('amount'),
         );
@@ -123,7 +123,7 @@ class BelsisKioskService
         $selectedDebts = collect($debts)->whereIn('id', $debtIds)->values()->all();
 
         return $this->withSessionRetry(fn () => $this->tahsilat->confirmBankPayment(
-            $citizen['sicilNo'],
+            $citizen['gensicilNo'] ?? $citizen['aboneNo'] ?? $identityNo,
             $selectedDebts,
             $transactionId,
             $citizen,
@@ -155,7 +155,7 @@ class BelsisKioskService
             return false;
         }
 
-        return in_array(trim($identityNo), config('belsis.mock_sicils', []), true);
+        return in_array(trim($identityNo), config('belsis.mock_aboneler', []), true);
     }
 
     private function shouldRetryWithFreshSession(BelsisException $e): bool
@@ -173,10 +173,11 @@ class BelsisKioskService
     private function mockCitizen(string $identityNo, ?string $searchType = null): array
     {
         return [
+            'aboneNo'    => $identityNo,
             'identityNo' => $identityNo,
+            'gensicilNo' => $identityNo,
             'fullName'   => 'Ahmet YILMAZ (Demo)',
-            'sicilNo'    => $identityNo,
-            'searchType' => 'tc',
+            'searchType' => 'abone',
             'adi'        => 'Ahmet',
             'soyadi'     => 'YILMAZ (Demo)',
         ];

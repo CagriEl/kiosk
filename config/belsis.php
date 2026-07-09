@@ -16,27 +16,42 @@ return [
 
     'mock' => filter_var(env('BELSIS_MOCK', false), FILTER_VALIDATE_BOOLEAN),
 
-    // Mock yalnızca bu sicil numaraları için kullanılır (gerçek TC her zaman Belsis'e gider)
-    'mock_sicils' => array_filter(array_map('trim', explode(',', env('BELSIS_MOCK_SICILS', '89874')))),
+    // Mock yalnızca bu abone numaraları için kullanılır
+    'mock_aboneler' => array_filter(array_map('trim', explode(',', env(
+        'BELSIS_MOCK_ABONELER',
+        env('BELSIS_MOCK_SICILS', '89874'),
+    )))),
 
-    // TC → sicil arama (arama methodu — Kırklareli: 2=TCKN)
+    // TC → gensicil arama (arama methodu — Kırklareli: 2=TCKN)
     'arama_sorgu_tips' => array_filter(array_map('trim', explode(',', env(
         'BELSIS_ARAMA_SORGU_TIPS',
         '2,TC,TcKimlikNo,TCKIMLIK,Tc',
     )))),
 
-    // Sicil / üye no → gensicil arama (arama methodu)
+    // Abone no → gensicil arama (tahsilat arama — WSDL: sorguTip + sorguNo)
+    'arama_sorgu_tips_abone' => array_filter(array_map('trim', explode(',', env(
+        'BELSIS_ARAMA_SORGU_TIPS_ABONE',
+        'UYE,UYENO,ABONE,MUKELLEF,1',
+    )))),
+
+    // @deprecated — BELSIS_ARAMA_SORGU_TIPS_ABONE kullanın
     'arama_sorgu_tips_sicil' => array_filter(array_map('trim', explode(',', env(
         'BELSIS_ARAMA_SORGU_TIPS_SICIL',
-        '1,SICIL,GENSICIL,UYE,UYENO,MUKELLEF,Sicil,Gensicil',
+        'UYE,UYENO,ABONE,MUKELLEF,1',
     )))),
 
     // borcSorgula — onlinetahsilatborcsoruglama SP @sorgutip zorunlu (kuruma göre değişir)
-    'borc_sorgu_tip_sicil' => env('BELSIS_BORC_SORGU_TIP_SICIL', '1'),
+    'borc_sorgu_tip_abone' => env('BELSIS_BORC_SORGU_TIP_ABONE', env('BELSIS_BORC_SORGU_TIP_SICIL', '1')),
     'borc_sorgu_tip_tc'    => env('BELSIS_BORC_SORGU_TIP_TC', '2'),
+    'borc_sorgu_tips_abone' => array_filter(array_map('trim', explode(',', env(
+        'BELSIS_BORC_SORGU_TIPS_ABONE',
+        'UYE,UYENO,ABONE,MUKELLEF,1',
+    )))),
+    // @deprecated — BELSIS_BORC_SORGU_TIPS_ABONE kullanın
+    'borc_sorgu_tip_sicil' => env('BELSIS_BORC_SORGU_TIP_SICIL', '1'),
     'borc_sorgu_tips_sicil' => array_filter(array_map('trim', explode(',', env(
         'BELSIS_BORC_SORGU_TIPS_SICIL',
-        '1,SICIL,GENSICIL,GENSICILNO,Sicil,Gensicil',
+        'UYE,UYENO,ABONE,MUKELLEF,1',
     )))),
     'borc_sorgu_tips_tc' => array_filter(array_map('trim', explode(',', env(
         'BELSIS_BORC_SORGU_TIPS_TC',
