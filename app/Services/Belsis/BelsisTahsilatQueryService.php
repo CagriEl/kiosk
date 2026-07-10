@@ -367,10 +367,14 @@ class BelsisTahsilatQueryService
         }
 
         if (empty($records)) {
-            throw new BelsisException('Sicil numarası belediye kaydınızla eşleştirilemedi.');
+            throw new BelsisException('Sicil numarası '.$gensicilno.' bulunamadı.');
         }
 
-        $record = $this->pickMatchingSicilRecord($records, $gensicilno) ?? $records[0];
+        $record = $this->pickExactSicilRecord($records, $gensicilno);
+
+        if ($record === null) {
+            throw new BelsisException('Sicil numarası '.$gensicilno.' için birebir eşleşen kayıt bulunamadı.');
+        }
 
         $ad    = trim((string) ($record['adi'] ?? ''));
         $soyad = trim((string) ($record['soyadi'] ?? ''));
@@ -393,7 +397,32 @@ class BelsisTahsilatQueryService
     }
 
     /**
-     * Sadece gensicilno ile tahsilat sicilSorgula — mukellefNo gönderilmez.
+     * gensicilno VEYA uyeNo ile birebir eşleşen kaydı seçer.
+     * "tek kayıt varsa kabul et" mantığı yoktur — yanlış kişi riski sıfırlanır.
+     *
+     * @param  array<int, array<string, mixed>>  $siciller
+     * @return array<string, mixed>|null
+     */
+    private function pickExactSicilRecord(array $siciller, int $gensicilno): ?array
+    {
+        foreach ($siciller as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $rowGensicil = (int) ($row['gensicilno'] ?? $row['gensicilNo'] ?? 0);
+            $rowUyeNo    = (int) ($row['uyeNo'] ?? 0);
+
+            if ($rowGensicil === $gensicilno || $rowUyeNo === $gensicilno) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * gensicilno + mukellefNo ile tahsilat sicilSorgula, birebir eşleşme kontrolü yapar.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -402,10 +431,21 @@ class BelsisTahsilatQueryService
         try {
             $result = $this->client->callTahsilat('sicilSorgula', array_merge(
                 $this->auth->baseParams(),
-                ['gensicilno' => $gensicilno, 'koyID' => 0],
+                ['gensicilno' => $gensicilno, 'koyID' => 0, 'mukellefNo' => (string) $gensicilno],
             ));
 
-            return $this->normalizeList($result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? []);
+            $records = $this->normalizeList($result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? []);
+
+            // mukellefNo ile başka biri geldiyse filtrele
+            return array_values(array_filter($records, function (mixed $row) use ($gensicilno) {
+                if (! is_array($row)) {
+                    return false;
+                }
+                $rowGensicil = (int) ($row['gensicilno'] ?? $row['gensicilNo'] ?? 0);
+                $rowUyeNo    = (int) ($row['uyeNo'] ?? 0);
+
+                return $rowGensicil === $gensicilno || $rowUyeNo === $gensicilno;
+            }));
         } catch (BelsisException $e) {
             if ($this->isInfrastructureError($e)) {
                 throw $e;
@@ -416,7 +456,7 @@ class BelsisTahsilatQueryService
     }
 
     /**
-     * Sadece gensicilno ile tahakkuk sicilSorgula — mukellefNo gönderilmez.
+     * gensicilno + mukellefNo ile tahakkuk sicilSorgula, birebir eşleşme kontrolü yapar.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -425,10 +465,20 @@ class BelsisTahsilatQueryService
         try {
             $result = $this->client->callTahakkuk('sicilSorgula', array_merge(
                 $this->auth->baseParamsTahakkuk(),
-                ['gensicilno' => $gensicilno, 'koyID' => 0],
+                ['gensicilno' => $gensicilno, 'koyID' => 0, 'mukellefNo' => (string) $gensicilno],
             ));
 
-            return $this->normalizeList($result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? []);
+            $records = $this->normalizeList($result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? []);
+
+            return array_values(array_filter($records, function (mixed $row) use ($gensicilno) {
+                if (! is_array($row)) {
+                    return false;
+                }
+                $rowGensicil = (int) ($row['gensicilno'] ?? $row['gensicilNo'] ?? 0);
+                $rowUyeNo    = (int) ($row['uyeNo'] ?? 0);
+
+                return $rowGensicil === $gensicilno || $rowUyeNo === $gensicilno;
+            }));
         } catch (BelsisException $e) {
             if ($this->isInfrastructureError($e)) {
                 throw $e;
