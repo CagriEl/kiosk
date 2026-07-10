@@ -1115,6 +1115,8 @@
             identityHint.textContent = isSicil
                 ? 'Sicil numaranızı numaratör ya da fiziksel klavye (NumLock) ile giriniz.'
                 : 'Abone numaranızı numaratör ya da fiziksel klavye (NumLock) ile giriniz.';
+            setIdentityValue('');
+            loginError.classList.add('hidden');
         }
 
         btnTypeAbone.addEventListener('click', () => setIdentitySearchType('abone'));
