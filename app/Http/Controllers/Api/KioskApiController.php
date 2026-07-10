@@ -19,10 +19,9 @@ class KioskApiController extends Controller
     public function citizen(Request $request, string $identityNo): JsonResponse
     {
         try {
-            $this->assertAboneNo($identityNo);
-            $searchType = $this->resolveSearchType($request);
+            $this->assertSicilNo($identityNo);
 
-            return response()->json($this->belsis->getCitizen($identityNo, $searchType));
+            return response()->json($this->belsis->getCitizen($identityNo));
         } catch (BelsisException $e) {
             return $this->belsisError($e);
         }
@@ -31,10 +30,9 @@ class KioskApiController extends Controller
     public function debts(Request $request, string $identityNo): JsonResponse
     {
         try {
-            $this->assertAboneNo($identityNo);
-            $searchType = $this->resolveSearchType($request);
+            $this->assertSicilNo($identityNo);
 
-            return response()->json($this->belsis->getDebts($identityNo, $searchType));
+            return response()->json($this->belsis->getDebts($identityNo));
         } catch (BelsisException $e) {
             return $this->belsisError($e);
         }
@@ -73,7 +71,6 @@ class KioskApiController extends Controller
             'identityNo' => 'required|string|regex:/^\d{1,10}$/',
             'debtIds'    => 'required|array|min:1',
             'debtIds.*'  => 'required|string',
-            'searchType' => 'nullable|in:abone,sicil',
         ]);
 
         try {
@@ -81,7 +78,6 @@ class KioskApiController extends Controller
                 $this->belsis->initiatePayment(
                     $validated['identityNo'],
                     $validated['debtIds'],
-                    $validated['searchType'] ?? 'abone',
                 ),
             );
         } catch (BelsisException $e) {
@@ -95,7 +91,6 @@ class KioskApiController extends Controller
             'identityNo' => 'required|string|regex:/^\d{1,10}$/',
             'debtIds'    => 'required|array|min:1',
             'debtIds.*'  => 'required|string',
-            'searchType' => 'nullable|in:abone,sicil',
         ]);
 
         try {
@@ -104,7 +99,6 @@ class KioskApiController extends Controller
                     $validated['identityNo'],
                     $validated['debtIds'],
                     $transactionId,
-                    $validated['searchType'] ?? 'abone',
                 ),
             );
         } catch (BelsisException $e) {
@@ -273,7 +267,7 @@ class KioskApiController extends Controller
         $message = mb_strtolower($e->getMessage());
         $status = 422;
 
-        if (str_contains($message, '11 haneli') || str_contains($message, 'abone numarası')) {
+        if (str_contains($message, '11 haneli') || str_contains($message, 'sicil numarası')) {
             $status = 400;
         } elseif (
             str_contains($message, 'bulunamad')
@@ -307,22 +301,12 @@ class KioskApiController extends Controller
         ], $status);
     }
 
-    private function assertAboneNo(string $aboneNo): void
+    private function assertSicilNo(string $sicilNo): void
     {
-        $aboneNo = trim($aboneNo);
+        $sicilNo = trim($sicilNo);
 
-        if (! ctype_digit($aboneNo) || strlen($aboneNo) < 1 || strlen($aboneNo) > 10) {
-            throw new BelsisException('Abone/Sicil numarası 1–10 haneli olmalıdır.');
+        if (! ctype_digit($sicilNo) || strlen($sicilNo) < 1 || strlen($sicilNo) > 10) {
+            throw new BelsisException('Sicil numarası 1–10 haneli olmalıdır.');
         }
-    }
-
-    /**
-     * @return 'abone'|'sicil'
-     */
-    private function resolveSearchType(Request $request): string
-    {
-        $validated = $request->validate(['searchType' => 'nullable|in:abone,sicil']);
-
-        return $validated['searchType'] ?? 'abone';
     }
 }

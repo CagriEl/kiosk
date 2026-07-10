@@ -17,26 +17,26 @@ class BelsisKioskService
     /**
      * @return array{identityNo: string, fullName: string, sicilNo: string}
      */
-    public function getCitizen(string $identityNo, ?string $searchType = null): array
+    public function getCitizen(string $identityNo): array
     {
         if ($this->shouldUseMock($identityNo)) {
-            return $this->mockCitizen($identityNo, $searchType);
+            return $this->mockCitizen($identityNo);
         }
 
-        return $this->withSessionRetry(fn () => $this->query->getCitizen($identityNo, $searchType));
+        return $this->withSessionRetry(fn () => $this->query->getCitizen($identityNo));
     }
 
     /**
      * @return array{debts: array<int, array<string, mixed>>}
      */
-    public function getDebts(string $identityNo, ?string $searchType = null): array
+    public function getDebts(string $identityNo): array
     {
         if ($this->shouldUseMock($identityNo)) {
             return ['debts' => $this->mockDebts()];
         }
 
         try {
-            return ['debts' => $this->withSessionRetry(fn () => $this->query->getDebts($identityNo, $searchType))];
+            return ['debts' => $this->withSessionRetry(fn () => $this->query->getDebts($identityNo))];
         } catch (BelsisException $e) {
             Log::error('Belsis borç sorgusu hatası', ['message' => $e->getMessage(), 'code' => $e->sonucKodu]);
             throw $e;
@@ -79,10 +79,10 @@ class BelsisKioskService
      * @param  array<int, string>  $debtIds
      * @return array{transactionId: string, total: float, status: string, paymentMethod: string}
      */
-    public function initiatePayment(string $identityNo, array $debtIds, ?string $searchType = null): array
+    public function initiatePayment(string $identityNo, array $debtIds): array
     {
-        $citizen = $this->getCitizen($identityNo, $searchType);
-        $debts = $this->getDebts($identityNo, $searchType)['debts'];
+        $citizen = $this->getCitizen($identityNo);
+        $debts = $this->getDebts($identityNo)['debts'];
         $selected = collect($debts)->whereIn('id', $debtIds)->values();
 
         if ($selected->isEmpty()) {
@@ -90,7 +90,7 @@ class BelsisKioskService
         }
 
         return $this->tahsilat->initiateBankPayment(
-            $citizen['gensicilNo'] ?? $citizen['aboneNo'] ?? $identityNo,
+            $citizen['gensicilNo'] ?? $citizen['sicilNo'] ?? $identityNo,
             $debtIds,
             (float) $selected->sum('amount'),
         );
@@ -100,10 +100,10 @@ class BelsisKioskService
      * @param  array<int, string>  $debtIds
      * @return array<string, mixed>
      */
-    public function confirmPayment(string $identityNo, array $debtIds, string $transactionId, ?string $searchType = null): array
+    public function confirmPayment(string $identityNo, array $debtIds, string $transactionId): array
     {
-        $citizen = $this->getCitizen($identityNo, $searchType);
-        $debts = $this->getDebts($identityNo, $searchType)['debts'];
+        $citizen = $this->getCitizen($identityNo);
+        $debts = $this->getDebts($identityNo)['debts'];
 
         if ($this->shouldUseMock($identityNo)) {
             return [
@@ -123,7 +123,7 @@ class BelsisKioskService
         $selectedDebts = collect($debts)->whereIn('id', $debtIds)->values()->all();
 
         return $this->withSessionRetry(fn () => $this->tahsilat->confirmBankPayment(
-            $citizen['gensicilNo'] ?? $citizen['aboneNo'] ?? $identityNo,
+            $citizen['gensicilNo'] ?? $citizen['sicilNo'] ?? $identityNo,
             $selectedDebts,
             $transactionId,
             $citizen,
@@ -170,14 +170,14 @@ class BelsisKioskService
     /**
      * @return array{identityNo: string, fullName: string, sicilNo: string, adi?: string, soyadi?: string}
      */
-    private function mockCitizen(string $identityNo, ?string $searchType = null): array
+    private function mockCitizen(string $identityNo): array
     {
         return [
-            'aboneNo'    => $identityNo,
+            'sicilNo'    => $identityNo,
             'identityNo' => $identityNo,
             'gensicilNo' => $identityNo,
             'fullName'   => 'Ahmet YILMAZ (Demo)',
-            'searchType' => 'abone',
+            'searchType' => 'sicil',
             'adi'        => 'Ahmet',
             'soyadi'     => 'YILMAZ (Demo)',
         ];
