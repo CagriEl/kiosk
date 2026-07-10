@@ -104,23 +104,27 @@ class BelsisTahakkukService
     }
 
     /**
+     * WSDL (kdvHesabiC): wrapper 'kdvHesabiListesi' (tekil "Hesabi", çoğul değil).
+     *
      * @return array<int, array<string, mixed>>
      */
     public function getKdvHesaplari(): array
     {
         $result = $this->client->callTahakkuk('kdvHesaplari', $this->auth->baseParamsTahakkuk());
 
-        return $this->normalizeList($result['kdvHesaplariListesi']['kdvHesaplari'] ?? $result['kdvHesaplariListesi'] ?? []);
+        return $this->normalizeList($result['kdvHesabiListesi']['kdvHesaplari'] ?? $result['kdvHesabiListesi'] ?? []);
     }
 
     /**
+     * WSDL (kdvOraniC): wrapper 'kdvOraniListesi' (tekil "Orani", çoğul değil).
+     *
      * @return array<int, array<string, mixed>>
      */
     public function getKdvOranlari(): array
     {
         $result = $this->client->callTahakkuk('kdvOranlari', $this->auth->baseParamsTahakkuk());
 
-        return $this->normalizeList($result['kdvOranlariListesi']['kdvOranlari'] ?? $result['kdvOranlariListesi'] ?? []);
+        return $this->normalizeList($result['kdvOraniListesi']['kdvOranlari'] ?? $result['kdvOraniListesi'] ?? []);
     }
 
     /**
@@ -156,13 +160,15 @@ class BelsisTahakkukService
     }
 
     /**
+     * WSDL (genmahMobilC): wrapper 'adresler', öğeler 'genmahMobilObject' (adi/id).
+     *
      * @return array<int, array<string, mixed>>
      */
     public function genmahSorgulaCombo(): array
     {
         $result = $this->client->callTahakkuk('genmahSorgulaCombo', $this->auth->baseParamsTahakkuk());
 
-        return $this->normalizeList($result['genmahListesi']['genmah'] ?? $result['genmahListesi'] ?? []);
+        return $this->normalizeList($result['adresler']['genmahMobilObject'] ?? $result['adresler'] ?? []);
     }
 
     /**

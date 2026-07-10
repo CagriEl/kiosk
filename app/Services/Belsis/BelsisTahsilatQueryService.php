@@ -467,22 +467,18 @@ class BelsisTahsilatQueryService
     }
 
     /**
+     * WSDL (makbuzG): tek alan — masterMakbuzNo. seriNo/makbuzNo bu operasyonun şemasında
+     * yok; $seriNo/$makbuzNo parametreleri yalnızca çağıranların (ör. receipt route'u)
+     * elindeki bilgiyi iletebilmesi için tutulur, SOAP isteğine dahil edilmez.
+     *
      * @return array<string, mixed>
      */
     public function makbuzSorgula(int $masterMakbuzNo, ?string $seriNo = null, ?int $makbuzNo = null): array
     {
-        $params = array_merge($this->auth->baseParams(), [
-            'masterMakbuzNo' => $masterMakbuzNo,
-        ]);
-
-        if ($seriNo !== null) {
-            $params['SeriNo'] = $seriNo;
-        }
-        if ($makbuzNo !== null) {
-            $params['MakbuzNo'] = $makbuzNo;
-        }
-
-        return $this->client->callTahsilat('makbuzSorgula', $params);
+        return $this->client->callTahsilat('makbuzSorgula', array_merge(
+            $this->auth->baseParams(),
+            ['masterMakbuzNo' => $masterMakbuzNo],
+        ));
     }
 
     /**
