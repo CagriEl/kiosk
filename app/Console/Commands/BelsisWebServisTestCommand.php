@@ -71,6 +71,20 @@ class BelsisWebServisTestCommand extends Command
             $borclar = $query->getDebts($sicil);
         });
 
+        if ($borclar !== []) {
+            $this->line('  Borçlar (--pay-debt için id kullanın):');
+            foreach ($borclar as $debt) {
+                $this->line(sprintf(
+                    '    - id=%s  %s  %s TL',
+                    $debt['id'],
+                    mb_substr((string) $debt['type'], 0, 40),
+                    number_format((float) $debt['amount'], 2, ',', '.'),
+                ));
+            }
+        } else {
+            $this->line('  <fg=yellow>Borç bulunamadı — --pay-debt için kullanılabilir bir id yok.</>');
+        }
+
         $run('arama (sicil)', fn () => $query->search('SICIL', $sicil));
         $run('mukellefMakbuzSorgula', fn () => $query->mukellefMakbuzSorgula((int) $sicil));
         $run('tahsilatSorgula', fn () => $query->tahsilatSorgula((int) $sicil));
