@@ -7,13 +7,16 @@ use App\Services\Belsis\BelsisAuthService;
 use App\Services\Belsis\BelsisTahakkukService;
 use App\Services\Belsis\BelsisTahsilatCatalogService;
 use App\Services\Belsis\BelsisTahsilatQueryService;
+use App\Services\Belsis\BelsisTahsilatService;
 use Illuminate\Console\Command;
 
 class BelsisWebServisTestCommand extends Command
 {
     protected $signature = 'belsis:webservis-test
                             {sicil? : Test sicil numarası (varsayılan: 89874)}
-                            {--skip-payment : odemeYap çağrısını atla}';
+                            {--skip-payment : odemeYap çağrısını atla}
+                            {--pay-debt= : Bu borç ID\'si için GERÇEK odemeYap tahsilatı dener (borcSorgula/tahakkukBilgileriniGetir çıktısındaki id)}
+                            {--no-auto-cancel : Test tahsilatını odendikten sonra otomatik makbuzIptal ile geri almayı atla}';
 
     protected $description = 'webservis/ dokümantasyonundaki tüm tahsilat ve tahakkuk methodlarını sırayla test eder';
 
@@ -22,6 +25,7 @@ class BelsisWebServisTestCommand extends Command
         BelsisTahsilatCatalogService $catalog,
         BelsisTahsilatQueryService $query,
         BelsisTahakkukService $tahakkuk,
+        BelsisTahsilatService $tahsilat,
     ): int {
         $sicil = (string) ($this->argument('sicil') ?: '89874');
 
@@ -61,7 +65,12 @@ class BelsisWebServisTestCommand extends Command
         $run('tahakkukTurleri (tahsilat)', fn () => $catalog->getTahakkukTurleri());
         $run('sicilSorgula', fn () => $query->sicilSorgula((int) $sicil));
         $run('sicilBorcBeyanSorgula', fn () => $query->sicilBorcBeyanSorgula((int) $sicil));
-        $run('borcSorgula', fn () => $query->getDebts($sicil));
+
+        $borclar = [];
+        $run('borcSorgula', function () use ($query, $sicil, &$borclar) {
+            $borclar = $query->getDebts($sicil);
+        });
+
         $run('arama (sicil)', fn () => $query->search('SICIL', $sicil));
         $run('mukellefMakbuzSorgula', fn () => $query->mukellefMakbuzSorgula((int) $sicil));
         $run('tahsilatSorgula', fn () => $query->tahsilatSorgula((int) $sicil));
@@ -103,19 +112,22 @@ class BelsisWebServisTestCommand extends Command
         $run('gmkSorgula', fn () => $tahakkuk->gmkSorgula((int) $sicil));
         $run('sicilSorgula (tahakkuk)', fn () => $tahakkuk->getCitizen($sicil));
 
-        if ($this->option('skip-payment')) {
-            $run('odemeYap', fn () => null, true);
+        $payDebtId = $this->option('pay-debt');
+
+        if ($this->option('skip-payment') || $payDebtId === null) {
+            $run('odemeYap (tahakkuklu)', fn () => null, true);
             $run('makbuzIptal', fn () => null, true);
             $run('tahakkukEkle', fn () => null, true);
             $run('tahakkukIptal', fn () => null, true);
+
+            if ($payDebtId === null && ! $this->option('skip-payment')) {
+                $this->newLine();
+                $this->comment('odemeYap gerçek bir tahsilat testi için: --pay-debt=<borcID> ekleyin (borç listesindeki id).');
+            }
         } else {
             $this->newLine();
-            $this->warn('odemeYap / tahakkukEkle / makbuzIptal gerçek kayıt oluşturur — varsayılan olarak atlanır.');
-            $run('odemeYap (tahakkuklu)', fn () => null, true);
-            $run('odemeYap (tahakkuksuz)', fn () => null, true);
-            $run('makbuzIptal', fn () => null, true);
-            $run('tahakkukEkle', fn () => null, true);
-            $run('tahakkukIptal', fn () => null, true);
+            $this->comment('Gerçek tahsilat testi (odemeYap)');
+            $this->runPaymentTest($tahakkuk, $tahsilat, $sicil, (string) $payDebtId, $borclar);
         }
 
         $this->newLine();
@@ -126,5 +138,84 @@ class BelsisWebServisTestCommand extends Command
         }
 
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * --pay-debt ile açıkça istenmediği sürece hiçbir gerçek kayıt oluşturmaz.
+     * odemeYap Belsis'te gerçek bir tahsilat/makbuz kaydı yaratır; bu yüzden
+     * tutar/borç gösterip onay ister ve varsayılan olarak hemen ardından
+     * makbuzIptal ile geri alma teklif eder (--no-auto-cancel ile atlanabilir).
+     *
+     * @param  array<int, array<string, mixed>>  $borclar
+     */
+    private function runPaymentTest(
+        BelsisTahakkukService $tahakkuk,
+        BelsisTahsilatService $tahsilat,
+        string $sicil,
+        string $debtId,
+        array $borclar,
+    ): void {
+        $debt = collect($borclar)->first(fn (array $d) => (string) $d['id'] === $debtId);
+
+        if ($debt === null) {
+            $this->error("Borç ID bulunamadı: {$debtId} (borcSorgula çıktısındaki id'lerden birini kullanın)");
+
+            return;
+        }
+
+        $citizen = [];
+        try {
+            $citizen = $tahakkuk->getCitizen($sicil);
+        } catch (BelsisException) {
+            // isim boş geçilebilir, odemeYap 'VATANDAS' varsayılanına düşer
+        }
+
+        $this->warn(sprintf(
+            'GERÇEK TAHSİLAT: %s — %s TL (sicil: %s, borç: %s)',
+            $debt['type'],
+            number_format((float) $debt['amount'], 2, ',', '.'),
+            $sicil,
+            $debtId,
+        ));
+        $this->warn('Bu işlem Belsis üzerinde gerçek bir makbuz/tahsilat kaydı oluşturur.');
+
+        if (! $this->confirm('Devam edilsin mi?', false)) {
+            $this->line('Vazgeçildi.');
+
+            return;
+        }
+
+        try {
+            $result = $tahsilat->confirmBankPayment($sicil, [$debt], 'TEST-'.now()->timestamp, $citizen);
+        } catch (BelsisException $e) {
+            $this->error('Tahsilat başarısız: '.$e->getMessage());
+
+            return;
+        }
+
+        $this->info(sprintf(
+            'Tahsilat başarılı — Makbuz: %s-%s (ID: %s), Tutar: %s TL',
+            $result['seriNo'], $result['makbuzNo'], $result['makbuzID'],
+            number_format((float) $result['total'], 2, ',', '.'),
+        ));
+
+        if ($this->option('no-auto-cancel')) {
+            $this->warn('Otomatik iptal atlandı (--no-auto-cancel). Bu kayıt Belsis üzerinde gerçek tahsilat olarak kalacak.');
+
+            return;
+        }
+
+        if (! $this->confirm('Bu test kaydını şimdi makbuzIptal ile geri alalım mı?', true)) {
+            $this->warn('Kayıt iptal edilmedi, Belsis üzerinde gerçek bir tahsilat olarak kalacak.');
+
+            return;
+        }
+
+        try {
+            $tahsilat->makbuzIptal((int) $result['makbuzID'], (string) $result['seriNo'], (int) $result['makbuzNo']);
+            $this->info('Test tahsilatı iptal edildi (makbuzIptal).');
+        } catch (BelsisException $e) {
+            $this->error('İptal başarısız: '.$e->getMessage().' — Belsis IT ile manuel iptali koordine edin.');
+        }
     }
 }
