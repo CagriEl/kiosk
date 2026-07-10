@@ -101,16 +101,21 @@ class BelsisTahsilatService
     }
 
     /**
+     * WSDL (makbuzIptalG): seriNo, aciklama, makbuzNo (zorunlu), iptalTarihi (zorunlu).
+     * masterMakbuzNo/makbuzID bu operasyonda yok — makbuzSorgula/odemeYap'tan gelen
+     * seriNo + makbuzNo çifti yeterli ve zorunlu alandır.
+     *
      * @return array<string, mixed>
      */
-    public function makbuzIptal(int $masterMakbuzNo, string $seriNo, int $makbuzNo): array
+    public function makbuzIptal(int $makbuzNo, string $seriNo, ?string $aciklama = null): array
     {
         return $this->client->callTahsilat('makbuzIptal', array_merge(
             $this->auth->baseParams(),
             [
-                'masterMakbuzNo' => $masterMakbuzNo,
-                'SeriNo'         => $seriNo,
-                'MakbuzNo'       => $makbuzNo,
+                'seriNo'      => $seriNo,
+                'aciklama'    => $aciklama ?? 'Kiosk iptal',
+                'makbuzNo'    => $makbuzNo,
+                'iptalTarihi' => now()->format('Y-m-d\TH:i:s'),
             ],
         ));
     }

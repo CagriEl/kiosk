@@ -136,13 +136,22 @@ class BelsisTahakkukService
     }
 
     /**
+     * WSDL (tahakkukIptalG): tahID, kulno, iptalTarihi (hepsi zorunlu), iptalAciklama (opsiyonel).
+     *
      * @return array<string, mixed>
      */
-    public function tahakkukIptal(string $tahId): array
+    public function tahakkukIptal(string $tahId, ?string $aciklama = null): array
     {
+        $session = $this->auth->getTahakkukSession();
+
         return $this->client->callTahakkuk('tahakkukIptal', array_merge(
             $this->auth->baseParamsTahakkuk(),
-            ['tahId' => $tahId],
+            [
+                'tahID'         => $tahId,
+                'kulno'         => (int) ($session['kulNo'] ?? 0),
+                'iptalTarihi'   => now()->format('Y-m-d\TH:i:s'),
+                'iptalAciklama' => $aciklama ?? 'Kiosk iptal',
+            ],
         ));
     }
 

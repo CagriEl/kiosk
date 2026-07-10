@@ -212,7 +212,7 @@ class BelsisWebServisTestCommand extends Command
         }
 
         try {
-            $tahsilat->makbuzIptal((int) $result['makbuzID'], (string) $result['seriNo'], (int) $result['makbuzNo']);
+            $tahsilat->makbuzIptal((int) $result['makbuzNo'], (string) $result['seriNo'], 'belsis:webservis-test otomatik iptal');
             $this->info('Test tahsilatı iptal edildi (makbuzIptal).');
         } catch (BelsisException $e) {
             $this->error('İptal başarısız: '.$e->getMessage().' — Belsis IT ile manuel iptali koordine edin.');
