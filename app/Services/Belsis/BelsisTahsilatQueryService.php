@@ -360,10 +360,10 @@ class BelsisTahsilatQueryService
     {
         $gensicilno = $this->parseGensicilNo($identityNo);
 
-        $records = $this->sicilSorgula($gensicilno);
+        $records = $this->sicilSorgulaByGensicilno($gensicilno);
 
         if (empty($records)) {
-            $records = $this->sicilSorgulaTahakkuk($gensicilno);
+            $records = $this->sicilSorgulaTahakkukByGensicilno($gensicilno);
         }
 
         if (empty($records)) {
@@ -390,6 +390,52 @@ class BelsisTahsilatQueryService
             'fullName'    => $unvan !== '' ? $unvan : (trim($ad.' '.$soyad) ?: 'Sicil No: '.$gensicilno),
             'sicilNo'     => (string) ($record['gensicilno'] ?? $gensicilno),
         ];
+    }
+
+    /**
+     * Sadece gensicilno ile tahsilat sicilSorgula — mukellefNo gönderilmez.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function sicilSorgulaByGensicilno(int $gensicilno): array
+    {
+        try {
+            $result = $this->client->callTahsilat('sicilSorgula', array_merge(
+                $this->auth->baseParams(),
+                ['gensicilno' => $gensicilno, 'koyID' => 0],
+            ));
+
+            return $this->normalizeList($result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? []);
+        } catch (BelsisException $e) {
+            if ($this->isInfrastructureError($e)) {
+                throw $e;
+            }
+
+            return [];
+        }
+    }
+
+    /**
+     * Sadece gensicilno ile tahakkuk sicilSorgula — mukellefNo gönderilmez.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function sicilSorgulaTahakkukByGensicilno(int $gensicilno): array
+    {
+        try {
+            $result = $this->client->callTahakkuk('sicilSorgula', array_merge(
+                $this->auth->baseParamsTahakkuk(),
+                ['gensicilno' => $gensicilno, 'koyID' => 0],
+            ));
+
+            return $this->normalizeList($result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? []);
+        } catch (BelsisException $e) {
+            if ($this->isInfrastructureError($e)) {
+                throw $e;
+            }
+
+            return [];
+        }
     }
 
     /**
