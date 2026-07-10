@@ -136,22 +136,9 @@ class BelsisBorcSorgulaService
         $record = $this->fetchSicilByGensicil($gensicilInt);
         $lastError = null;
 
-        foreach ($this->aboneBorcTips() as $tip) {
-            try {
-                $result = $this->callBorcSorgula($tip, $sicilNo, $gensicilInt);
-                if ($this->isValidBorcResult($result)) {
-                    return $result;
-                }
-            } catch (BelsisException $e) {
-                if ($this->isInfrastructureError($e)) {
-                    throw $e;
-                }
-                if ($this->isRecoverableBorcError($e)) {
-                    $lastError = $e;
-                    continue;
-                }
-                $lastError = $e;
-            }
+        $result = $this->tryBorcSorgulaCombos($this->aboneBorcTips(), [$gensicilInt], [$sicilNo], $lastError);
+        if ($result !== null) {
+            return $result;
         }
 
         if ($record !== null) {
@@ -219,6 +206,9 @@ class BelsisBorcSorgulaService
                 if ($this->isInfrastructureError($e)) {
                     throw $e;
                 }
+                if ($this->isSystemicBorcError($e)) {
+                    break;
+                }
             }
         }
 
@@ -279,22 +269,9 @@ class BelsisBorcSorgulaService
         }
 
         // Doğrudan borcSorgula (TC tipi, gensicilno=0)
-        foreach ($this->tcBorcTips() as $tip) {
-            try {
-                $result = $this->callBorcSorgula($tip, $tcKimlikNo, 0);
-                if ($this->isValidBorcResult($result)) {
-                    return $result;
-                }
-            } catch (BelsisException $e) {
-                if ($this->isInfrastructureError($e)) {
-                    throw $e;
-                }
-                if ($this->isRecoverableBorcError($e)) {
-                    $lastError = $e;
-                    continue;
-                }
-                $lastError = $e;
-            }
+        $result = $this->tryBorcSorgulaCombos($this->tcBorcTips(), [0], [$tcKimlikNo], $lastError);
+        if ($result !== null) {
+            return $result;
         }
 
         throw new BelsisException(
@@ -325,27 +302,12 @@ class BelsisBorcSorgulaService
         $gensicilInt = (int) $gensicilNo;
         $sorguNo = $sorguNo ?? $gensicilNo;
 
-        foreach ($this->aboneBorcTips() as $tip) {
-            foreach ($this->gensicilnoCandidatesForAbone($gensicilInt) as $gensicilno) {
-                try {
-                    $result = $this->callBorcSorgula($tip, $sorguNo, $gensicilno);
-                    if ($this->isValidBorcResult($result)) {
-                        return $result;
-                    }
-                } catch (BelsisException $e) {
-                    if ($this->isInfrastructureError($e)) {
-                        throw $e;
-                    }
-                    if ($this->isRecoverableBorcError($e)) {
-                        $lastError = $e;
-                        continue;
-                    }
-                    $lastError = $e;
-                }
-            }
-        }
-
-        return null;
+        return $this->tryBorcSorgulaCombos(
+            $this->aboneBorcTips(),
+            $this->gensicilnoCandidatesForAbone($gensicilInt),
+            [$sorguNo],
+            $lastError,
+        );
     }
 
     /**
@@ -390,24 +352,14 @@ class BelsisBorcSorgulaService
             }
         }
 
-        foreach ($this->aboneBorcTips() as $tip) {
-            foreach ($this->gensicilnoCandidatesForAbone($aboneInt) as $gensicilno) {
-                try {
-                    $result = $this->callBorcSorgula($tip, $aboneNo, $gensicilno);
-                    if ($this->isValidBorcResult($result)) {
-                        return $result;
-                    }
-                } catch (BelsisException $e) {
-                    if ($this->isInfrastructureError($e)) {
-                        throw $e;
-                    }
-                    if ($this->isRecoverableBorcError($e)) {
-                        $lastError = $e;
-                        continue;
-                    }
-                    $lastError = $e;
-                }
-            }
+        $result = $this->tryBorcSorgulaCombos(
+            $this->aboneBorcTips(),
+            $this->gensicilnoCandidatesForAbone($aboneInt),
+            [$aboneNo],
+            $lastError,
+        );
+        if ($result !== null) {
+            return $result;
         }
 
         if (! $allowResolve) {
@@ -422,22 +374,14 @@ class BelsisBorcSorgulaService
             $resolvedGensicil = (int) ($aboneRecord['gensicilno'] ?? $aboneRecord['gensicilNo'] ?? 0);
 
             if ($resolvedGensicil > 0 && $resolvedGensicil !== $aboneInt) {
-                foreach ($this->aboneBorcTips() as $tip) {
-                    foreach ($this->gensicilnoCandidatesForAbone($resolvedGensicil) as $gensicilno) {
-                        foreach ([(string) $resolvedGensicil, $aboneNo] as $sorguNo) {
-                            try {
-                                $result = $this->callBorcSorgula($tip, $sorguNo, $gensicilno);
-                                if ($this->isValidBorcResult($result)) {
-                                    return $result;
-                                }
-                            } catch (BelsisException $e) {
-                                if ($this->isInfrastructureError($e)) {
-                                    throw $e;
-                                }
-                                $lastError = $e;
-                            }
-                        }
-                    }
+                $result = $this->tryBorcSorgulaCombos(
+                    $this->aboneBorcTips(),
+                    $this->gensicilnoCandidatesForAbone($resolvedGensicil),
+                    [(string) $resolvedGensicil, $aboneNo],
+                    $lastError,
+                );
+                if ($result !== null) {
+                    return $result;
                 }
 
                 try {
@@ -449,20 +393,14 @@ class BelsisBorcSorgulaService
 
             $tc = preg_replace('/\D/', '', (string) ($aboneRecord['tcKimlikNo'] ?? ''));
             if (strlen($tc) === 11) {
-                foreach ($this->tcBorcTips() as $tip) {
-                    foreach ([0, $resolvedGensicil > 0 ? $resolvedGensicil : $aboneInt] as $gensicilno) {
-                        try {
-                            $result = $this->callBorcSorgula($tip, $tc, $gensicilno);
-                            if ($this->isValidBorcResult($result)) {
-                                return $result;
-                            }
-                        } catch (BelsisException $e) {
-                            if ($this->isInfrastructureError($e)) {
-                                throw $e;
-                            }
-                            $lastError = $e;
-                        }
-                    }
+                $result = $this->tryBorcSorgulaCombos(
+                    $this->tcBorcTips(),
+                    [0, $resolvedGensicil > 0 ? $resolvedGensicil : $aboneInt],
+                    [$tc],
+                    $lastError,
+                );
+                if ($result !== null) {
+                    return $result;
                 }
             }
 
@@ -497,6 +435,54 @@ class BelsisBorcSorgulaService
                 'indirimHakkiVarMi'   => 0,
             ],
         ));
+    }
+
+    /**
+     * borcSorgula'yı verilen sorguTip x gensicilno x sorguNo kombinasyonlarıyla dener.
+     * Bir sorguTip için "Sistem Hatası" (CommandText) alınırsa o tip için tüm kombinasyonlar
+     * atlanır ve bir sonraki sorguTip'e geçilir — bu hata sorguTip'in değerinden değil, SP'nin
+     * o tip için hiç çalışmamasından kaynaklanır (arama methodunda aynı hata sınıfı yüzünden
+     * tüm sorguTip'ler başarısız olduğu için arama_enabled=false yapıldı, bkz. config/belsis.php).
+     * Aynı boşuna round-trip'i borcSorgula için de önler.
+     *
+     * @param  array<int, string>  $tips
+     * @param  array<int, int>  $gensicilCandidates
+     * @param  array<int, string>  $sorguNos
+     * @return array<string, mixed>|null
+     */
+    private function tryBorcSorgulaCombos(array $tips, array $gensicilCandidates, array $sorguNos, ?BelsisException &$lastError): ?array
+    {
+        foreach ($tips as $tip) {
+            $systemic = false;
+
+            foreach ($gensicilCandidates as $gensicilno) {
+                foreach ($sorguNos as $sorguNo) {
+                    try {
+                        $result = $this->callBorcSorgula($tip, $sorguNo, $gensicilno);
+                        if ($this->isValidBorcResult($result)) {
+                            return $result;
+                        }
+                    } catch (BelsisException $e) {
+                        if ($this->isInfrastructureError($e)) {
+                            throw $e;
+                        }
+
+                        $lastError = $e;
+
+                        if ($this->isSystemicBorcError($e)) {
+                            $systemic = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
+
+            if ($systemic) {
+                break;
+            }
+        }
+
+        return null;
     }
 
     private function tryArama(string $sorguTip, string $sorguNo): ?string
@@ -1084,5 +1070,20 @@ class BelsisBorcSorgulaService
             || str_contains($message, 'not been initialized')
             || str_contains($message, 'sistem hatas')
             || $e->sonucKodu === '1004';
+    }
+
+    /**
+     * "Sistem Hatası — ExecuteReader: CommandText property has not been initialized" sınıfı
+     * hata — sorguTip değerinden bağımsız, SP'nin o çağrı tipi için hiç çalışmadığını gösterir
+     * (arama methodunda görülen, arama_enabled=false yapılmasına yol açan hatayla aynı sınıf).
+     */
+    private function isSystemicBorcError(BelsisException $e): bool
+    {
+        $message = mb_strtolower($e->getMessage());
+
+        return str_contains($message, 'commandtext')
+            || str_contains($message, 'command text')
+            || str_contains($message, 'not been initialized')
+            || str_contains($message, 'sistem hatas');
     }
 }
