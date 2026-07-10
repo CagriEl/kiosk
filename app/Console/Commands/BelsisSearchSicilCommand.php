@@ -115,6 +115,34 @@ class BelsisSearchSicilCommand extends Command
         }
 
         $this->newLine();
+        $this->info('=== arama (sicil/gensicil tipleri) ===');
+        foreach (config('belsis.arama_sorgu_tips_gensicil', ['SICIL', 'SICILNO', 'GENSICIL', 'GENSICILNO', '3', '0']) as $tip) {
+            $this->line("sorguTip=<comment>{$tip}</comment>");
+            try {
+                $result = $client->callTahsilat('arama', array_merge($base, [
+                    'sorguTip' => $tip,
+                    'sorguNo'  => $abone,
+                ]));
+                $siciller = $result['Siciller'] ?? $result['siciller'] ?? [];
+                $items = $siciller['SicilaramaObj'] ?? $siciller['sicilaramaObj'] ?? $siciller;
+                $items = is_array($items) && isset($items['gensicilno']) ? [$items] : (array) $items;
+                if (empty($items)) {
+                    $this->warn('  kayıt yok');
+                    continue;
+                }
+                foreach ($items as $row) {
+                    if (! is_array($row)) {
+                        continue;
+                    }
+                    $ad = trim(($row['adi'] ?? '').' '.($row['soyadi'] ?? ''));
+                    $this->line('  <info>OK</info> gensicilno: '.($row['gensicilno'] ?? '?').' — '.$ad);
+                }
+            } catch (BelsisException $e) {
+                $this->warn('  Hata: '.$e->getMessage().' ['.($e->sonucKodu ?? '-').']');
+            }
+        }
+
+        $this->newLine();
         $this->info('=== borcSorgula kombinasyonları ===');
         foreach ($tips as $tip) {
             foreach ([$aboneInt, 0] as $gensicilno) {

@@ -47,6 +47,13 @@ return [
         'UYE,UYENO,ABONE,MUKELLEF,1',
     )))),
 
+    // Gensicilno/sicil no'ya özgü arama sorguTip tahminleri — abone/TC tiplerinden ayrı,
+    // Kırklareli SP'sinin "sicil" türü için farklı bir dispatch kolu olma ihtimaline karşı denenir.
+    'arama_sorgu_tips_gensicil' => array_filter(array_map('trim', explode(',', env(
+        'BELSIS_ARAMA_SORGU_TIPS_GENSICIL',
+        'SICIL,SICILNO,GENSICIL,GENSICILNO,3,0',
+    )))),
+
     // borcSorgula — onlinetahsilatborcsoruglama SP @sorgutip zorunlu (kuruma göre değişir)
     'borc_sorgu_tip_abone' => env('BELSIS_BORC_SORGU_TIP_ABONE', env('BELSIS_BORC_SORGU_TIP_SICIL', '1')),
     'borc_sorgu_tip_tc'    => env('BELSIS_BORC_SORGU_TIP_TC', '2'),
