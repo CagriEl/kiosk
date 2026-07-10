@@ -59,6 +59,6 @@ class BelsisTestCommand extends Command
             return false;
         }
 
-        return in_array(trim($identityNo), config('belsis.mock_sicils', []), true);
+        return in_array(trim($identityNo), config('belsis.mock_aboneler', []), true);
     }
 }
