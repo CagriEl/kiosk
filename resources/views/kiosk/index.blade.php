@@ -730,6 +730,11 @@
         };
         const INACTIVITY_MS = 45000, WARNING_COUNTDOWN_S = 15, SUCCESS_REDIRECT_MS = 7000;
         let inactivityTimer, warningInterval, successTimer, successCountdownIv;
+        // Gerçek Belsis çağrıları (login + odemeYap + makbuzSorgula) canlı ağda 45 sn'yi
+        // aşabilir — bu sürede hareketsizlik zaman aşımı devreye girip modalı kapatıp
+        // session.pendingPayment'i sıfırlarsa, kullanıcı "ÖDEMEYİ ONAYLA"ya bastığında
+        // istek zaten arka planda bitmiş/bitmemiş olsa da ekranda hiçbir şey değişmez.
+        let paymentInFlight = false;
 
         function showScreen(name) {
             Object.values(SCREENS).forEach(el => el.classList.remove('active'));
@@ -1045,7 +1050,7 @@
 
         function resetInactivityTimer() {
             clearTimeout(inactivityTimer); clearInterval(warningInterval);
-            if (session.currentScreen === 'welcome') return;
+            if (session.currentScreen === 'welcome' || paymentInFlight) return;
             inactivityTimer = setTimeout(showInactivityWarning, INACTIVITY_MS);
         }
 
@@ -1358,9 +1363,18 @@
 
         document.getElementById('btn-confirm-bank').addEventListener('click', async () => {
             const pending = session.pendingPayment || water.pendingPayment;
-            if (!pending) return;
+            if (!pending) {
+                // session.pendingPayment burada boşsa, muhtemelen hareketsizlik zaman
+                // aşımı modalı kapatıp oturumu sıfırladı — kullanıcıya sessizce hiçbir
+                // şey olmamış gibi görünmesin, ne olduğunu açıkça bildir.
+                document.getElementById('bank-modal-error').textContent =
+                    'Oturum zaman aşımına uğradı. Lütfen borcunuzu tekrar seçip ödemeyi baştan başlatın.';
+                document.getElementById('bank-modal-error').classList.remove('hidden');
+                return;
+            }
             const btnConfirm = document.getElementById('btn-confirm-bank');
             btnConfirm.disabled = true;
+            paymentInFlight = true;
             document.getElementById('bank-modal-loading').classList.remove('hidden');
             document.getElementById('bank-modal-error').classList.add('hidden');
             onUserActivity();
@@ -1390,14 +1404,22 @@
                         document.getElementById('success-title').textContent = 'Ödemeniz Başarıyla Alınmıştır';
                         document.getElementById('success-message').textContent = [receiptLine, amountLine].filter(Boolean).join('\n');
                         showSuccessScreen();
+                    } else {
+                        // Beklenmeyen durum: hata fırlatılmadı ama status 'completed' değil.
+                        // Sessizce hiçbir şey olmamış gibi bırakma — kullanıcıya bildir.
+                        document.getElementById('bank-modal-error').textContent =
+                            'Ödeme durumu doğrulanamadı (' + (confirmation.status || 'bilinmiyor') + '). Lütfen tekrar deneyin veya görevliye bildirin.';
+                        document.getElementById('bank-modal-error').classList.remove('hidden');
                     }
                 }
             } catch (err) {
                 document.getElementById('bank-modal-error').textContent = err.message;
                 document.getElementById('bank-modal-error').classList.remove('hidden');
-                btnConfirm.disabled = false;
             } finally {
                 document.getElementById('bank-modal-loading').classList.add('hidden');
+                btnConfirm.disabled = false;
+                paymentInFlight = false;
+                onUserActivity();
             }
         });
 
