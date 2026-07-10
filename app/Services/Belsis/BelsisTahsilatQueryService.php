@@ -86,9 +86,10 @@ class BelsisTahsilatQueryService
     {
         $borc = $this->borc->query($identityNo, $searchType);
 
-        // Sicil no zaten gensicilno'nun kendisidir — abone no ise ayrıca çözülmesi gerekir.
+        // Sicil no genelde gensicilno'nun kendisidir, ama mukellefNo/uyeNo eşleşmesiyle
+        // çözülmüş olabilir (querySicil fallback'i) — borc yanıtındaki gerçek gensicilno esas alınır.
         $gensicilno = $searchType === 'sicil'
-            ? $identityNo
+            ? $this->borc->extractSicilNo($borc, $identityNo)
             : ($this->borc->resolveGensicilFromAbone($identityNo, $borc) ?? $identityNo);
 
         $sicil = $borc['Sicil'] ?? [];
@@ -173,7 +174,7 @@ class BelsisTahsilatQueryService
 
         $gensicilno = null;
         if ($searchType === 'sicil') {
-            $gensicilno = $identityNo;
+            $gensicilno = $this->borc->extractSicilNo($borc ?? [], $identityNo);
         } elseif ($searchType === 'abone') {
             $gensicilno = $this->borc->resolveGensicilFromAbone($identityNo, $borc);
         } elseif (strlen($identityNo) === 11) {

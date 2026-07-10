@@ -94,11 +94,23 @@ class BelsisBorcSorgulaService
 
         if ($searchType === 'sicil') {
             $gensicilInt = (int) $identityNo;
-            if ($gensicilInt <= 0 || $this->fetchSicilByGensicil($gensicilInt) === null) {
-                throw new BelsisException('Sicil numarası belediye kaydınızla eşleştirilemedi.');
+            if ($gensicilInt <= 0) {
+                throw new BelsisException('Sicil numarası giriniz.');
             }
 
-            return $identityNo;
+            if ($this->fetchSicilByGensicil($gensicilInt) !== null) {
+                return $identityNo;
+            }
+
+            // Girilen sicil no gerçek gensicilno değilse (mükellef/abone no ile aynı
+            // olabilir), mukellefNo/uyeNo eşleşmesi üzerinden de dener.
+            $resolved = $this->resolveAboneRecord($identityNo);
+            $resolvedGensicil = (int) ($resolved['gensicilno'] ?? $resolved['gensicilNo'] ?? 0);
+            if ($resolvedGensicil > 0) {
+                return (string) $resolvedGensicil;
+            }
+
+            throw new BelsisException('Sicil numarası belediye kaydınızla eşleştirilemedi.');
         }
 
         $this->queryByAbone($identityNo);
@@ -107,8 +119,9 @@ class BelsisBorcSorgulaService
     }
 
     /**
-     * Sicil no ile borç sorgusu — gensicilno birebir birincil anahtar olarak kullanılır,
-     * arama/uyeNo eşleştirme belirsizliğine hiç girilmez (yanlış kişi riski yoktur).
+     * Sicil no ile borç sorgusu — önce gensicilno birebir denenir; bulunamazsa aynı numara
+     * mukellefNo/uyeNo olarak da aranır (pickMatchingSicilRecord'daki birebir eşleşme
+     * kontrolü sayesinde yanlış kişi riski olmadan).
      *
      * @return array<string, mixed>
      */
@@ -143,6 +156,23 @@ class BelsisBorcSorgulaService
 
         if ($record !== null) {
             return $this->buildFallbackBorcFromSicil($record);
+        }
+
+        // Girilen sicil no gerçek gensicilno değilse (mükellef/abone no ile aynı
+        // olabilir), aynı motoru mukellefNo/uyeNo eşleşmesiyle de dener — yanlış kişi
+        // riski pickMatchingSicilRecord'daki birebir eşleşme kontrolüyle önlenir.
+        $resolved = $this->resolveAboneRecord($sicilNo);
+        if ($resolved !== null) {
+            $resolvedGensicil = (int) ($resolved['gensicilno'] ?? $resolved['gensicilNo'] ?? 0);
+
+            if ($resolvedGensicil > 0) {
+                $borc = $this->queryBorcByGensicil((string) $resolvedGensicil, $lastError, $sicilNo);
+                if ($borc !== null) {
+                    return $borc;
+                }
+            }
+
+            return $this->buildFallbackBorcFromSicil($resolved);
         }
 
         throw new BelsisException(
