@@ -352,6 +352,47 @@ class BelsisTahsilatQueryService
     }
 
     /**
+     * Sicil no ile tüm kayıt alanlarını döndürür (WSDL: sicilAlanlari).
+     *
+     * @return array<string, mixed>
+     */
+    public function getSicilDetay(string $identityNo): array
+    {
+        $gensicilno = $this->parseGensicilNo($identityNo);
+
+        $records = $this->sicilSorgula($gensicilno);
+
+        if (empty($records)) {
+            $records = $this->sicilSorgulaTahakkuk($gensicilno);
+        }
+
+        if (empty($records)) {
+            throw new BelsisException('Sicil numarası belediye kaydınızla eşleştirilemedi.');
+        }
+
+        $record = $this->pickMatchingSicilRecord($records, $gensicilno) ?? $records[0];
+
+        $ad    = trim((string) ($record['adi'] ?? ''));
+        $soyad = trim((string) ($record['soyadi'] ?? ''));
+        $unvan = trim((string) ($record['unvan'] ?? ''));
+
+        return [
+            'gensicilno'  => (int) ($record['gensicilno'] ?? $gensicilno),
+            'uyeNo'       => (int) ($record['uyeNo'] ?? 0),
+            'adi'         => $ad,
+            'soyadi'      => $soyad,
+            'unvan'       => $unvan,
+            'babaAdi'     => (string) ($record['babaAdi'] ?? ''),
+            'dogumYeri'   => (string) ($record['dogumYeri'] ?? ''),
+            'dogumTarihi' => (string) ($record['dogumTarihi'] ?? ''),
+            'koyAdi'      => (string) ($record['koyAdi'] ?? ''),
+            'tcKimlikNo'  => (string) ($record['tcKimlikNo'] ?? ''),
+            'fullName'    => $unvan !== '' ? $unvan : (trim($ad.' '.$soyad) ?: 'Sicil No: '.$gensicilno),
+            'sicilNo'     => (string) ($record['gensicilno'] ?? $gensicilno),
+        ];
+    }
+
+    /**
      * @return array{0: string, 1: string}
      */
     private function splitName(string $fullName): array

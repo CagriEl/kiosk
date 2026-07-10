@@ -27,6 +27,17 @@ class KioskApiController extends Controller
         }
     }
 
+    public function sicilDetay(Request $request, string $sicilNo): JsonResponse
+    {
+        try {
+            $this->assertSicilNo($sicilNo);
+
+            return response()->json($this->belsis->getSicilDetay($sicilNo));
+        } catch (BelsisException $e) {
+            return $this->belsisError($e);
+        }
+    }
+
     public function debts(Request $request, string $identityNo): JsonResponse
     {
         try {

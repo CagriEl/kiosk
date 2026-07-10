@@ -27,6 +27,14 @@ class BelsisKioskService
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function getSicilDetay(string $identityNo): array
+    {
+        return $this->withSessionRetry(fn () => $this->query->getSicilDetay($identityNo));
+    }
+
+    /**
      * @return array{debts: array<int, array<string, mixed>>}
      */
     public function getDebts(string $identityNo): array
