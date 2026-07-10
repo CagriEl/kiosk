@@ -57,10 +57,32 @@ class BelsisTahsilatQueryService
         $debts = $this->fetchSicilBorcBeyanDebts($gensicilno);
 
         if ($debts === [] && config('belsis.tahakkuk_fallback', true)) {
-            $debts = $this->tahakkuk->getDebtsByGensicil($gensicilno);
+            $debts = $this->fetchTahakkukFallbackDebts($gensicilno);
         }
 
         return $debts;
+    }
+
+    /**
+     * tahakkukBilgileriniGetir bazı sicil türleri için (ör. tüzel kişi) iş hatası
+     * döndürebilir (ör. kod 1101) — bu, sicilBorcBeyanSorgula tarafındaki
+     * fetchSicilBorcBeyanDebts ile aynı şekilde ele alınmalı: altyapı hatası
+     * değilse yutulur ve boş borç listesi olarak kabul edilir, tüm sorguyu
+     * patlatmaz.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchTahakkukFallbackDebts(int $gensicilno): array
+    {
+        try {
+            return $this->tahakkuk->getDebtsByGensicil($gensicilno);
+        } catch (BelsisException $e) {
+            if ($this->isInfrastructureError($e)) {
+                throw $e;
+            }
+
+            return [];
+        }
     }
 
     private function parseGensicilNo(string $identityNo): int
