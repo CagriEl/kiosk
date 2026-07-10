@@ -3,10 +3,12 @@
 namespace App\Services\Belsis;
 
 use App\Exceptions\BelsisException;
+use App\Services\Belsis\Concerns\ChecksBelsisInfrastructureErrors;
 use App\Services\Belsis\Concerns\NormalizesBelsisLists;
 
 class BelsisTahsilatQueryService
 {
+    use ChecksBelsisInfrastructureErrors;
     use NormalizesBelsisLists;
 
     public function __construct(
@@ -190,7 +192,10 @@ class BelsisTahsilatQueryService
                 } else {
                     $debts = $this->tahakkuk->getDebts($identityNo, $searchType);
                 }
-            } catch (BelsisException) {
+            } catch (BelsisException $e) {
+                if ($this->isInfrastructureError($e)) {
+                    throw $e;
+                }
                 // tahakkuk da boşsa boş liste
             }
         }
