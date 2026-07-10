@@ -151,6 +151,14 @@ class BelsisTahsilatService
                     '__list'  => 'odemeTahakkukluTahsilat',
                     '__items' => $items,
                 ],
+                // odemeYapTahakkuksuz simetriği: tahakkuksuzTahsilat tamamen atlanırsa
+                // null olarak deserialize edilip sunucu tarafında "Object reference not
+                // set to an instance of an object" (NullReferenceException) hatasına yol
+                // açıyor — boş de olsa eleman olarak (self-closing tag) gönderilmeli.
+                'tahakkuksuzTahsilat' => [
+                    '__list'  => 'odemeTahakkuksuzTahsilat',
+                    '__items' => [],
+                ],
             ],
         ));
     }
