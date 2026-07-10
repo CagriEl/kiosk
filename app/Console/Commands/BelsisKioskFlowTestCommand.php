@@ -17,7 +17,9 @@ class BelsisKioskFlowTestCommand extends Command
 {
     protected $signature = 'belsis:kiosk-flow
                             {sicil : Sorgulanacak sicil numarası}
-                            {--pay-debt= : Bu borç id\'siyle ödemeyi baştan sona dener (GERÇEK odemeYap çağrısı)}';
+                            {--pay-debt= : Bu borç id\'siyle ödemeyi baştan sona dener (GERÇEK odemeYap çağrısı)}
+                            {--force : Ödeme/onay sorularını atlar, tamamen otomatik (tek komut, elle onay yok) çalışır}
+                            {--keep : Ödeme sonrası makbuzIptal ile geri almayı atlar, gerçek tahsilat kaydı olarak bırakır}';
 
     protected $description = 'Kiosk sayfasındaki tüm süreci (sicil sorgula → borç seç → öde → onayla → makbuz) tek komutta simüle eder';
 
@@ -25,6 +27,11 @@ class BelsisKioskFlowTestCommand extends Command
     {
         $sicil = (string) $this->argument('sicil');
         $payDebtId = $this->option('pay-debt');
+        $force = (bool) $this->option('force');
+
+        if ($force) {
+            $this->warn('--force: onay soruları atlanıyor, süreç tamamen otomatik ilerleyecek.');
+        }
 
         $this->info('=== 1) Sicil sorgula (Sayfa: kimlik girişi) ===');
         try {
@@ -82,7 +89,7 @@ class BelsisKioskFlowTestCommand extends Command
             'GERÇEK TAHSİLAT: %s — %s TL',
             $debt['type'], number_format((float) $debt['amount'], 2, ',', '.'),
         ));
-        if (! $this->confirm('Devam edilsin mi? (initiatePayment çağrılacak)', false)) {
+        if (! $force && ! $this->confirm('Devam edilsin mi? (initiatePayment çağrılacak)', false)) {
             $this->line('Vazgeçildi.');
 
             return self::SUCCESS;
@@ -99,7 +106,7 @@ class BelsisKioskFlowTestCommand extends Command
 
         $this->newLine();
         $this->info('=== 4) Ödemeyi onayla (Sayfa: "ÖDEMEYİ ONAYLA" butonu) ===');
-        if (! $this->confirm('Onaylansın mı? (confirmPayment → gerçek odemeYap çağrılacak)', false)) {
+        if (! $force && ! $this->confirm('Onaylansın mı? (confirmPayment → gerçek odemeYap çağrılacak)', false)) {
             $this->line('Vazgeçildi — işlem "pending" durumunda kalacak, Belsis tarafında kayıt oluşmadı.');
 
             return self::SUCCESS;
@@ -125,7 +132,10 @@ class BelsisKioskFlowTestCommand extends Command
         $this->line('Makbuz: '.($confirmation['receiptNo'] ?? '-'));
         $this->line('Tutar: '.($receipt['toplamTutarYazi'] ?? (($receipt['toplamTutar'] ?? $payment['total']).' TL')));
 
-        if ($this->confirm('Bu test kaydını şimdi makbuzIptal ile geri alalım mı?', true)) {
+        $shouldCancel = ! $this->option('keep')
+            && ($force || $this->confirm('Bu test kaydını şimdi makbuzIptal ile geri alalım mı?', true));
+
+        if ($shouldCancel) {
             try {
                 $tahsilat->makbuzIptal(
                     (int) $confirmation['makbuzNo'],
