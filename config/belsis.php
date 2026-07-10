@@ -72,6 +72,13 @@ return [
         '2,TC,TcKimlikNo,TCKIMLIK,Tc',
     )))),
 
+    // Gensicilno/sicil no'ya özgü borcSorgula sorguTip tahminleri (yalnızca gensicilno ile
+    // çalışan tahsilat sorgu akışı için — bkz. arama_sorgu_tips_gensicil ile aynı mantık).
+    'borc_sorgu_tips_gensicil' => array_filter(array_map('trim', explode(',', env(
+        'BELSIS_BORC_SORGU_TIPS_GENSICIL',
+        'SICIL,SICILNO,GENSICIL,GENSICILNO,UYE,UYENO,ABONE,MUKELLEF,1,3,0',
+    )))),
+
     // borcSorgula / arama — 1004: kayıt var, online borç yok veya kısmi yanıt
     'soft_success_codes' => array_filter(array_map('trim', explode(',', env(
         'BELSIS_SOFT_SUCCESS_CODES',

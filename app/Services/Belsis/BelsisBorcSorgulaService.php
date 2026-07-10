@@ -1072,18 +1072,4 @@ class BelsisBorcSorgulaService
             || $e->sonucKodu === '1004';
     }
 
-    /**
-     * "Sistem Hatası — ExecuteReader: CommandText property has not been initialized" sınıfı
-     * hata — sorguTip değerinden bağımsız, SP'nin o çağrı tipi için hiç çalışmadığını gösterir
-     * (arama methodunda görülen, arama_enabled=false yapılmasına yol açan hatayla aynı sınıf).
-     */
-    private function isSystemicBorcError(BelsisException $e): bool
-    {
-        $message = mb_strtolower($e->getMessage());
-
-        return str_contains($message, 'commandtext')
-            || str_contains($message, 'command text')
-            || str_contains($message, 'not been initialized')
-            || str_contains($message, 'sistem hatas');
-    }
 }

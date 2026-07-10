@@ -9,10 +9,11 @@ use Mockery;
 use Tests\TestCase;
 
 /**
- * Prod'da gözlemlenen senaryo: tahsilat tarafında borç yok (sicilBorcBeyanSorgula boş),
- * kod tahakkukWebServis'e (tahakkukBilgileriniGetir) düşüyor — bu çağrı bazı sicil
- * türleri için (ör. tüzel kişi) iş hatası döndürebiliyor (ör. kod 1101). Bu durum
- * tüm sorguyu patlatmamalı, "borç yok" olarak ele alınmalı.
+ * Prod'da gözlemlenen senaryo: tahsilat tarafında borç yok (borcSorgula ve
+ * sicilBorcBeyanSorgula boş), kod tahakkukWebServis'e (tahakkukBilgileriniGetir)
+ * düşüyor — bu çağrı bazı sicil türleri için (ör. tüzel kişi) iş hatası
+ * döndürebiliyor (ör. kod 1101). Bu durum tüm sorguyu patlatmamalı, "borç yok"
+ * olarak ele alınmalı.
  */
 class BelsisTahakkukFallbackTest extends TestCase
 {
@@ -27,6 +28,10 @@ class BelsisTahakkukFallbackTest extends TestCase
         $soap->shouldReceive('callTahakkuk')
             ->with('login', Mockery::any(), Mockery::any())
             ->andReturn(['oturumKimligi' => 'session-2', 'guvenlikKodu' => 'g', 'seriNo' => 'K']);
+
+        $soap->shouldReceive('callTahsilat')
+            ->with('borcSorgula', Mockery::any())
+            ->andReturn([]);
 
         $soap->shouldReceive('callTahsilat')
             ->with('sicilBorcBeyanSorgula', Mockery::any())
@@ -54,6 +59,10 @@ class BelsisTahakkukFallbackTest extends TestCase
         $soap->shouldReceive('callTahakkuk')
             ->with('login', Mockery::any(), Mockery::any())
             ->andReturn(['oturumKimligi' => 'session-2', 'guvenlikKodu' => 'g', 'seriNo' => 'K']);
+
+        $soap->shouldReceive('callTahsilat')
+            ->with('borcSorgula', Mockery::any())
+            ->andReturn([]);
 
         $soap->shouldReceive('callTahsilat')
             ->with('sicilBorcBeyanSorgula', Mockery::any())

@@ -54,10 +54,159 @@ class BelsisTahsilatQueryService
     {
         $gensicilno = $this->parseGensicilNo($identityNo);
 
-        $debts = $this->fetchSicilBorcBeyanDebts($gensicilno);
+        $debts = $this->fetchBorcSorgulaDebts($gensicilno);
+
+        if ($debts === []) {
+            $debts = $this->fetchSicilBorcBeyanDebts($gensicilno);
+        }
 
         if ($debts === [] && config('belsis.tahakkuk_fallback', true)) {
             $debts = $this->fetchTahakkukFallbackDebts($gensicilno);
+        }
+
+        return $debts;
+    }
+
+    /**
+     * borcSorgula — WSDL'in asıl "borç sorgulama" methodu (bkz. tahsilatWebServis_1.wsdl).
+     * sorguTip parametresi kuruma göre değişir (config('belsis.borc_sorgu_tips_gensicil')),
+     * bu yüzden birden fazla aday sırayla denenir. Bir tip için SP'nin o çağrıyı hiç
+     * desteklemediğini gösteren "sistemik" hata alınırsa (bkz. isSystemicBorcError) kalan
+     * tipler denenmeden bir sonraki veri kaynağına geçilir — her sorguda boşuna round-trip
+     * harcanmaz.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchBorcSorgulaDebts(int $gensicilno): array
+    {
+        $tips = config('belsis.borc_sorgu_tips_gensicil', ['1']);
+        $sorguNo = (string) $gensicilno;
+
+        foreach ($tips as $tip) {
+            try {
+                $result = $this->client->callTahsilat('borcSorgula', array_merge(
+                    $this->auth->baseParams(),
+                    [
+                        'sorguTip'            => $tip,
+                        'sorguNo'             => $sorguNo,
+                        'gensicilno'          => $gensicilno,
+                        'indirimliOdenecekMi' => 0,
+                        'indirimHakkiVarMi'   => 0,
+                    ],
+                ));
+
+                // Yanlış sicile ait borç göstermemek için, boş olmayan bir sonuç bile olsa
+                // Sicil.sicilNo aranan gensicilno ile birebir eşleşmeden kabul edilmez —
+                // "asla ilk/yakın sonuç varsayılmaz" ilkesi (bkz. pickExactSicilRecord).
+                if ($this->hasMatchingSicil($result, $gensicilno)) {
+                    return $this->mapBorcSorgulaResult($result);
+                }
+            } catch (BelsisException $e) {
+                if ($this->isInfrastructureError($e)) {
+                    throw $e;
+                }
+
+                if ($this->isSystemicBorcError($e)) {
+                    break;
+                }
+                // bu sorguTip için iş hatası — bir sonraki adayı dene
+            }
+        }
+
+        return [];
+    }
+
+    private function hasMatchingSicil(array $result, int $gensicilno): bool
+    {
+        $sicil = $result['Sicil'] ?? $result['sicil'] ?? null;
+        if (! is_array($sicil)) {
+            return false;
+        }
+
+        $sicilNo = (int) ($sicil['sicilNo'] ?? $sicil['gensicilno'] ?? $sicil['gensicilNo'] ?? 0);
+
+        return $sicilNo === $gensicilno;
+    }
+
+    /**
+     * borcSorgula yanıtı Sicil > modulListesi > Modul > donemListesi > Donem >
+     * tahakkukListesi > Tahakkuk şeklinde iç içedir (bkz. tahsilatWebServis_1.wsdl).
+     * Her Tahakkuk tek bir borç kalemidir, ödenecek tutar 'odenecekTutar' alanındadır.
+     *
+     * @param  array<string, mixed>  $result
+     * @return array<int, array<string, mixed>>
+     */
+    private function mapBorcSorgulaResult(array $result): array
+    {
+        $sicil = $result['Sicil'] ?? $result['sicil'] ?? null;
+        if (! is_array($sicil)) {
+            return [];
+        }
+
+        $modulListesi = $this->normalizeList($sicil['modulListesi']['Modul'] ?? $sicil['modulListesi'] ?? []);
+
+        $debts = [];
+
+        foreach ($modulListesi as $modul) {
+            if (! is_array($modul)) {
+                continue;
+            }
+
+            $donemListesi = $this->normalizeList($modul['donemListesi']['Donem'] ?? $modul['donemListesi'] ?? []);
+
+            foreach ($donemListesi as $donem) {
+                if (! is_array($donem)) {
+                    continue;
+                }
+
+                $borcYili = $donem['borcYili'] ?? '';
+                $taksit = $donem['taksit'] ?? '';
+
+                $tahakkukListesi = $this->normalizeList($donem['tahakkukListesi']['Tahakkuk'] ?? $donem['tahakkukListesi'] ?? []);
+
+                foreach ($tahakkukListesi as $tahakkuk) {
+                    if (! is_array($tahakkuk)) {
+                        continue;
+                    }
+
+                    $amount = (float) ($tahakkuk['odenecekTutar'] ?? 0);
+                    if ($amount <= 0) {
+                        continue;
+                    }
+
+                    $tahakkukNo = (string) ($tahakkuk['tahakkukNo'] ?? $tahakkuk['beyanID'] ?? '');
+                    if ($tahakkukNo === '') {
+                        continue;
+                    }
+
+                    $type = (string) ($tahakkuk['turu'] ?? $tahakkuk['aciklama'] ?? $tahakkuk['beyanBilgisi'] ?? $modul['modulBilgisi'] ?? 'Borç');
+
+                    $period = trim(implode(' / ', array_filter([
+                        $borcYili ? $borcYili.' Yılı' : null,
+                        $taksit ? 'Taksit '.$taksit : null,
+                    ])));
+
+                    $debts[] = [
+                        'id'      => $tahakkukNo,
+                        'type'    => $type,
+                        'period'  => $period,
+                        'amount'  => $amount,
+                        'dueDate' => $this->normalizeDate($tahakkuk['sonOdemeTarihi'] ?? null),
+                        'meta'    => [
+                            'tahakkukNo'     => $tahakkukNo,
+                            'tahakkukTutari' => (float) ($tahakkuk['tahakkukTutari'] ?? $amount),
+                            'gecikmeTutari'  => (float) ($tahakkuk['gecikmeZammi'] ?? 0),
+                            'odemeTutari'    => $amount,
+                            'indirimTutari'  => (float) ($tahakkuk['indirimTutari'] ?? 0),
+                            'odenenTutar'    => (float) ($tahakkuk['odenenTutar'] ?? 0),
+                            'modulNo'        => $modul['modulNo'] ?? null,
+                            'borcYili'       => $borcYili,
+                            'taksit'         => $taksit,
+                            'kaynak'         => 'borcSorgula',
+                        ],
+                    ];
+                }
+            }
         }
 
         return $debts;
