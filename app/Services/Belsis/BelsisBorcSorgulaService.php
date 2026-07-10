@@ -486,6 +486,10 @@ class BelsisBorcSorgulaService
      */
     private function tryAramaRecord(string $sorguTip, string $sorguNo): ?array
     {
+        if (! config('belsis.arama_enabled', false)) {
+            return null;
+        }
+
         try {
             $result = $this->client->callTahsilat('arama', array_merge(
                 $this->auth->baseParams(),
@@ -668,6 +672,10 @@ class BelsisBorcSorgulaService
      */
     private function tryResolveAboneViaArama(string $aboneNo): ?array
     {
+        if (! config('belsis.arama_enabled', false)) {
+            return null;
+        }
+
         foreach ($this->aboneAramaTips() as $tip) {
             try {
                 $result = $this->client->callTahsilat('arama', array_merge(

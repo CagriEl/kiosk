@@ -22,6 +22,13 @@ return [
         env('BELSIS_MOCK_SICILS', '89874'),
     )))),
 
+    // arama methodu Kırklareli kurulumunda tüm sorguTip değerleri için sunucu tarafında
+    // hata veriyor ("Sistem Hatası — ExecuteReader: CommandText property has not been
+    // initialized") — client tarafında düzeltilemeyen bir SP/dispatch hatası. Devre dışı
+    // bırakılınca borcSorgula/sicilSorgula tabanlı yedek yollara doğrudan geçilir, her
+    // sorguda 5 boşuna round-trip harcanmaz. Belsis IT tarafında düzeltilirse true yapılabilir.
+    'arama_enabled' => filter_var(env('BELSIS_ARAMA_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
+
     // TC → gensicil arama (arama methodu — Kırklareli: 2=TCKN)
     'arama_sorgu_tips' => array_filter(array_map('trim', explode(',', env(
         'BELSIS_ARAMA_SORGU_TIPS',
