@@ -496,8 +496,18 @@ class BelsisBorcSorgulaService
      */
     private function tryAramaRecord(string $sorguTip, string $sorguNo, bool $force = false): ?array
     {
+        $matches = $this->tryAramaAllRecords($sorguTip, $sorguNo, $force);
+
+        return $matches[0] ?? null;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function tryAramaAllRecords(string $sorguTip, string $sorguNo, bool $force = false): array
+    {
         if (! $force && ! config('belsis.arama_enabled', false)) {
-            return null;
+            return [];
         }
 
         try {
@@ -509,19 +519,20 @@ class BelsisBorcSorgulaService
             $siciller = $result['Siciller'] ?? $result['siciller'] ?? null;
             if (is_array($siciller)) {
                 $items = $siciller['SicilaramaObj'] ?? $siciller['sicilaramaObj'] ?? $siciller;
+                $candidates = $this->extractAramaCandidates($items);
 
-                return $this->pickAramaCandidate($this->extractAramaCandidates($items), $sorguNo);
+                return $this->filterAramaCandidates($candidates, $sorguNo);
             }
 
             $direct = (int) ($result['gensicilno'] ?? $result['gensicilNo'] ?? 0);
 
-            return $direct > 0 ? ['gensicilno' => $direct, 'adi' => '', 'soyadi' => ''] : null;
+            return $direct > 0 ? [['gensicilno' => $direct, 'adi' => '', 'soyadi' => '']] : [];
         } catch (BelsisException $e) {
             if ($this->isInfrastructureError($e)) {
                 throw $e;
             }
 
-            return null;
+            return [];
         }
     }
 
@@ -554,56 +565,69 @@ class BelsisBorcSorgulaService
 
     /**
      * arama birden fazla aday döndürebilir. Tek aday → kabul.
-     * TC (11 hane) → sicilSorgula.tcKimlikNo birebir eşleşen aday.
+     * TC (11 hane) → sicilSorgula.tcKimlikNo birebir eşleşen aday(lar).
      * Abone/sicil → uyeNo / gensicilno eşleşmesi.
      *
      * @param  array<int, array<string, mixed>>  $candidates
+     * @return array<int, array<string, mixed>>
      */
-    private function pickAramaCandidate(array $candidates, string $sorguNo): ?array
+    private function filterAramaCandidates(array $candidates, string $sorguNo): array
     {
         if ($candidates === []) {
-            return null;
+            return [];
         }
 
         if (count($candidates) === 1) {
-            return $candidates[0];
+            return [$candidates[0]];
         }
 
         $sorguNo = trim($sorguNo);
         $isTc = strlen($sorguNo) === 11 && ctype_digit($sorguNo);
         $sorguInt = (int) $sorguNo;
+        $matched = [];
 
         foreach ($candidates as $candidate) {
             if ($isTc) {
                 $candidateTc = preg_replace('/\D/', '', (string) ($candidate['tcKimlikNo'] ?? ''));
                 if ($candidateTc === $sorguNo) {
-                    return $candidate;
+                    $matched[] = $candidate;
+                    continue;
                 }
 
                 $record = $this->fetchSicilByGensicil((int) $candidate['gensicilno']);
                 $recordTc = preg_replace('/\D/', '', (string) ($record['tcKimlikNo'] ?? ''));
                 if ($recordTc === $sorguNo) {
-                    return $candidate;
+                    $matched[] = $candidate;
                 }
 
                 continue;
             }
 
-            if ((int) $candidate['gensicilno'] === $sorguInt) {
-                return $candidate;
-            }
-
-            if ((int) ($candidate['uyeNo'] ?? 0) === $sorguInt) {
-                return $candidate;
+            if ((int) $candidate['gensicilno'] === $sorguInt
+                || (int) ($candidate['uyeNo'] ?? 0) === $sorguInt) {
+                $matched[] = $candidate;
+                continue;
             }
 
             $record = $this->fetchSicilByGensicil((int) $candidate['gensicilno']);
             if ($record !== null && (int) ($record['uyeNo'] ?? -1) === $sorguInt) {
-                return $candidate;
+                $matched[] = $candidate;
             }
         }
 
-        return null;
+        // TC ile birebir eşleşme bulunamadıysa yanlış kişi riski olmasın diye boş dön.
+        // Tek aday zaten yukarıda kabul edildi.
+        return $matched;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $candidates
+     */
+    private function pickAramaCandidate(array $candidates, string $sorguNo): ?array
+    {
+        $matched = $this->filterAramaCandidates($candidates, $sorguNo);
+
+        return $matched[0] ?? null;
     }
 
     /**
@@ -816,32 +840,46 @@ class BelsisBorcSorgulaService
     }
 
     /**
+     * TC'ye bağlı tüm gensicilno adaylarını döner (tekil öncelik sırası korunur).
+     *
+     * @return array<int, string>
+     */
+    public function resolveAllGensicilsFromTc(string $tcKimlikNo): array
+    {
+        $tcKimlikNo = preg_replace('/\D/', '', trim($tcKimlikNo));
+        if (strlen($tcKimlikNo) !== 11) {
+            return [];
+        }
+
+        $found = [];
+
+        foreach ($this->tcAramaTips() as $tip) {
+            foreach ($this->tryAramaAllRecords($tip, $tcKimlikNo, true) as $record) {
+                $gensicil = (int) ($record['gensicilno'] ?? $record['gensicilNo'] ?? 0);
+                if ($gensicil > 0) {
+                    $found[(string) $gensicil] = (string) $gensicil;
+                }
+            }
+        }
+
+        $fromBorc = $this->resolveGensicilFromTcBorcResponse($tcKimlikNo);
+        if ($fromBorc !== null) {
+            $found[$fromBorc] = $fromBorc;
+        }
+
+        return array_values($found);
+    }
+
+    /**
      * TC → gensicilno çözümler.
      * 1) arama(sorguTip=TC) — Kırklareli için bilinçli olarak arama_enabled bayrağından bağımsız denenir
      * 2) borcSorgula(TC, gensicilno=0) yanıtındaki Sicil.sicilNo
      */
     public function resolveGensicilFromTc(string $tcKimlikNo): ?string
     {
-        $tcKimlikNo = preg_replace('/\D/', '', trim($tcKimlikNo));
+        $all = $this->resolveAllGensicilsFromTc($tcKimlikNo);
 
-        if (strlen($tcKimlikNo) !== 11) {
-            return null;
-        }
-
-        // TC araması: global arama_enabled=false olsa bile zorunlu yol (tip başarısızsa yutulur)
-        foreach ($this->tcAramaTips() as $tip) {
-            $record = $this->tryAramaRecord($tip, $tcKimlikNo, true);
-            if ($record === null) {
-                continue;
-            }
-
-            $gensicil = (int) ($record['gensicilno'] ?? $record['gensicilNo'] ?? 0);
-            if ($gensicil > 0) {
-                return (string) $gensicil;
-            }
-        }
-
-        return $this->resolveGensicilFromTcBorcResponse($tcKimlikNo);
+        return $all[0] ?? null;
     }
 
     /**

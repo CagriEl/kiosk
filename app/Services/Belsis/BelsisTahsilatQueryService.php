@@ -27,7 +27,19 @@ class BelsisTahsilatQueryService
     {
         $identityNo = trim($identityNo);
         $searchType = $this->resolveSearchType($identityNo, $searchType);
-        $gensicilno = $this->resolveToGensicil($identityNo, $searchType);
+
+        if ($searchType === 'tc') {
+            $gensicils = $this->identity->resolveAllGensicilsFromTc($identityNo);
+            if ($gensicils === []) {
+                throw new BelsisException(
+                    'T.C. Kimlik No belediye kaydınızla eşleştirilemedi. Kayıtlarınızdaki TC güncel olmayabilir.',
+                );
+            }
+            $gensicilno = (int) $gensicils[0];
+        } else {
+            $gensicilno = $this->resolveToGensicil($identityNo, $searchType);
+        }
+
         $profile = $this->fetchSicilProfile($gensicilno);
 
         $adi = $profile['adi'];
@@ -55,8 +67,63 @@ class BelsisTahsilatQueryService
     {
         $identityNo = trim($identityNo);
         $searchType = $this->resolveSearchType($identityNo, $searchType);
+
+        // TC → önce eşleşen sicil(ler) bulunur, sonra o sicilin borçları çekilir.
+        if ($searchType === 'tc') {
+            return $this->getDebtsByTc($identityNo);
+        }
+
         $gensicilno = $this->resolveToGensicil($identityNo, $searchType);
 
+        return $this->getDebtsByGensicil($gensicilno);
+    }
+
+    /**
+     * TC yazılınca: arama/borcSorgula ile sicil bulunur → o sicilin borcu döner.
+     * Bir TC'ye birden fazla sicil bağlıysa borçlar birleştirilir.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function getDebtsByTc(string $tcKimlikNo): array
+    {
+        // 1) Doğrudan borcSorgula(TC) — Belsis tek çağrıda sicil + borç dönebilir
+        $direct = $this->fetchBorcSorgulaDebtsByTc($tcKimlikNo);
+        if ($direct !== []) {
+            return $direct;
+        }
+
+        // 2) TC → gensicil listesi, her sicil için borç topla
+        $gensicils = $this->identity->resolveAllGensicilsFromTc($tcKimlikNo);
+        if ($gensicils === []) {
+            throw new BelsisException(
+                'T.C. Kimlik No belediye kaydınızla eşleştirilemedi. Kayıtlarınızdaki TC güncel olmayabilir.',
+            );
+        }
+
+        $merged = [];
+        $seen = [];
+
+        foreach ($gensicils as $gensicil) {
+            foreach ($this->getDebtsByGensicil((int) $gensicil) as $debt) {
+                $key = (string) ($debt['id'] ?? '');
+                if ($key !== '' && isset($seen[$key])) {
+                    continue;
+                }
+                if ($key !== '') {
+                    $seen[$key] = true;
+                }
+                $merged[] = $debt;
+            }
+        }
+
+        return $merged;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function getDebtsByGensicil(int $gensicilno): array
+    {
         $debts = $this->fetchBorcSorgulaDebts($gensicilno);
 
         if ($debts === []) {
@@ -110,9 +177,61 @@ class BelsisTahsilatQueryService
                 }
 
                 if ($this->isSystemicBorcError($e)) {
-                    break;
+                    continue;
                 }
                 // bu sorguTip için iş hatası — bir sonraki adayı dene
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * TC ile doğrudan borcSorgula — eşleşen sicilin borçlarını tek yanıtta alır.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchBorcSorgulaDebtsByTc(string $tcKimlikNo): array
+    {
+        $tips = config('belsis.borc_sorgu_tips_tc', ['2', 'TC', 'TcKimlikNo', 'TCKIMLIK', 'Tc']);
+
+        foreach ($tips as $tip) {
+            try {
+                $result = $this->client->callTahsilat('borcSorgula', array_merge(
+                    $this->auth->baseParams(),
+                    [
+                        'sorguTip'            => $tip,
+                        'sorguNo'             => $tcKimlikNo,
+                        'gensicilno'          => 0,
+                        'indirimliOdenecekMi' => 0,
+                        'indirimHakkiVarMi'   => 0,
+                    ],
+                ));
+
+                $sicil = $result['Sicil'] ?? $result['sicil'] ?? null;
+                $sicilNo = is_array($sicil)
+                    ? (int) ($sicil['sicilNo'] ?? $sicil['gensicilno'] ?? $sicil['gensicilNo'] ?? 0)
+                    : 0;
+
+                if ($sicilNo <= 0) {
+                    continue;
+                }
+
+                $debts = $this->mapBorcSorgulaResult($result);
+                if ($debts !== []) {
+                    return $debts;
+                }
+
+                // Sicil bulundu ama bu yanıtta borç yoksa gensicil üzerinden yedek kaynaklar
+                return $this->getDebtsByGensicil($sicilNo);
+            } catch (BelsisException $e) {
+                if ($this->isInfrastructureError($e)) {
+                    throw $e;
+                }
+
+                if ($this->isSystemicBorcError($e)) {
+                    continue;
+                }
             }
         }
 
