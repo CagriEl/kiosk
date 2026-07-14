@@ -172,6 +172,165 @@
         .abone-digit.active { border-color: #1e5a9e; box-shadow: 0 0 0 3px rgba(30, 90, 158, 0.2); background: #fff; }
         #debt-list, #water-invoice-list { overflow-y:auto; scrollbar-width:none; }
         #debt-list::-webkit-scrollbar, #water-invoice-list::-webkit-scrollbar { display:none; }
+
+        /* Baylan — genel.7z avans akışı */
+        #screen-baylan {
+            background:
+                radial-gradient(ellipse 80% 50% at 50% -10%, rgba(14, 116, 144, 0.18), transparent 55%),
+                linear-gradient(180deg, #e8f4f8 0%, #f1f5f9 45%, #e2e8f0 100%);
+        }
+        .baylan-hero {
+            text-align: center;
+            margin-bottom: 1.25rem;
+        }
+        .baylan-hero h3 {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            color: #0e7490;
+            line-height: 1.1;
+        }
+        .baylan-hero p {
+            margin-top: 0.5rem;
+            font-size: 1.05rem;
+            color: #475569;
+        }
+        .baylan-status {
+            min-height: 7.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem 1.5rem;
+            margin: 0 auto 1.5rem;
+            max-width: 52rem;
+            border-left: 5px solid #0e7490;
+            background: rgba(255,255,255,0.72);
+            color: #7f1d1d;
+            font-size: 1.35rem;
+            font-weight: 600;
+            line-height: 1.45;
+            text-align: center;
+        }
+        .baylan-status.is-ok {
+            border-left-color: #059669;
+            color: #064e3b;
+        }
+        .baylan-status.is-idle { color: #334155; border-left-color: #64748b; }
+        .baylan-card-stage {
+            width: min(420px, 90%);
+            aspect-ratio: 1.55;
+            margin: 0 auto 1.75rem;
+            position: relative;
+            border-radius: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background:
+                linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(224,242,254,0.9) 100%);
+            border: 3px solid #67e8f9;
+            box-shadow: 0 18px 40px rgba(14, 116, 144, 0.16);
+            overflow: hidden;
+        }
+        .baylan-card-stage::before {
+            content: '';
+            position: absolute;
+            inset: -40%;
+            background: conic-gradient(from 180deg, transparent, rgba(6,182,212,0.25), transparent 40%);
+            animation: baylan-spin 6s linear infinite;
+        }
+        .baylan-card-stage > * { position: relative; z-index: 1; }
+        .baylan-card-icon {
+            width: 5.5rem; height: 3.5rem;
+            border: 3px solid #0891b2;
+            border-radius: 0.65rem;
+            margin-bottom: 0.85rem;
+            background: linear-gradient(180deg, #ecfeff, #ffffff);
+            box-shadow: inset 0 -8px 0 rgba(8,145,178,0.12);
+            animation: baylan-pulse 2.2s ease-in-out infinite;
+        }
+        .baylan-actions {
+            width: min(640px, 92%);
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+        }
+        .baylan-btn {
+            width: 100%;
+            min-height: 5.5rem;
+            border-radius: 1rem;
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            border: none;
+            transition: transform .12s ease, filter .12s ease;
+        }
+        .baylan-btn:active:not(:disabled) { transform: scale(0.985); }
+        .baylan-btn-primary {
+            background: linear-gradient(180deg, #0891b2 0%, #0e7490 100%);
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(14, 116, 144, 0.35);
+        }
+        .baylan-btn-primary:disabled { opacity: 0.45; box-shadow: none; }
+        .baylan-btn-load {
+            background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(217, 119, 6, 0.35);
+        }
+        .baylan-btn-load:disabled { opacity: 0.45; box-shadow: none; }
+        .baylan-btn-cancel {
+            background: #fff;
+            color: #b91c1c;
+            border: 3px solid #fecaca;
+            font-size: 1.35rem;
+            min-height: 4.25rem;
+        }
+        .baylan-warn {
+            margin-top: 1.5rem;
+            text-align: center;
+            color: #b91c1c;
+            font-weight: 700;
+            font-size: 1.15rem;
+            letter-spacing: 0.01em;
+        }
+        .baylan-meta {
+            display: none;
+            width: min(640px, 92%);
+            margin: 0 auto 1rem;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            text-align: center;
+        }
+        .baylan-meta.visible { display: grid; }
+        .baylan-meta dt {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            margin-bottom: 0.2rem;
+        }
+        .baylan-meta dd {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .baylan-test {
+            margin-top: 1.25rem;
+            text-align: center;
+        }
+        .baylan-test summary {
+            cursor: pointer;
+            color: #64748b;
+            font-size: 0.9rem;
+            list-style: none;
+        }
+        .baylan-test summary::-webkit-details-marker { display: none; }
+        @keyframes baylan-spin { to { transform: rotate(360deg); } }
+        @keyframes baylan-pulse {
+            0%, 100% { transform: translateY(0); box-shadow: inset 0 -8px 0 rgba(8,145,178,0.12); }
+            50% { transform: translateY(-4px); box-shadow: inset 0 -8px 0 rgba(8,145,178,0.22), 0 8px 16px rgba(8,145,178,0.18); }
+        }
     </style>
 </head>
 <body oncontextmenu="return false;" ondragstart="return false;">
@@ -252,9 +411,9 @@
         <div class="flex-1 flex flex-col items-center justify-center px-10">
             <p class="text-kiosk-base text-municipalGray-600 mb-8 text-center">Abonelik kartınızın markasını seçiniz</p>
             <div class="flex gap-8 w-full max-w-3xl justify-center">
-                <button type="button" data-vendor="baylan" class="vendor-card touch-btn flex-1 max-w-sm bg-white border-3 border-municipal-200 rounded-3xl p-8 text-center shadow-lg">
-                    <div class="text-kiosk-2xl font-black text-municipal-700 mb-2">BAYLAN</div>
-                    <p class="text-kiosk-sm text-municipalGray-500">Ön ödemeli NFC kart</p>
+                <button type="button" data-vendor="baylan" class="vendor-card touch-btn flex-1 max-w-sm bg-white border-3 border-cyan-300 rounded-3xl p-8 text-center shadow-lg">
+                    <div class="text-kiosk-2xl font-black text-cyan-700 mb-2">BAYLAN</div>
+                    <p class="text-kiosk-sm text-municipalGray-500">Avans kredi yükleme · NFC kart</p>
                     <p class="text-kiosk-xs text-municipalGray-400 mt-3">Test: 12345, 27126</p>
                 </button>
                 <button type="button" data-vendor="metlab" class="vendor-card touch-btn flex-1 max-w-sm bg-white border-3 border-municipal-200 rounded-3xl p-8 text-center shadow-lg">
@@ -262,6 +421,76 @@
                     <p class="text-kiosk-sm text-municipalGray-500">IC akıllı kart</p>
                     <p class="text-kiosk-xs text-municipalGray-400 mt-3">Test: 67890, 54321</p>
                 </button>
+            </div>
+        </div>
+    </section>
+
+    {{-- EKRAN: BAYLAN AVANS KREDİ (genel.7z baylan.aspx akışı) --}}
+    <section id="screen-baylan" class="kiosk-screen flex-col">
+        <header class="bg-cyan-700 text-white px-8 py-4 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-3">
+                <button id="btn-baylan-back" type="button" class="touch-btn w-11 h-11 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <div>
+                    <h2 class="text-kiosk-lg font-bold tracking-wide">BAYLAN</h2>
+                    <p class="text-kiosk-xs opacity-80">Avans Kredi Yükleme</p>
+                </div>
+            </div>
+            <span id="baylan-step" class="text-kiosk-xs opacity-75">Adım 1</span>
+        </header>
+
+        <div class="flex-1 flex flex-col justify-center px-8 py-6 overflow-y-auto">
+            <div class="baylan-hero">
+                <h3>AVANS KREDİ YÜKLEME</h3>
+                <p>Kartınızı okuyucuya yerleştirin, ardından yüklemeyi onaylayın.</p>
+            </div>
+
+            <div id="baylan-status" class="baylan-status is-idle" role="status">
+                Kartı okuyucuya yerleştirip <strong>Kart Oku</strong> düğmesine basınız.
+            </div>
+
+            <div class="baylan-card-stage" aria-hidden="true">
+                <div class="baylan-card-icon"></div>
+                <p id="baylan-card-caption" class="text-kiosk-sm font-semibold text-cyan-800">NFC kart bekleniyor</p>
+            </div>
+
+            <dl id="baylan-meta" class="baylan-meta">
+                <div>
+                    <dt>Abone</dt>
+                    <dd id="baylan-meta-name">—</dd>
+                </div>
+                <div>
+                    <dt>Abone No</dt>
+                    <dd id="baylan-meta-abone">—</dd>
+                </div>
+                <div>
+                    <dt>Yüklenecek</dt>
+                    <dd id="baylan-meta-tons">—</dd>
+                </div>
+            </dl>
+
+            <div class="baylan-actions">
+                <button id="btn-baylan-read" type="button" class="baylan-btn baylan-btn-primary touch-btn">KART OKU</button>
+                <button id="btn-baylan-load" type="button" class="baylan-btn baylan-btn-load touch-btn hidden" disabled>AVANS YÜKLE</button>
+                <button id="btn-baylan-cancel" type="button" class="baylan-btn baylan-btn-cancel touch-btn">İPTAL</button>
+            </div>
+
+            <p class="baylan-warn">İşleminiz bitene kadar kartı yerinden oynatmayınız.</p>
+
+            <details class="baylan-test">
+                <summary>Test: abone no ile dene</summary>
+                <div class="mt-3 flex items-center justify-center gap-3 flex-wrap">
+                    <input id="input-baylan-abone" type="text" inputmode="numeric" maxlength="8" placeholder="örn. 12345"
+                        class="w-40 text-center text-kiosk-base font-bold border-2 border-cyan-300 rounded-xl py-3 px-2 bg-white" />
+                    <button id="btn-baylan-abone" type="button" class="touch-btn bg-municipal-600 text-white font-bold px-6 py-3 rounded-xl">ABONE SORGULA</button>
+                </div>
+                <p class="text-kiosk-xs text-municipalGray-500 mt-2">Demo: 12345 (yükleme OK) · 27126 (ödenmemiş avans → engel)</p>
+            </details>
+
+            <div id="baylan-loading" class="hidden mt-4 flex items-center justify-center gap-3">
+                <div class="loading-spinner w-8 h-8" style="border-width:3px;border-top-color:#0e7490"></div>
+                <span class="text-kiosk-sm text-municipalGray-600">İşlem yapılıyor, lütfen bekleyiniz...</span>
             </div>
         </div>
     </section>
@@ -713,6 +942,7 @@
             debts:         document.getElementById('screen-debts'),
             success:       document.getElementById('screen-success'),
             waterVendor:   document.getElementById('screen-water-vendor'),
+            baylan:        document.getElementById('screen-baylan'),
             waterAction:   document.getElementById('screen-water-action'),
             waterCard:     document.getElementById('screen-water-card'),
             waterAdvance:  document.getElementById('screen-water-advance'),
@@ -754,6 +984,125 @@
             document.getElementById('water-invoice-error').classList.add('hidden');
             document.getElementById('water-kontor-error').classList.add('hidden');
             document.querySelectorAll('.vendor-card').forEach(el => el.classList.remove('selected'));
+            resetBaylanScreen();
+        }
+
+        function resetBaylanScreen() {
+            const status = document.getElementById('baylan-status');
+            const meta = document.getElementById('baylan-meta');
+            const btnRead = document.getElementById('btn-baylan-read');
+            const btnLoad = document.getElementById('btn-baylan-load');
+            const inputAbone = document.getElementById('input-baylan-abone');
+            if (!status || !btnRead) return;
+
+            status.className = 'baylan-status is-idle';
+            status.innerHTML = 'Kartı okuyucuya yerleştirip <strong>Kart Oku</strong> düğmesine basınız.';
+            meta.classList.remove('visible');
+            document.getElementById('baylan-meta-name').textContent = '—';
+            document.getElementById('baylan-meta-abone').textContent = '—';
+            document.getElementById('baylan-meta-tons').textContent = '—';
+            document.getElementById('baylan-card-caption').textContent = 'NFC kart bekleniyor';
+            document.getElementById('baylan-step').textContent = 'Adım 1';
+            document.getElementById('baylan-loading').classList.add('hidden');
+            btnRead.classList.remove('hidden');
+            btnRead.disabled = false;
+            btnLoad.classList.add('hidden');
+            btnLoad.disabled = true;
+            if (inputAbone) inputAbone.value = '';
+        }
+
+        function setBaylanReady(subscriber) {
+            water.subscriber = subscriber;
+            const tons = subscriber.advanceTons || 3;
+            const status = document.getElementById('baylan-status');
+            status.className = 'baylan-status';
+            status.textContent = 'Sn. ' + subscriberDisplayName(subscriber)
+                + ', ' + subscriber.aboneNo + ' numaralı aboneliğe ' + tons
+                + ' ton avans kredi yüklenecektir. Kartınızı yerinden almayınız.';
+
+            document.getElementById('baylan-meta').classList.add('visible');
+            document.getElementById('baylan-meta-name').textContent = subscriberDisplayName(subscriber);
+            document.getElementById('baylan-meta-abone').textContent = subscriber.aboneNo;
+            document.getElementById('baylan-meta-tons').textContent = tons + ' ton';
+            document.getElementById('baylan-card-caption').textContent = 'Kart okundu · ' + (subscriber.sayacNo || '');
+            document.getElementById('baylan-step').textContent = 'Adım 2';
+
+            document.getElementById('btn-baylan-read').classList.add('hidden');
+            const btnLoad = document.getElementById('btn-baylan-load');
+            btnLoad.classList.remove('hidden');
+            btnLoad.disabled = false;
+        }
+
+        async function processBaylanCardRead(aboneNo, mode = 'card') {
+            const status = document.getElementById('baylan-status');
+            const loading = document.getElementById('baylan-loading');
+            const btnRead = document.getElementById('btn-baylan-read');
+            status.className = 'baylan-status is-idle';
+            status.textContent = mode === 'manual' ? 'Abone sorgulanıyor...' : 'Kart okunuyor...';
+            loading.classList.remove('hidden');
+            btnRead.disabled = true;
+            onUserActivity();
+
+            try {
+                let subscriber;
+                if (mode === 'manual' && aboneNo) {
+                    subscriber = extractSubscriber(await waterFetchSubscriber('baylan', aboneNo));
+                } else {
+                    const data = await waterCardRead('baylan', aboneNo || null);
+                    subscriber = extractSubscriber(data);
+                }
+                if (!subscriber?.aboneNo) {
+                    throw new Error('Kart okunamadı. Lütfen kartınızı yerleştirip tekrar deneyiniz.');
+                }
+                if ((subscriber.unpaidAdvance || 0) > 0) {
+                    throw new Error('Zaten avans kontör yüklenmiş. Yükleme yapılamaz!');
+                }
+                setBaylanReady(subscriber);
+            } catch (err) {
+                status.className = 'baylan-status';
+                status.textContent = err.message || 'Kart okunamadı.';
+                btnRead.classList.remove('hidden');
+                btnRead.disabled = false;
+                document.getElementById('btn-baylan-load').classList.add('hidden');
+                document.getElementById('baylan-meta').classList.remove('visible');
+                document.getElementById('baylan-card-caption').textContent = 'NFC kart bekleniyor';
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        async function processBaylanLoad() {
+            const status = document.getElementById('baylan-status');
+            const loading = document.getElementById('baylan-loading');
+            const btnLoad = document.getElementById('btn-baylan-load');
+            if (!water.subscriber?.aboneNo) return;
+
+            btnLoad.disabled = true;
+            loading.classList.remove('hidden');
+            status.className = 'baylan-status is-idle';
+            status.textContent = 'Kontör kartınıza yazılıyor...';
+            onUserActivity();
+
+            try {
+                const result = await waterAdvanceLoad('baylan', water.subscriber.aboneNo);
+                const tons = result.loadedTons || water.subscriber.advanceTons || 3;
+                status.className = 'baylan-status is-ok';
+                status.innerHTML = 'Yüklenen avans kredi miktarı <strong>' + tons
+                    + '</strong> tondur.<br>7 gün içerisinde ' + tons
+                    + ' ton su tutarını ödemediğiniz takdirde gecikme zammı uygulanacaktır.<br>İyi günler dileriz.';
+                document.getElementById('baylan-step').textContent = 'Tamamlandı';
+                document.getElementById('baylan-card-caption').textContent = 'Yükleme başarılı';
+                btnLoad.classList.add('hidden');
+                setTimeout(() => {
+                    showWaterSuccess('Avans Yüklendi', result.message || status.textContent.replace(/<[^>]+>/g, ' '));
+                }, 2800);
+            } catch (err) {
+                status.className = 'baylan-status';
+                status.textContent = err.message || 'Kontör yazımı gerçekleştirilemedi.';
+                btnLoad.disabled = false;
+            } finally {
+                loading.classList.add('hidden');
+            }
         }
 
         function resetSession() {
@@ -1136,13 +1485,36 @@
                 water.action = null;
                 water.subscriber = null;
                 document.getElementById('water-vendor-label').textContent = vendorLabel(water.vendor) + ' kartlı sayaç';
-                setTimeout(() => showScreen('waterAction'), 200);
                 onUserActivity();
+                if (water.vendor === 'baylan') {
+                    water.action = 'advance';
+                    resetBaylanScreen();
+                    setTimeout(() => showScreen('baylan'), 180);
+                } else {
+                    setTimeout(() => showScreen('waterAction'), 180);
+                }
             });
         });
 
         document.getElementById('btn-water-vendor-back').addEventListener('click', () => showScreen('menu'));
         document.getElementById('btn-water-action-back').addEventListener('click', () => showScreen('waterVendor'));
+        document.getElementById('btn-baylan-back').addEventListener('click', () => { resetBaylanScreen(); showScreen('waterVendor'); });
+        document.getElementById('btn-baylan-cancel').addEventListener('click', () => { resetBaylanScreen(); showScreen('waterVendor'); });
+        document.getElementById('btn-baylan-read').addEventListener('click', () => {
+            const abone = document.getElementById('input-baylan-abone').value.trim();
+            processBaylanCardRead(abone || null, 'card');
+        });
+        document.getElementById('btn-baylan-abone').addEventListener('click', () => {
+            const abone = document.getElementById('input-baylan-abone').value.trim();
+            if (abone.length >= 4) processBaylanCardRead(abone, 'manual');
+        });
+        document.getElementById('btn-baylan-load').addEventListener('click', () => processBaylanLoad());
+        document.getElementById('input-baylan-abone').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('btn-baylan-abone').click();
+            }
+        });
 
         document.querySelectorAll('.water-action-btn').forEach(btn => {
             btn.addEventListener('click', () => {

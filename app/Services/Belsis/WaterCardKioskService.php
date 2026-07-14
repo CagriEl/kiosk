@@ -130,7 +130,7 @@ class WaterCardKioskService
 
         if (($subscriber['unpaidAdvance'] ?? 0) > 0) {
             throw new BelsisException(
-                'Aboneliğinize ait ödenmemiş avans kredi yüklemesi bulunmaktadır. Yükleme yapılamaz.',
+                'Zaten avans kontör yüklenmiş. Yükleme yapılamaz!',
                 '-2',
             );
         }
@@ -140,7 +140,8 @@ class WaterCardKioskService
         return [
             'loadedTons' => $tons,
             'beyanNo'    => (string) random_int(10000, 99999),
-            'message'    => $tons.' kontör yüklenerek işlem tamamlandı. 7 gün içinde avans su tutarını ödemediğiniz takdirde gecikme zammı uygulanır.',
+            'message'    => 'Yüklenen avans kredi miktarı '.$tons.' tondur. 7 gün içerisinde '.$tons
+                .' ton su tutarını ödemediğiniz takdirde gecikme zammı uygulanacaktır. İyi günler dileriz.',
         ];
     }
 
