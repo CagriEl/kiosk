@@ -953,16 +953,14 @@ class BelsisBorcSorgulaService
         $beyan = $this->fetchWaterBeyanEntriesForGensicil($gensicil);
 
         if ($beyan['entries'] !== []) {
-            // Tek su abonesi: kart tutarını satır borç toplamıyla hizala (beyan özeti bazen eski/farklı)
-            if (count($beyan['entries']) === 1) {
-                $sum = $this->sumSuModuleDebtsForGensicil($gensicil);
-                if ($sum !== null) {
-                    $beyan['entries'][0]['toplamBorc'] = $sum;
-                }
-            }
-
             $accounts = [];
             foreach ($beyan['entries'] as $entry) {
+                // Kart tutarı: satır borçlarından abone filtreli odenecek toplamı
+                // (beyan.toplamBorc bazen eski/eksik kalıyor)
+                $sum = $this->sumDebtsForAbone($gensicil, (string) $entry['aboneNo']);
+                if ($sum !== null) {
+                    $entry['toplamBorc'] = $sum;
+                }
                 $accounts[] = $this->mapTcAccountCard($row, $gensicil, $entry);
             }
 
@@ -1135,12 +1133,17 @@ class BelsisBorcSorgulaService
     }
 
     /**
-     * Su modulündeki online borç satırları toplamı (tek abone kartı tutarı için).
+     * Seçilen abone için online odenecekTutar toplamı.
+     * beyanBilgisi örn. "KATI ATIK TAHAKKUK - 41911 ..." ile abone eşleşir.
      */
-    private function sumSuModuleDebtsForGensicil(int $gensicil): ?float
+    private function sumDebtsForAbone(int $gensicil, string $aboneNo): ?float
     {
+        $aboneNo = trim($aboneNo);
+        if ($aboneNo === '') {
+            return null;
+        }
+
         $tips = config('belsis.borc_sorgu_tips_gensicil', ['1']);
-        $waterModules = array_map('strval', config('belsis.water_modul_nos', ['24']));
 
         foreach ($tips as $tip) {
             try {
@@ -1174,17 +1177,6 @@ class BelsisBorcSorgulaService
                         continue;
                     }
 
-                    $modulNo = (string) ($modul['modulNo'] ?? '');
-                    $modulBilgisi = mb_strtolower((string) ($modul['modulBilgisi'] ?? ''));
-                    $isSu = ($modulNo !== '' && in_array($modulNo, $waterModules, true))
-                        || str_contains($modulBilgisi, 'su')
-                        || str_contains($modulBilgisi, 'atık')
-                        || str_contains($modulBilgisi, 'atik');
-
-                    if (! $isSu) {
-                        continue;
-                    }
-
                     $donems = $this->normalizeList($modul['donemListesi']['Donem'] ?? $modul['donemListesi'] ?? []);
                     foreach ($donems as $donem) {
                         if (! is_array($donem)) {
@@ -1195,10 +1187,20 @@ class BelsisBorcSorgulaService
                             if (! is_array($tahakkuk)) {
                                 continue;
                             }
-                            $amount = $this->parseMoney($tahakkuk['odenecekTutar'] ?? 0);
+
+                            $beyanBilgisi = (string) ($tahakkuk['beyanBilgisi'] ?? '');
+                            $label = (string) ($tahakkuk['turu'] ?? '');
+                            $beyanId = (string) ($tahakkuk['beyanID'] ?? '');
+                            $itemAbone = $this->extractAboneNoFromBeyanText(implode(' ', [$beyanBilgisi, $label, $beyanId]));
+                            if ($itemAbone !== $aboneNo) {
+                                continue;
+                            }
+
+                            $amount = $this->resolveOdenecekFromTahakkuk($tahakkuk);
                             if ($amount <= 0) {
                                 continue;
                             }
+
                             $sum += $amount;
                             $found = true;
                         }
@@ -1216,6 +1218,41 @@ class BelsisBorcSorgulaService
         }
 
         return null;
+    }
+
+    private function extractAboneNoFromBeyanText(string $text): string
+    {
+        if (preg_match('/abone\s*no\s*[:\.]?\s*(\d+)/iu', $text, $m)) {
+            return $m[1];
+        }
+
+        if (preg_match('/tahakkuk\s*-\s*(\d+)/iu', $text, $m)) {
+            return $m[1];
+        }
+
+        if (preg_match('/^(\d+)\|(\d+)$/', trim($text), $m) && $m[2] !== '0') {
+            return $m[2];
+        }
+
+        return '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $tahakkuk
+     */
+    private function resolveOdenecekFromTahakkuk(array $tahakkuk): float
+    {
+        $odenecek = $this->parseMoney($tahakkuk['odenecekTutar'] ?? null);
+        if ($odenecek > 0) {
+            return round($odenecek, 2);
+        }
+
+        $tahakkukTutari = $this->parseMoney($tahakkuk['tahakkukTutari'] ?? 0);
+        $gecikme = $this->parseMoney($tahakkuk['gecikmeZammi'] ?? 0);
+        $odenen = $this->parseMoney($tahakkuk['odenenTutar'] ?? 0);
+        $indirim = $this->parseMoney($tahakkuk['indirimTutari'] ?? 0);
+
+        return round(max(0, $tahakkukTutari + $gecikme - $odenen - $indirim), 2);
     }
 
     private function parseMoney(mixed $value): float

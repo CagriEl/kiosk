@@ -1788,6 +1788,35 @@
             onUserActivity();
         });
 
+        function groupDebtsForDisplay(debts) {
+            const groups = [];
+            const index = new Map();
+            debts.forEach((debt) => {
+                const meta = debt.meta || {};
+                const key = meta.groupKey || debt.id;
+                if (!index.has(key)) {
+                    const group = {
+                        key,
+                        title: meta.groupTitle || debt.type || 'Borç',
+                        period: debt.period || '',
+                        dueDate: debt.dueDate || null,
+                        aboneNo: meta.aboneNo || '',
+                        modulBilgisi: meta.modulBilgisi || '',
+                        amount: 0,
+                        items: [],
+                    };
+                    index.set(key, group);
+                    groups.push(group);
+                }
+                const group = index.get(key);
+                group.items.push(debt);
+                group.amount += Number(debt.amount) || 0;
+                if (!group.dueDate && debt.dueDate) group.dueDate = debt.dueDate;
+                if (!group.period && debt.period) group.period = debt.period;
+            });
+            return groups;
+        }
+
         function renderDebtList() {
             const container = document.getElementById('debt-list');
             if (!session.debts.length) {
@@ -1801,43 +1830,75 @@
                 return;
             }
 
-            container.innerHTML = session.debts.map(debt => {
-                const periodLine = [debt.period, debt.dueDate ? formatDate(debt.dueDate) : '']
-                    .filter(Boolean)
-                    .join(' · ');
+            const groups = groupDebtsForDisplay(session.debts);
+            container.innerHTML = groups.map((group) => {
+                const ids = group.items.map(i => i.id);
+                const allSelected = ids.every(id => session.selectedIds.has(id));
+                const periodLine = [
+                    group.aboneNo ? ('Abone No: ' + group.aboneNo) : null,
+                    group.period || null,
+                    group.dueDate ? formatDate(group.dueDate) : null,
+                ].filter(Boolean).join(' · ');
+                const modulLine = group.modulBilgisi
+                    ? `<p class="text-kiosk-xs text-municipalGray-500 mt-0.5 truncate">${group.modulBilgisi}</p>`
+                    : '';
+                const breakdown = group.items.map(item => `
+                    <div class="flex items-center justify-between gap-3 py-1.5 border-t border-municipalGray-200/80 first:border-t-0">
+                        <p class="text-kiosk-xs text-municipalGray-700 min-w-0 leading-snug">${item.type || 'Kalem'}</p>
+                        <p class="text-kiosk-xs font-semibold text-municipalGray-800 tabular-nums shrink-0">${formatCurrency(item.amount)}</p>
+                    </div>
+                `).join('');
+
                 return `
-                <label class="block cursor-pointer" role="listitem">
-                    <input type="checkbox" class="debt-checkbox sr-only" data-id="${debt.id}" />
-                    <div class="debt-card-inner flex items-center gap-3 bg-white border-2 border-municipalGray-400/30 rounded-2xl px-4 py-3 shadow-sm hover:border-municipal-300 transition-all">
-                        <div class="w-9 h-9 rounded-lg border-2 border-municipal-300 flex items-center justify-center shrink-0 checkbox-visual">
-                            <svg class="w-5 h-5 text-municipal-600 hidden check-icon" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                <div class="debt-group bg-white border-2 ${allSelected ? 'border-municipal-500' : 'border-municipalGray-400/30'} rounded-2xl overflow-hidden shadow-sm" data-group-key="${group.key}" role="listitem">
+                    <label class="block cursor-pointer">
+                        <input type="checkbox" class="debt-group-checkbox sr-only" data-ids="${ids.join(',')}" ${allSelected ? 'checked' : ''} />
+                        <div class="debt-card-inner flex items-start gap-3 px-4 py-3 hover:bg-municipal-50/40 transition-all">
+                            <div class="w-9 h-9 mt-0.5 rounded-lg border-2 ${allSelected ? 'border-municipal-500 bg-municipal-100' : 'border-municipal-300'} flex items-center justify-center shrink-0 checkbox-visual">
+                                <svg class="w-5 h-5 text-municipal-600 ${allSelected ? '' : 'hidden'} check-icon" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-kiosk-sm font-bold text-municipalGray-800 leading-tight">${group.title}</p>
+                                ${periodLine ? `<p class="text-kiosk-xs text-municipalGray-500 mt-0.5 truncate">${periodLine}</p>` : ''}
+                                ${modulLine}
+                            </div>
+                            <div class="text-right shrink-0">
+                                <p class="text-kiosk-base font-bold text-municipal-700 tabular-nums">${formatCurrency(group.amount)}</p>
+                                <p class="text-[0.7rem] text-municipalGray-400 mt-0.5">${group.items.length} kalem</p>
+                            </div>
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-kiosk-sm font-bold text-municipalGray-800 debt-type-clamp leading-tight">${debt.type || 'Borç'}</p>
-                            ${periodLine ? `<p class="text-kiosk-xs text-municipalGray-500 mt-0.5 truncate">${periodLine}</p>` : ''}
-                        </div>
-                        <div class="text-right shrink-0">
-                            <p class="text-kiosk-base font-bold text-municipal-700 tabular-nums">${formatCurrency(debt.amount)}</p>
-                            <p class="text-[0.7rem] text-municipalGray-400 mt-0.5">${debt.id}</p>
+                    </label>
+                    <div class="px-4 pb-3 pl-16">
+                        <div class="rounded-xl bg-municipalGray-50/80 px-3 py-1">
+                            ${breakdown}
                         </div>
                     </div>
-                </label>
-            `;
+                </div>`;
             }).join('');
 
-            container.querySelectorAll('.debt-checkbox').forEach(cb => {
+            container.querySelectorAll('.debt-group-checkbox').forEach(cb => {
                 cb.addEventListener('change', () => {
-                    const label = cb.closest('label');
+                    const ids = String(cb.dataset.ids || '').split(',').filter(Boolean);
+                    const groupEl = cb.closest('.debt-group');
+                    const visual = groupEl.querySelector('.checkbox-visual');
+                    const icon = groupEl.querySelector('.check-icon');
                     if (cb.checked) {
-                        session.selectedIds.add(cb.dataset.id);
-                        label.querySelector('.check-icon').classList.remove('hidden');
-                        label.querySelector('.checkbox-visual').classList.add('bg-municipal-100', 'border-municipal-500');
+                        ids.forEach(id => session.selectedIds.add(id));
+                        icon.classList.remove('hidden');
+                        visual.classList.add('bg-municipal-100', 'border-municipal-500');
+                        visual.classList.remove('border-municipal-300');
+                        groupEl.classList.add('border-municipal-500');
+                        groupEl.classList.remove('border-municipalGray-400/30');
                     } else {
-                        session.selectedIds.delete(cb.dataset.id);
-                        label.querySelector('.check-icon').classList.add('hidden');
-                        label.querySelector('.checkbox-visual').classList.remove('bg-municipal-100', 'border-municipal-500');
+                        ids.forEach(id => session.selectedIds.delete(id));
+                        icon.classList.add('hidden');
+                        visual.classList.add('border-municipal-300');
+                        visual.classList.remove('bg-municipal-100', 'border-municipal-500');
+                        groupEl.classList.remove('border-municipal-500');
+                        groupEl.classList.add('border-municipalGray-400/30');
                     }
-                    updatePaymentPanel(); onUserActivity();
+                    updatePaymentPanel();
+                    onUserActivity();
                 });
             });
             updatePaymentPanel();
@@ -1846,8 +1907,12 @@
         function updatePaymentPanel() {
             const selected = session.debts.filter(d => session.selectedIds.has(d.id));
             const total = selected.reduce((s, d) => s + d.amount, 0);
+            const groupCount = groupDebtsForDisplay(selected).length;
             document.getElementById('selected-total').textContent = formatCurrency(total);
-            document.getElementById('selected-count').textContent = selected.length + ' borç seçildi';
+            document.getElementById('selected-count').textContent =
+                selected.length
+                    ? (groupCount + ' grup · ' + selected.length + ' kalem seçildi')
+                    : '0 borç seçildi';
             document.getElementById('btn-pay-bank').disabled = selected.length === 0;
             document.getElementById('payment-error').classList.add('hidden');
         }
@@ -1869,8 +1934,8 @@
         }
 
         document.getElementById('btn-select-all').addEventListener('click', () => {
-            const allChecked = session.selectedIds.size === session.debts.length;
-            document.querySelectorAll('.debt-checkbox').forEach(cb => {
+            const allChecked = session.selectedIds.size === session.debts.length && session.debts.length > 0;
+            document.querySelectorAll('.debt-group-checkbox').forEach(cb => {
                 cb.checked = !allChecked;
                 cb.dispatchEvent(new Event('change'));
             });

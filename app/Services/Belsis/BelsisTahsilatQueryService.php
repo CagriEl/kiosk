@@ -391,12 +391,20 @@ class BelsisTahsilatQueryService
             return true;
         }
 
+        $beyanBilgisi = (string) ($meta['beyanBilgisi'] ?? '');
+        if ($beyanBilgisi !== '' && (
+            preg_match('/tahakkuk\s*-\s*'.preg_quote($aboneNo, '/').'\b/iu', $beyanBilgisi)
+            || preg_match('/\-\s*'.preg_quote($aboneNo, '/').'\b/', $beyanBilgisi)
+        )) {
+            return true;
+        }
+
         $haystack = mb_strtolower(implode(' ', array_filter([
             (string) ($debt['type'] ?? ''),
             (string) ($debt['period'] ?? ''),
             (string) ($debt['id'] ?? ''),
             $beyanId,
-            (string) ($meta['beyanBilgisi'] ?? ''),
+            $beyanBilgisi,
             (string) ($meta['aciklama'] ?? ''),
             $debtAbone,
         ])));
@@ -646,7 +654,7 @@ class BelsisTahsilatQueryService
                         continue;
                     }
 
-                    $amount = (float) ($tahakkuk['odenecekTutar'] ?? 0);
+                    $amount = $this->resolveOdenecekAmount($tahakkuk);
                     if ($amount <= 0) {
                         continue;
                     }
@@ -670,6 +678,18 @@ class BelsisTahsilatQueryService
                         $taksit ? 'Taksit '.$taksit : null,
                     ])));
 
+                    $modulBilgisi = (string) ($modul['modulBilgisi'] ?? '');
+                    $groupTitle = $beyanBilgisi !== ''
+                        ? $beyanBilgisi
+                        : ($modulBilgisi !== '' ? $modulBilgisi : $type);
+                    $groupKey = implode('|', [
+                        (string) ($modul['modulNo'] ?? 'm'),
+                        (string) $borcYili,
+                        (string) $taksit,
+                        $beyanId !== '' ? $beyanId : $tahakkukNo,
+                        $aboneNo !== '' ? $aboneNo : '0',
+                    ]);
+
                     $debts[] = [
                         'id'      => $tahakkukNo,
                         'type'    => $type,
@@ -678,19 +698,21 @@ class BelsisTahsilatQueryService
                         'dueDate' => $this->normalizeDate($tahakkuk['sonOdemeTarihi'] ?? null),
                         'meta'    => [
                             'tahakkukNo'     => $tahakkukNo,
-                            'tahakkukTutari' => (float) ($tahakkuk['tahakkukTutari'] ?? $amount),
-                            'gecikmeTutari'  => (float) ($tahakkuk['gecikmeZammi'] ?? 0),
+                            'tahakkukTutari' => $this->parseMoneyAmount($tahakkuk['tahakkukTutari'] ?? $amount),
+                            'gecikmeTutari'  => $this->parseMoneyAmount($tahakkuk['gecikmeZammi'] ?? 0),
                             'odemeTutari'    => $amount,
-                            'indirimTutari'  => (float) ($tahakkuk['indirimTutari'] ?? 0),
-                            'odenenTutar'    => (float) ($tahakkuk['odenenTutar'] ?? 0),
+                            'indirimTutari'  => $this->parseMoneyAmount($tahakkuk['indirimTutari'] ?? 0),
+                            'odenenTutar'    => $this->parseMoneyAmount($tahakkuk['odenenTutar'] ?? 0),
                             'modulNo'        => $modul['modulNo'] ?? null,
-                            'modulBilgisi'   => $modul['modulBilgisi'] ?? null,
+                            'modulBilgisi'   => $modulBilgisi !== '' ? $modulBilgisi : null,
                             'beyanID'        => $beyanId !== '' ? $beyanId : null,
                             'beyanBilgisi'   => $beyanBilgisi !== '' ? $beyanBilgisi : null,
                             'aciklama'       => $aciklama !== '' ? $aciklama : null,
                             'aboneNo'        => $aboneNo !== '' ? $aboneNo : null,
                             'borcYili'       => $borcYili,
                             'taksit'         => $taksit,
+                            'groupKey'       => $groupKey,
+                            'groupTitle'     => $groupTitle,
                             'kaynak'         => 'borcSorgula',
                         ],
                     ];
@@ -707,11 +729,36 @@ class BelsisTahsilatQueryService
             return $m[1];
         }
 
+        // borcSorgula: "KATI ATIK TAHAKKUK - 41911 PINAR K:2/A D:3"
+        if (preg_match('/tahakkuk\s*-\s*(\d+)/iu', $text, $m)) {
+            return $m[1];
+        }
+
         if (preg_match('/^(\d+)\|(\d+)$/', trim($text), $m) && $m[2] !== '0') {
             return $m[2];
         }
 
         return '';
+    }
+
+    /**
+     * Ödenecek tutar: önce odenecekTutar, yoksa tahakkuk + gecikme − ödenen − indirim.
+     *
+     * @param  array<string, mixed>  $tahakkuk
+     */
+    private function resolveOdenecekAmount(array $tahakkuk): float
+    {
+        $odenecek = $this->parseMoneyAmount($tahakkuk['odenecekTutar'] ?? null);
+        if ($odenecek > 0) {
+            return round($odenecek, 2);
+        }
+
+        $tahakkukTutari = $this->parseMoneyAmount($tahakkuk['tahakkukTutari'] ?? 0);
+        $gecikme = $this->parseMoneyAmount($tahakkuk['gecikmeZammi'] ?? $tahakkuk['gecikmeTutari'] ?? 0);
+        $odenen = $this->parseMoneyAmount($tahakkuk['odenenTutar'] ?? 0);
+        $indirim = $this->parseMoneyAmount($tahakkuk['indirimTutari'] ?? 0);
+
+        return round(max(0, $tahakkukTutari + $gecikme - $odenen - $indirim), 2);
     }
 
     /**
@@ -895,11 +942,13 @@ class BelsisTahsilatQueryService
                     'amount'  => $amount,
                     'dueDate' => null,
                     'meta'    => [
-                        'modulno'  => $modulno,
-                        'modulNo'  => $modulno,
-                        'beyanID'  => $beyanId !== '' ? $beyanId : null,
-                        'aboneNo'  => $aboneNo !== '' ? $aboneNo : null,
-                        'kaynak'   => 'sicilBorcBeyanSorgula',
+                        'modulno'    => $modulno,
+                        'modulNo'    => $modulno,
+                        'beyanID'    => $beyanId !== '' ? $beyanId : null,
+                        'aboneNo'    => $aboneNo !== '' ? $aboneNo : null,
+                        'groupKey'   => ($beyanId !== '' ? $beyanId : 'beyan-'.$modulno).'|'.($aboneNo !== '' ? $aboneNo : '0'),
+                        'groupTitle' => $label !== '' ? $label : 'Borç Beyanı',
+                        'kaynak'     => 'sicilBorcBeyanSorgula',
                     ],
                 ];
             }
