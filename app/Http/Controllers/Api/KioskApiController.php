@@ -55,7 +55,18 @@ class KioskApiController extends Controller
                 throw new BelsisException('Geçersiz abonelik numarası.');
             }
 
-            return response()->json($this->belsis->getDebts($identityNo, 'tc', $gensicilNo));
+            $aboneNo = $request->query('aboneNo');
+            $aboneNo = is_string($aboneNo) ? trim($aboneNo) : null;
+            if ($aboneNo !== null && $aboneNo !== '' && ! ctype_digit($aboneNo)) {
+                throw new BelsisException('Geçersiz abone numarası.');
+            }
+
+            return response()->json($this->belsis->getDebts(
+                $identityNo,
+                'tc',
+                $gensicilNo,
+                ($aboneNo !== null && $aboneNo !== '') ? $aboneNo : null,
+            ));
         } catch (BelsisException $e) {
             return $this->belsisError($e);
         } catch (Throwable $e) {
@@ -99,6 +110,7 @@ class KioskApiController extends Controller
         $validated = $request->validate([
             'identityNo' => 'required|string|regex:/^\d{11}$/',
             'gensicilNo' => 'nullable|string|regex:/^\d{1,10}$/',
+            'aboneNo'    => 'nullable|string|regex:/^\d{1,20}$/',
             'debtIds'    => 'required|array|min:1',
             'debtIds.*'  => 'required|string',
         ]);
@@ -112,6 +124,7 @@ class KioskApiController extends Controller
                     $validated['debtIds'],
                     'tc',
                     $validated['gensicilNo'] ?? null,
+                    $validated['aboneNo'] ?? null,
                 ),
             );
         } catch (BelsisException $e) {
@@ -124,6 +137,7 @@ class KioskApiController extends Controller
         $validated = $request->validate([
             'identityNo' => 'required|string|regex:/^\d{11}$/',
             'gensicilNo' => 'nullable|string|regex:/^\d{1,10}$/',
+            'aboneNo'    => 'nullable|string|regex:/^\d{1,20}$/',
             'debtIds'    => 'required|array|min:1',
             'debtIds.*'  => 'required|string',
         ]);
@@ -138,6 +152,7 @@ class KioskApiController extends Controller
                     $transactionId,
                     'tc',
                     $validated['gensicilNo'] ?? null,
+                    $validated['aboneNo'] ?? null,
                 ),
             );
         } catch (BelsisException $e) {
@@ -303,10 +318,19 @@ class KioskApiController extends Controller
 
     private function belsisError(BelsisException $e): JsonResponse
     {
-        $message = mb_strtolower($e->getMessage());
+        $rawMessage = $e->getMessage();
+        $message = mb_strtolower($rawMessage);
         $status = 422;
 
+        // Sicil bulunduktan sonra tahakkuk oturumu açılamazsa kullanıcıya teknik
+        // "oturum kimliği" yerine borç bulunamadı mesajı göster.
         if (
+            str_contains($message, 'oturum kimliği')
+            || str_contains($message, 'oturum kimligi')
+        ) {
+            $rawMessage = 'Sicil kaydınız bulundu ancak ödenecek borç bulunamadı.';
+            $status = 404;
+        } elseif (
             str_contains($message, '11 haneli olmalıdır')
             || str_contains($message, '1–10 haneli')
             || str_contains($message, '1-10 haneli')
@@ -346,7 +370,7 @@ class KioskApiController extends Controller
         }
 
         return response()->json([
-            'message'   => $e->getMessage(),
+            'message'   => $rawMessage,
             'sonucKodu' => $e->sonucKodu,
         ], $status);
     }

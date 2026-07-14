@@ -37,15 +37,19 @@ class BelsisKioskService
     /**
      * @return array{debts: array<int, array<string, mixed>>}
      */
-    public function getDebts(string $identityNo, ?string $searchType = null, ?string $gensicilNo = null): array
-    {
+    public function getDebts(
+        string $identityNo,
+        ?string $searchType = null,
+        ?string $gensicilNo = null,
+        ?string $aboneNo = null,
+    ): array {
         if ($this->shouldUseMock($identityNo)) {
             return ['debts' => $this->mockDebts()];
         }
 
         try {
             return ['debts' => $this->withSessionRetry(
-                fn () => $this->query->getDebts($identityNo, $searchType, $gensicilNo),
+                fn () => $this->query->getDebts($identityNo, $searchType, $gensicilNo, $aboneNo),
             )];
         } catch (BelsisException $e) {
             Log::error('Belsis borç sorgusu hatası', ['message' => $e->getMessage(), 'code' => $e->sonucKodu]);
@@ -94,9 +98,15 @@ class BelsisKioskService
         array $debtIds,
         ?string $searchType = null,
         ?string $gensicilNo = null,
+        ?string $aboneNo = null,
     ): array {
-        $citizen = $this->resolveCitizenForPayment($identityNo, $searchType, $gensicilNo);
-        $debts = $this->getDebts($identityNo, $searchType, $citizen['gensicilNo'] ?? $gensicilNo)['debts'];
+        $citizen = $this->resolveCitizenForPayment($identityNo, $searchType, $gensicilNo, $aboneNo);
+        $debts = $this->getDebts(
+            $identityNo,
+            $searchType,
+            $citizen['gensicilNo'] ?? $gensicilNo,
+            $citizen['aboneNo'] ?? $aboneNo,
+        )['debts'];
         $selected = collect($debts)->whereIn('id', $debtIds)->values();
 
         if ($selected->isEmpty()) {
@@ -120,9 +130,15 @@ class BelsisKioskService
         string $transactionId,
         ?string $searchType = null,
         ?string $gensicilNo = null,
+        ?string $aboneNo = null,
     ): array {
-        $citizen = $this->resolveCitizenForPayment($identityNo, $searchType, $gensicilNo);
-        $debts = $this->getDebts($identityNo, $searchType, $citizen['gensicilNo'] ?? $gensicilNo)['debts'];
+        $citizen = $this->resolveCitizenForPayment($identityNo, $searchType, $gensicilNo, $aboneNo);
+        $debts = $this->getDebts(
+            $identityNo,
+            $searchType,
+            $citizen['gensicilNo'] ?? $gensicilNo,
+            $citizen['aboneNo'] ?? $aboneNo,
+        )['debts'];
 
         if ($this->shouldUseMock($identityNo)) {
             return [
@@ -152,22 +168,31 @@ class BelsisKioskService
     /**
      * @return array<string, mixed>
      */
-    private function resolveCitizenForPayment(string $identityNo, ?string $searchType, ?string $gensicilNo): array
-    {
+    private function resolveCitizenForPayment(
+        string $identityNo,
+        ?string $searchType,
+        ?string $gensicilNo,
+        ?string $aboneNo = null,
+    ): array {
         $citizen = $this->getCitizen($identityNo, $searchType);
 
         if (! empty($gensicilNo) && ! empty($citizen['accounts']) && is_array($citizen['accounts'])) {
             foreach ($citizen['accounts'] as $account) {
-                if ((string) ($account['gensicilNo'] ?? '') === (string) $gensicilNo) {
+                $gensicilMatch = (string) ($account['gensicilNo'] ?? '') === (string) $gensicilNo;
+                $aboneMatch = $aboneNo === null || $aboneNo === ''
+                    || (string) ($account['aboneNo'] ?? '') === (string) $aboneNo;
+
+                if ($gensicilMatch && $aboneMatch) {
                     return array_merge($citizen, [
-                        'gensicilNo' => (string) $account['gensicilNo'],
-                        'sicilNo'    => (string) ($account['sicilNo'] ?? $account['gensicilNo']),
-                        'aboneNo'    => (string) ($account['aboneNo'] ?? ''),
-                        'fullName'   => (string) ($account['fullName'] ?? $citizen['fullName'] ?? ''),
-                        'address'    => (string) ($account['address'] ?? ''),
-                        'adi'        => (string) ($account['adi'] ?? ''),
-                        'soyadi'     => (string) ($account['soyadi'] ?? ''),
+                        'gensicilNo'     => (string) $account['gensicilNo'],
+                        'sicilNo'        => (string) ($account['sicilNo'] ?? $account['gensicilNo']),
+                        'aboneNo'        => (string) ($account['aboneNo'] ?? ''),
+                        'fullName'       => (string) ($account['fullName'] ?? $citizen['fullName'] ?? ''),
+                        'address'        => (string) ($account['address'] ?? ''),
+                        'adi'            => (string) ($account['adi'] ?? ''),
+                        'soyadi'         => (string) ($account['soyadi'] ?? ''),
                         'needsSelection' => false,
+                        'accountKey'     => (string) ($account['accountKey'] ?? ''),
                     ]);
                 }
             }

@@ -848,15 +848,16 @@
             return apiRequest(`${API_BASE}/citizen/${accountNo}${qs}`);
         }
 
-        async function fetchDebts(accountNo, searchType, gensicilNo) {
+        async function fetchDebts(accountNo, searchType, gensicilNo, aboneNo) {
             const params = new URLSearchParams();
             if (searchType) params.set('searchType', searchType);
             if (gensicilNo) params.set('gensicilNo', gensicilNo);
+            if (aboneNo) params.set('aboneNo', aboneNo);
             const qs = params.toString() ? `?${params}` : '';
             return apiRequest(`${API_BASE}/debts/${accountNo}${qs}`);
         }
 
-        async function initiateBankPayment(identityNo, selectedDebtIds, searchType, gensicilNo) {
+        async function initiateBankPayment(identityNo, selectedDebtIds, searchType, gensicilNo, aboneNo) {
             return apiRequest(`${API_BASE}/payment/bank`, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
@@ -865,11 +866,12 @@
                     debtIds: selectedDebtIds,
                     searchType: searchType || undefined,
                     gensicilNo: gensicilNo || undefined,
+                    aboneNo: aboneNo || undefined,
                 }),
             });
         }
 
-        async function confirmPayment(transactionId, identityNo, debtIds, searchType, gensicilNo) {
+        async function confirmPayment(transactionId, identityNo, debtIds, searchType, gensicilNo, aboneNo) {
             return apiRequest(`${API_BASE}/payment/${transactionId}/confirm`, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
@@ -878,6 +880,7 @@
                     debtIds,
                     searchType: searchType || undefined,
                     gensicilNo: gensicilNo || undefined,
+                    aboneNo: aboneNo || undefined,
                 }),
             });
         }
@@ -1670,16 +1673,18 @@
             errEl.classList.add('hidden');
             container.innerHTML = session.accounts.map((acc) => {
                 const abone = acc.aboneNo || acc.uyeNo || acc.sicilNo || acc.gensicilNo;
+                const key = acc.accountKey || (acc.gensicilNo + '|' + abone);
                 const details = Array.isArray(acc.details) && acc.details.length
                     ? `<p class="text-kiosk-xs text-municipalGray-500 mt-1">${acc.details.join(' · ')}</p>`
                     : '';
                 return `
                 <button type="button" class="account-card touch-btn w-full text-left bg-white border-2 border-municipal-200 hover:border-municipal-500 rounded-2xl px-5 py-4 shadow-sm"
-                    data-gensicil="${acc.gensicilNo}" role="listitem">
+                    data-account-key="${key}" role="listitem">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <p class="text-kiosk-base font-bold text-municipalGray-800">${acc.fullName || 'Abonelik'}</p>
-                            <p class="text-kiosk-sm text-municipal-700 font-semibold mt-1">Abone No: ${abone} · Sicil: ${acc.sicilNo || acc.gensicilNo}</p>
+                            <p class="text-kiosk-sm text-municipal-700 font-semibold mt-1">Abone No: ${abone}</p>
+                            <p class="text-kiosk-xs text-municipalGray-500 mt-0.5">Sicil: ${acc.sicilNo || acc.gensicilNo}</p>
                             <p class="text-kiosk-sm text-municipalGray-600 mt-2 leading-snug">${acc.address || 'Adres bilgisi kayıtta yok'}</p>
                             ${details}
                         </div>
@@ -1690,8 +1695,8 @@
 
             container.querySelectorAll('.account-card').forEach((btn) => {
                 btn.addEventListener('click', async () => {
-                    const gensicil = btn.dataset.gensicil;
-                    const account = session.accounts.find(a => String(a.gensicilNo) === String(gensicil));
+                    const key = btn.dataset.accountKey;
+                    const account = session.accounts.find(a => String(a.accountKey || (a.gensicilNo + '|' + a.aboneNo)) === String(key));
                     if (!account || !session.citizen) return;
                     errEl.classList.add('hidden');
                     btn.disabled = true;
@@ -1706,6 +1711,7 @@
                             address: account.address || '',
                             adi: account.adi || session.citizen.adi,
                             soyadi: account.soyadi || session.citizen.soyadi,
+                            accountKey: account.accountKey || key,
                             needsSelection: false,
                         };
                         await loadDebtsForCitizen(session.citizen);
@@ -1721,7 +1727,8 @@
         async function loadDebtsForCitizen(citizen) {
             const identityNo = citizen.identityNo;
             const gensicilNo = citizen.gensicilNo || '';
-            const { debts } = await fetchDebts(identityNo, 'tc', gensicilNo || undefined);
+            const aboneNo = citizen.aboneNo || '';
+            const { debts } = await fetchDebts(identityNo, 'tc', gensicilNo || undefined, aboneNo || undefined);
             session.debts = debts;
             session.selectedIds.clear();
             renderDebtList();
@@ -1755,6 +1762,17 @@
 
         function renderDebtList() {
             const container = document.getElementById('debt-list');
+            if (!session.debts.length) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center text-center px-6 py-10 bg-white border-2 border-municipalGray-400/20 rounded-2xl">
+                        <p class="text-kiosk-base font-bold text-municipalGray-800">Sicil kaydınız bulundu ancak ödenecek borç bulunamadı.</p>
+                        <p class="text-kiosk-xs text-municipalGray-500 mt-2">Bu abonelik için şu an ödenecek borcunuz görünmüyor.</p>
+                    </div>
+                `;
+                updatePaymentPanel();
+                return;
+            }
+
             container.innerHTML = session.debts.map(debt => `
                 <label class="block cursor-pointer" role="listitem">
                     <input type="checkbox" class="debt-checkbox sr-only" data-id="${debt.id}" />
@@ -1840,6 +1858,7 @@
                     selectedIds,
                     'tc',
                     session.citizen.gensicilNo || undefined,
+                    session.citizen.aboneNo || undefined,
                 );
                 session.pendingPayment = { transactionId: payment.transactionId, debtIds: selectedIds };
                 openBankModal(total);
@@ -1895,6 +1914,7 @@
                         debtIds,
                         'tc',
                         session.citizen.gensicilNo || undefined,
+                        session.citizen.aboneNo || undefined,
                     );
                     if (confirmation.status === 'completed') {
                         closeBankModal();

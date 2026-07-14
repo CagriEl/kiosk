@@ -859,10 +859,10 @@ class BelsisBorcSorgulaService
      */
     public function resolveAllGensicilsFromTc(string $tcKimlikNo): array
     {
-        return array_values(array_map(
+        return array_values(array_unique(array_map(
             fn (array $account) => (string) $account['gensicilNo'],
             $this->resolveAccountsFromTc($tcKimlikNo),
-        ));
+        )));
     }
 
     /**
@@ -924,12 +924,41 @@ class BelsisBorcSorgulaService
             }
 
             $gensicil = (int) ($row['gensicilno'] ?? $row['gensicilNo'] ?? 0);
-            if ($gensicil <= 0 || isset($seen[$gensicil])) {
+            if ($gensicil <= 0) {
                 continue;
             }
-            $seen[$gensicil] = true;
 
-            $accounts[] = $this->mapTcAccountCard($row, $gensicil);
+            foreach ($this->expandAccountsFromSicilRow($row, $gensicil) as $account) {
+                $key = $account['gensicilNo'].'|'.$account['aboneNo'];
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $accounts[] = $account;
+            }
+        }
+
+        return $accounts;
+    }
+
+    /**
+     * Tek sicil kaydını beyan abone numaralarına göre ayrı abonelik kartlarına böler.
+     * Aynı yerde/sicilde abone no farklıysa her biri ayrı görünür.
+     *
+     * @param  array<string, mixed>  $row
+     * @return array<int, array<string, mixed>>
+     */
+    private function expandAccountsFromSicilRow(array $row, int $gensicil): array
+    {
+        $beyanEntries = $this->fetchBeyanEntriesForGensicil($gensicil);
+
+        if ($beyanEntries === []) {
+            return [$this->mapTcAccountCard($row, $gensicil, null)];
+        }
+
+        $accounts = [];
+        foreach ($beyanEntries as $entry) {
+            $accounts[] = $this->mapTcAccountCard($row, $gensicil, $entry);
         }
 
         return $accounts;
@@ -937,6 +966,7 @@ class BelsisBorcSorgulaService
 
     /**
      * @param  array<string, mixed>  $row
+     * @param  array{aboneNo: string, modulNo: string, beyanId: string, label: string, toplamBorc: float}|null  $beyanEntry
      * @return array{
      *   gensicilNo: string,
      *   sicilNo: string,
@@ -947,10 +977,13 @@ class BelsisBorcSorgulaService
      *   soyadi: string,
      *   address: string,
      *   koyAdi: string,
-     *   details: array<int, string>
+     *   details: array<int, string>,
+     *   modulNo: string,
+     *   beyanId: string,
+     *   accountKey: string
      * }
      */
-    private function mapTcAccountCard(array $row, int $gensicil): array
+    private function mapTcAccountCard(array $row, int $gensicil, ?array $beyanEntry): array
     {
         $adi = trim((string) ($row['adi'] ?? ''));
         $soyadi = trim((string) ($row['soyadi'] ?? ''));
@@ -958,19 +991,24 @@ class BelsisBorcSorgulaService
         $uyeNo = (int) ($row['uyeNo'] ?? 0);
         $koyAdi = trim((string) ($row['koyAdi'] ?? ''));
 
-        $beyanDetails = $this->fetchBeyanLabelsForGensicil($gensicil);
-        $aboneFromBeyan = $this->extractAboneNoFromBeyanLabels($beyanDetails);
-        $aboneNo = $aboneFromBeyan !== ''
-            ? $aboneFromBeyan
-            : ($uyeNo > 0 ? (string) $uyeNo : (string) $gensicil);
+        $aboneNo = $beyanEntry['aboneNo'] ?? '';
+        if ($aboneNo === '') {
+            $aboneNo = $uyeNo > 0 ? (string) $uyeNo : (string) $gensicil;
+        }
+
+        $label = trim((string) ($beyanEntry['label'] ?? ''));
+        $details = array_values(array_filter([
+            $label !== '' ? $label : null,
+            $koyAdi !== '' ? ('Mahalle / Yer: '.$koyAdi) : null,
+        ]));
 
         $addressParts = array_values(array_filter([
             $koyAdi !== '' ? $koyAdi : null,
+            $label !== '' && ! preg_match('/^abone\s*no/iu', $label) ? $label : null,
         ]));
 
-        // koyAdi yoksa beyan açıklamaları (abone/adres satırları) seçimde ayırt edici olur
-        if ($addressParts === [] && $beyanDetails !== []) {
-            $addressParts = $beyanDetails;
+        if ($addressParts === [] && $label !== '') {
+            $addressParts = [$label];
         }
 
         return [
@@ -983,14 +1021,17 @@ class BelsisBorcSorgulaService
             'soyadi'     => $soyadi,
             'address'    => $addressParts !== [] ? implode(' · ', $addressParts) : 'Adres bilgisi kayıtta yok',
             'koyAdi'     => $koyAdi,
-            'details'    => $beyanDetails,
+            'details'    => $details,
+            'modulNo'    => (string) ($beyanEntry['modulNo'] ?? ''),
+            'beyanId'    => (string) ($beyanEntry['beyanId'] ?? ''),
+            'accountKey' => $gensicil.'|'.$aboneNo,
         ];
     }
 
     /**
-     * @return array<int, string>
+     * @return array<int, array{aboneNo: string, modulNo: string, beyanId: string, label: string, toplamBorc: float}>
      */
-    private function fetchBeyanLabelsForGensicil(int $gensicil): array
+    private function fetchBeyanEntriesForGensicil(int $gensicil): array
     {
         try {
             $result = $this->client->callTahsilat('sicilBorcBeyanSorgula', array_merge(
@@ -1004,19 +1045,52 @@ class BelsisBorcSorgulaService
                 ?? [],
             );
 
-            $labels = [];
+            $entries = [];
+            $seenAbone = [];
+
             foreach ($items as $item) {
                 if (! is_array($item)) {
                     continue;
                 }
+
                 $label = trim((string) ($item['beyanAciklama'] ?? ''));
+                $beyanId = trim((string) ($item['beyanID'] ?? $item['beyanId'] ?? ''));
+                $modulNo = trim((string) ($item['modulno'] ?? $item['modulNo'] ?? ''));
+
                 if ($label === '' || str_contains(mb_strtoupper($label), 'HEPSİ')) {
                     continue;
                 }
-                $labels[] = $label;
+
+                $aboneNo = '';
+                if (preg_match('/abone\s*no\s*[:\.]?\s*(\d+)/iu', $label, $m)) {
+                    $aboneNo = $m[1];
+                } elseif (preg_match('/^(\d+)\|(\d+)$/', $beyanId, $m) && $m[2] !== '0') {
+                    $aboneNo = $m[2];
+                    if ($modulNo === '') {
+                        $modulNo = $m[1];
+                    }
+                }
+
+                if ($aboneNo === '') {
+                    // Abone no çıkarılamayan beyan satırı da ayrı kart olabilir (etiket ile)
+                    $aboneNo = $beyanId !== '' ? $beyanId : ('m'.$modulNo);
+                }
+
+                if (isset($seenAbone[$aboneNo])) {
+                    continue;
+                }
+                $seenAbone[$aboneNo] = true;
+
+                $entries[] = [
+                    'aboneNo'    => $aboneNo,
+                    'modulNo'    => $modulNo,
+                    'beyanId'    => $beyanId,
+                    'label'      => $label,
+                    'toplamBorc' => (float) ($item['toplamBorc'] ?? 0),
+                ];
             }
 
-            return array_values(array_unique($labels));
+            return $entries;
         } catch (BelsisException $e) {
             if ($this->isInfrastructureError($e)) {
                 throw $e;
@@ -1024,6 +1098,17 @@ class BelsisBorcSorgulaService
 
             return [];
         }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function fetchBeyanLabelsForGensicil(int $gensicil): array
+    {
+        return array_values(array_map(
+            fn (array $entry) => $entry['label'],
+            $this->fetchBeyanEntriesForGensicil($gensicil),
+        ));
     }
 
     /**

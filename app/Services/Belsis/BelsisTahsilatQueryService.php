@@ -89,24 +89,29 @@ class BelsisTahsilatQueryService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function getDebts(string $identityNo, ?string $searchType = null, ?string $gensicilNo = null): array
-    {
+    public function getDebts(
+        string $identityNo,
+        ?string $searchType = null,
+        ?string $gensicilNo = null,
+        ?string $aboneNo = null,
+    ): array {
         $identityNo = trim($identityNo);
         $searchType = $this->resolveSearchType($identityNo, $searchType);
 
         if ($searchType === 'tc') {
-            return $this->getDebtsByTc($identityNo, $gensicilNo);
+            return $this->getDebtsByTc($identityNo, $gensicilNo, $aboneNo);
         }
 
-        return $this->getDebtsByGensicil($this->resolveToGensicil($identityNo, $searchType));
+        return $this->getDebtsByGensicil($this->resolveToGensicil($identityNo, $searchType), $aboneNo);
     }
 
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function getDebtsByTc(string $tcKimlikNo, ?string $gensicilNo = null): array
+    private function getDebtsByTc(string $tcKimlikNo, ?string $gensicilNo = null, ?string $aboneNo = null): array
     {
         $selected = $gensicilNo !== null ? trim($gensicilNo) : '';
+        $aboneNo = $aboneNo !== null ? trim($aboneNo) : '';
 
         if ($selected !== '' && ctype_digit($selected) && (int) $selected > 0) {
             $accounts = $this->identity->resolveAccountsFromTc($tcKimlikNo);
@@ -115,7 +120,18 @@ class BelsisTahsilatQueryService
                 throw new BelsisException('Seçilen abonelik bu T.C. Kimlik No ile eşleşmiyor.');
             }
 
-            return $this->getDebtsByGensicil((int) $selected);
+            $modulNo = '';
+            if ($aboneNo !== '') {
+                foreach ($accounts as $account) {
+                    if ((string) ($account['gensicilNo'] ?? '') === $selected
+                        && (string) ($account['aboneNo'] ?? '') === $aboneNo) {
+                        $modulNo = (string) ($account['modulNo'] ?? '');
+                        break;
+                    }
+                }
+            }
+
+            return $this->getDebtsByGensicil((int) $selected, $aboneNo !== '' ? $aboneNo : null, $modulNo !== '' ? $modulNo : null);
         }
 
         $direct = $this->fetchBorcSorgulaDebtsByTc($tcKimlikNo);
@@ -131,7 +147,7 @@ class BelsisTahsilatQueryService
         }
 
         if (count($gensicils) === 1) {
-            return $this->getDebtsByGensicil((int) $gensicils[0]);
+            return $this->getDebtsByGensicil((int) $gensicils[0], $aboneNo !== '' ? $aboneNo : null);
         }
 
         throw new BelsisException(
@@ -142,7 +158,7 @@ class BelsisTahsilatQueryService
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function getDebtsByGensicil(int $gensicilno): array
+    private function getDebtsByGensicil(int $gensicilno, ?string $aboneNo = null, ?string $modulNo = null): array
     {
         $debts = $this->fetchBorcSorgulaDebts($gensicilno);
 
@@ -154,7 +170,53 @@ class BelsisTahsilatQueryService
             $debts = $this->fetchTahakkukFallbackDebts($gensicilno);
         }
 
-        return $debts;
+        return $this->filterDebtsForAbone($debts, $aboneNo, $modulNo);
+    }
+
+    /**
+     * Seçilen abone/modul ile ilişkilendirilebilen borçları ayıklar.
+     * Eşleşme yoksa (meta yok) tüm liste korunur — boş ekran yerine yanlış filtre olmasın.
+     *
+     * @param  array<int, array<string, mixed>>  $debts
+     * @return array<int, array<string, mixed>>
+     */
+    private function filterDebtsForAbone(array $debts, ?string $aboneNo, ?string $modulNo): array
+    {
+        $aboneNo = $aboneNo !== null ? trim($aboneNo) : '';
+        $modulNo = $modulNo !== null ? trim($modulNo) : '';
+
+        if ($aboneNo === '' && $modulNo === '') {
+            return $debts;
+        }
+
+        $filtered = array_values(array_filter($debts, function (array $debt) use ($aboneNo, $modulNo) {
+            $meta = is_array($debt['meta'] ?? null) ? $debt['meta'] : [];
+            $haystack = mb_strtolower(implode(' ', array_filter([
+                (string) ($debt['type'] ?? ''),
+                (string) ($debt['period'] ?? ''),
+                (string) ($meta['aboneNo'] ?? ''),
+                (string) ($meta['beyanBilgisi'] ?? ''),
+                (string) ($meta['aciklama'] ?? ''),
+            ])));
+
+            if ($aboneNo !== '' && (
+                (string) ($meta['aboneNo'] ?? '') === $aboneNo
+                || str_contains($haystack, mb_strtolower('abone no:'.$aboneNo))
+                || str_contains($haystack, mb_strtolower('abone no '.$aboneNo))
+                || preg_match('/\b'.preg_quote($aboneNo, '/').'\b/', $haystack)
+            )) {
+                return true;
+            }
+
+            if ($modulNo !== '' && (string) ($meta['modulNo'] ?? '') === $modulNo) {
+                return true;
+            }
+
+            return false;
+        }));
+
+        // Meta ile ayırt edilemiyorsa hepsini göster (sicil ortak borçlar)
+        return $filtered !== [] ? $filtered : $debts;
     }
 
     /**
@@ -368,11 +430,18 @@ class BelsisTahsilatQueryService
         try {
             return $this->tahakkuk->getDebtsByGensicil($gensicilno);
         } catch (BelsisException $e) {
-            if ($this->isInfrastructureError($e)) {
-                throw $e;
+            // Tahakkuk oturumu (ayrı login) başarısız olabilir — ana tahsilat akışını
+            // "oturum kimliği alınamadı" diye patlatma; borç yok say.
+            $message = mb_strtolower($e->getMessage());
+            if (
+                str_contains($message, 'oturum')
+                || str_contains($message, 'session')
+                || ! $this->isInfrastructureError($e)
+            ) {
+                return [];
             }
 
-            return [];
+            throw $e;
         }
     }
 
