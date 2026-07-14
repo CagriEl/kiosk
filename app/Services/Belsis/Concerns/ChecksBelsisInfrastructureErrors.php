@@ -28,12 +28,9 @@ trait ChecksBelsisInfrastructureErrors
     }
 
     /**
-     * borcSorgula/arama gibi sorguTip parametresi kuruma göre değişen metotlarda, SP'nin
-     * o tip için hiç çalışmadığını gösteren hata sınıfı ("Sistem Hatası — ExecuteReader:
-     * CommandText property has not been initialized"). Bu alınırsa denenen sorguTip'in
-     * kendisi değil, SP'nin o tip için dispatch etmemesi sorumludur — kalan sorguTip
-     * kombinasyonlarını denemeye devam etmenin anlamı yoktur, bir sonraki veri
-     * kaynağına geçilmelidir.
+     * CommandText / uninitialized — bu sorguTip SP'de tanımlı değil; aynı tip için
+     * diğer kombinasyonlar denenmez, sonraki tip denenir.
+     * Genel "Sistem Hatası" metni tek tip başarısızlığı sayılmaz (diğer tipler denensin).
      */
     private function isSystemicBorcError(BelsisException $e): bool
     {
@@ -41,7 +38,6 @@ trait ChecksBelsisInfrastructureErrors
 
         return str_contains($message, 'commandtext')
             || str_contains($message, 'command text')
-            || str_contains($message, 'not been initialized')
-            || str_contains($message, 'sistem hatas');
+            || str_contains($message, 'not been initialized');
     }
 }

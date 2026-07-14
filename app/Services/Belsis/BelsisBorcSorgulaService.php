@@ -73,14 +73,10 @@ class BelsisBorcSorgulaService
                 throw new BelsisException('T.C. Kimlik No 11 haneli olmalıdır.');
             }
 
-            $fromArama = $this->resolveGensicilFromTc($identityNo);
-            if ($fromArama !== null) {
-                return $fromArama;
-            }
-
-            $fromBorc = $this->resolveGensicilFromTcBorcResponse($identityNo);
-            if ($fromBorc !== null) {
-                return $fromBorc;
+            // arama(TC) → gensicil, olmazsa borcSorgula(TC) → Sicil.sicilNo
+            $gensicil = $this->resolveGensicilFromTc($identityNo);
+            if ($gensicil !== null) {
+                return $gensicil;
             }
 
             throw new BelsisException(
@@ -185,7 +181,8 @@ class BelsisBorcSorgulaService
     }
 
     /**
-     * borcSorgula (TC) yanıtından gensicilno — 1004 dahil kısmi yanıtlar.
+     * borcSorgula (TC) yanıtından gensicilno — soft-success (1004) dahil kısmi yanıtlar.
+     * Bir sorguTip CommandText verirse diğer tip adayları denenmeye devam eder.
      */
     public function resolveGensicilFromTcBorcResponse(string $tcKimlikNo): ?string
     {
@@ -206,9 +203,7 @@ class BelsisBorcSorgulaService
                 if ($this->isInfrastructureError($e)) {
                     throw $e;
                 }
-                if ($this->isSystemicBorcError($e)) {
-                    break;
-                }
+                // Bu tip SP'de yok / sistemik — sıradaki tip adayına geç
             }
         }
 
@@ -238,7 +233,7 @@ class BelsisBorcSorgulaService
         // Webservis akışı: önce arama(TC) → gensicilno, sonra borcSorgula(sicil tipi)
         foreach ($this->tcAramaTips() as $tip) {
             try {
-                $record = $this->tryAramaRecord($tip, $tcKimlikNo);
+                $record = $this->tryAramaRecord($tip, $tcKimlikNo, true);
                 if ($record === null) {
                     continue;
                 }
@@ -453,13 +448,16 @@ class BelsisBorcSorgulaService
     private function tryBorcSorgulaCombos(array $tips, array $gensicilCandidates, array $sorguNos, ?BelsisException &$lastError): ?array
     {
         foreach ($tips as $tip) {
-            $systemic = false;
-
             foreach ($gensicilCandidates as $gensicilno) {
                 foreach ($sorguNos as $sorguNo) {
                     try {
                         $result = $this->callBorcSorgula($tip, $sorguNo, $gensicilno);
                         if ($this->isValidBorcResult($result)) {
+                            return $result;
+                        }
+
+                        // Geçerli borç yoksa bile Sicil.sicilNo gelmiş olabilir (TC → gensicil çözümleme)
+                        if ($this->extractGensicilFromBorc($result) !== null) {
                             return $result;
                         }
                     } catch (BelsisException $e) {
@@ -470,15 +468,11 @@ class BelsisBorcSorgulaService
                         $lastError = $e;
 
                         if ($this->isSystemicBorcError($e)) {
-                            $systemic = true;
+                            // Bu tip SP'de yok — kalan tip×gensicil kombolarını bu tip için atla
                             break 2;
                         }
                     }
                 }
-            }
-
-            if ($systemic) {
-                break;
             }
         }
 
@@ -500,9 +494,9 @@ class BelsisBorcSorgulaService
     /**
      * @return array<string, mixed>|null
      */
-    private function tryAramaRecord(string $sorguTip, string $sorguNo): ?array
+    private function tryAramaRecord(string $sorguTip, string $sorguNo, bool $force = false): ?array
     {
-        if (! config('belsis.arama_enabled', false)) {
+        if (! $force && ! config('belsis.arama_enabled', false)) {
             return null;
         }
 
@@ -549,6 +543,8 @@ class BelsisBorcSorgulaService
                     'gensicilno' => $gensicil,
                     'adi'        => $row['adi'] ?? '',
                     'soyadi'     => $row['soyadi'] ?? '',
+                    'tcKimlikNo' => preg_replace('/\D/', '', (string) ($row['tcKimlikNo'] ?? $row['TcKimlikNo'] ?? '')),
+                    'uyeNo'      => (int) ($row['uyeNo'] ?? $row['UyeNo'] ?? 0),
                 ];
             }
         }
@@ -557,10 +553,9 @@ class BelsisBorcSorgulaService
     }
 
     /**
-     * arama methodu birden fazla aday döndürebilir; SicilaramaObj şemasında girilen numarayı
-     * doğrulayacak bir alan olmadığından, tek aday varsa kabul edilir, birden fazlaysa
-     * sicilSorgula'daki uyeNo ile eşleşen aday aranır. Eşleşme yoksa yanlış kişiye borç
-     * göstermemek için null döner (belirsiz eşleşme kabul edilmez).
+     * arama birden fazla aday döndürebilir. Tek aday → kabul.
+     * TC (11 hane) → sicilSorgula.tcKimlikNo birebir eşleşen aday.
+     * Abone/sicil → uyeNo / gensicilno eşleşmesi.
      *
      * @param  array<int, array<string, mixed>>  $candidates
      */
@@ -574,10 +569,31 @@ class BelsisBorcSorgulaService
             return $candidates[0];
         }
 
+        $sorguNo = trim($sorguNo);
+        $isTc = strlen($sorguNo) === 11 && ctype_digit($sorguNo);
         $sorguInt = (int) $sorguNo;
 
         foreach ($candidates as $candidate) {
+            if ($isTc) {
+                $candidateTc = preg_replace('/\D/', '', (string) ($candidate['tcKimlikNo'] ?? ''));
+                if ($candidateTc === $sorguNo) {
+                    return $candidate;
+                }
+
+                $record = $this->fetchSicilByGensicil((int) $candidate['gensicilno']);
+                $recordTc = preg_replace('/\D/', '', (string) ($record['tcKimlikNo'] ?? ''));
+                if ($recordTc === $sorguNo) {
+                    return $candidate;
+                }
+
+                continue;
+            }
+
             if ((int) $candidate['gensicilno'] === $sorguInt) {
+                return $candidate;
+            }
+
+            if ((int) ($candidate['uyeNo'] ?? 0) === $sorguInt) {
                 return $candidate;
             }
 
@@ -779,23 +795,30 @@ class BelsisBorcSorgulaService
     private function extractGensicilFromBorc(array $result): ?string
     {
         $sicil = $result['Sicil'] ?? $result['sicil'] ?? null;
-        if (! is_array($sicil)) {
-            return null;
+        if (is_array($sicil)) {
+            $no = $sicil['sicilNo']
+                ?? $sicil['gensicilno']
+                ?? $sicil['gensicilNo']
+                ?? $sicil['Gensicilno']
+                ?? null;
+
+            if ($no !== null && $no !== '') {
+                $parsed = (int) $no;
+                if ($parsed > 0) {
+                    return (string) $parsed;
+                }
+            }
         }
 
-        $no = $sicil['sicilNo'] ?? $sicil['gensicilno'] ?? $sicil['gensicilNo'] ?? null;
+        $direct = (int) ($result['gensicilno'] ?? $result['gensicilNo'] ?? $result['sicilNo'] ?? 0);
 
-        if ($no === null || $no === '') {
-            return null;
-        }
-
-        $parsed = (int) $no;
-
-        return $parsed > 0 ? (string) $parsed : null;
+        return $direct > 0 ? (string) $direct : null;
     }
 
     /**
-     * TC ile arama methodundan gensicilno çözer (borcSorgula öncesi webservis adımı).
+     * TC → gensicilno çözümler.
+     * 1) arama(sorguTip=TC) — Kırklareli için bilinçli olarak arama_enabled bayrağından bağımsız denenir
+     * 2) borcSorgula(TC, gensicilno=0) yanıtındaki Sicil.sicilNo
      */
     public function resolveGensicilFromTc(string $tcKimlikNo): ?string
     {
@@ -805,8 +828,9 @@ class BelsisBorcSorgulaService
             return null;
         }
 
+        // TC araması: global arama_enabled=false olsa bile zorunlu yol (tip başarısızsa yutulur)
         foreach ($this->tcAramaTips() as $tip) {
-            $record = $this->tryAramaRecord($tip, $tcKimlikNo);
+            $record = $this->tryAramaRecord($tip, $tcKimlikNo, true);
             if ($record === null) {
                 continue;
             }
@@ -817,7 +841,7 @@ class BelsisBorcSorgulaService
             }
         }
 
-        return null;
+        return $this->resolveGensicilFromTcBorcResponse($tcKimlikNo);
     }
 
     /**
