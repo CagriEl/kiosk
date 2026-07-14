@@ -13,6 +13,9 @@ return [
         'http://webservis.kirklareli.local:1685/belsisWebServis/tahsilatwebservis.asmx',
     ),
 
+    // Hostname DNS çözülemezse CURLOPT_RESOLVE ile bu IP kullanılır (IIS Host header korunur)
+    'host_ip' => env('BELSIS_HOST_IP', ''),
+
     // Sunucu IP'si veya "auto" (otomatik tespit)
     'ip_address' => env('BELSIS_IP_ADDRESS', 'auto'),
     'timeout'    => (int) env('BELSIS_TIMEOUT', 30),

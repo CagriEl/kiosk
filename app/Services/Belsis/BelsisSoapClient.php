@@ -72,13 +72,17 @@ class BelsisSoapClient
 
         Log::debug('Belsis SOAP request', ['method' => $method, 'endpoint' => $endpoint]);
 
-        $request = Http::withOptions(['allow_redirects' => false])
+        $request = Http::withOptions(array_filter([
+            'allow_redirects' => false,
+            'curl'            => $this->curlResolveOptions($endpoint) ?: null,
+        ]))
             ->connectTimeout((int) min(5, max(1, (int) config('belsis.timeout', 30))))
             ->timeout((int) config('belsis.timeout', 30))
             ->withHeaders([
                 'Content-Type'   => 'text/xml; charset=utf-8',
                 'Content-Length' => (string) strlen($body),
                 'SOAPAction'     => '"'.$soapAction.'"',
+                'Host'           => (string) (parse_url($endpoint, PHP_URL_HOST) ?: ''),
             ])
             ->withBody($body, 'text/xml');
 
@@ -139,6 +143,28 @@ class BelsisSoapClient
     }
 
     /**
+     * @return array<int, mixed>
+     */
+    private function curlResolveOptions(string $endpoint): array
+    {
+        $ip = trim((string) config('belsis.host_ip', ''));
+        $host = parse_url($endpoint, PHP_URL_HOST);
+        $port = (int) (parse_url($endpoint, PHP_URL_PORT) ?: (str_starts_with($endpoint, 'https') ? 443 : 80));
+
+        if ($ip === '' || $host === null || $host === '' || filter_var($host, FILTER_VALIDATE_IP)) {
+            return [];
+        }
+
+        if (! filter_var($ip, FILTER_VALIDATE_IP)) {
+            return [];
+        }
+
+        return [
+            CURLOPT_RESOLVE => [$host.':'.$port.':'.$ip],
+        ];
+    }
+
+    /**
      * @return array<int, string>
      */
     private function endpointCandidates(string $endpoint): array
@@ -183,24 +209,27 @@ class BelsisSoapClient
     {
         $detail = $e->getMessage();
         $host = parse_url($endpoint, PHP_URL_HOST) ?: $endpoint;
+        $port = parse_url($endpoint, PHP_URL_PORT);
+        $target = $port ? $host.':'.$port : $host;
 
         if (str_contains($detail, 'Could not resolve host') || str_contains($detail, 'getaddrinfo')) {
-            return 'Belsis sunucusuna ulaşılamadı (DNS: '.$host.'). '
-                .'Kiosk uygulamasının belediye iç ağında çalıştığından ve '
-                .'BELSIS_TAHSILAT_URL / BELSIS_TAHAKKUK_URL adreslerinin doğru olduğundan emin olun.';
+            return 'Belsis hostname çözülemedi (DNS: '.$host.'). '
+                .'Ping başka bilgisayarda çalışsa bile PHP’nin çalıştığı sunucuda DNS farklı olabilir. '
+                .'.env URL’sinde hostname yerine IP deneyin. Teknik: '.$detail;
         }
 
-        if (str_contains($detail, 'Connection timed out') || str_contains($detail, 'timed out')) {
-            return 'Belsis sunucusuna zaman aşımı ('.$host.'). '
-                .'Ağ bağlantısını ve port erişimini kontrol ediniz.';
+        if (str_contains($detail, 'Connection timed out') || str_contains($detail, 'Operation timed out') || str_contains($detail, 'timed out')) {
+            return 'Belsis TCP bağlantısı zaman aşımına uğradı ('.$target.'). '
+                .'Ping (ICMP) açık olabilir ama port kapalı/filtrelenmiş olabilir. '
+                .'PHP sunucusundan port erişimini kontrol edin. Teknik: '.$detail;
         }
 
         if (str_contains($detail, 'Failed to connect') || str_contains($detail, 'Connection refused')) {
-            return 'Belsis sunucusuna bağlanılamadı ('.$host.'). '
-                .'Servis kapalı olabilir veya güvenlik duvarı engelliyor olabilir.';
+            return 'Belsis portuna bağlanılamadı ('.$target.'). '
+                .'Servis kapalı veya güvenlik duvarı engelliyor olabilir. Teknik: '.$detail;
         }
 
-        return 'Belsis servisine bağlanılamadı ('.$host.'): '.$detail;
+        return 'Belsis servisine bağlanılamadı ('.$target.'): '.$detail;
     }
 
     private function explainRedirect(string $location, string $endpoint): string
