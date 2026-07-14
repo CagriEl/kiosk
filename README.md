@@ -20,15 +20,15 @@ php artisan migrate
 `.env` dosyasında Belsis ayarlarını yapın:
 
 ```env
-BELSIS_USERNAME=sa
-BELSIS_PASSWORD=ada11sql
-BELSIS_TAHAKKUK_URL=http://aykome.belsis.uygulama.belsis.com.tr/tahakkukWebServis.asmx
-BELSIS_TAHSILAT_URL=http://aykome.belsis.uygulama.belsis.com.tr/tahsilatWebServis.asmx
-BELSIS_IP_ADDRESS=127.0.0.1
+BELSIS_USERNAME=kiosktahsilat
+BELSIS_PASSWORD=<belediyeden alınan şifre>
+BELSIS_TAHAKKUK_URL=http://webservis.kirklareli.local:1685/belsisWebServis/tahakkukwebservis.asmx
+BELSIS_TAHSILAT_URL=http://webservis.kirklareli.local:1685/belsisWebServis/tahsilatwebservis.asmx
+BELSIS_IP_ADDRESS=auto
 BELSIS_MOCK=false
 ```
 
-> Demo yalnızca sicil `89874` için: `BELSIS_MOCK=true` ve `BELSIS_MOCK_SICILS=89874`. Gerçek TC her zaman Belsis'e gider.
+> `webservis.kirklareli.local` yalnızca belediye iç ağında çözülür. Demo için `BELSIS_MOCK=true` kullanın.
 
 ## Canlı Veri (Belsis SOAP) — Ne Yapmalısınız?
 

@@ -1,11 +1,17 @@
 <?php
 
 return [
-    'username' => env('BELSIS_USERNAME', 'sa'),
+    'username' => env('BELSIS_USERNAME', 'kiosktahsilat'),
     'password' => env('BELSIS_PASSWORD', ''),
 
-    'tahakkuk_url' => env('BELSIS_TAHAKKUK_URL', 'https://aykome.belsis.uygulama.belsis.com.tr/tahakkukWebServis.asmx'),
-    'tahsilat_url' => env('BELSIS_TAHSILAT_URL', 'https://aykome.belsis.uygulama.belsis.com.tr/tahsilatWebServis.asmx'),
+    'tahakkuk_url' => env(
+        'BELSIS_TAHAKKUK_URL',
+        'http://webservis.kirklareli.local:1685/belsisWebServis/tahakkukwebservis.asmx',
+    ),
+    'tahsilat_url' => env(
+        'BELSIS_TAHSILAT_URL',
+        'http://webservis.kirklareli.local:1685/belsisWebServis/tahsilatwebservis.asmx',
+    ),
 
     // Sunucu IP'si veya "auto" (otomatik tespit)
     'ip_address' => env('BELSIS_IP_ADDRESS', 'auto'),
