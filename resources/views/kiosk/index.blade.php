@@ -962,11 +962,18 @@
         }
 
         function formatCurrency(amount) {
-            return amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+            const n = Number(amount);
+            return (Number.isFinite(n) ? n : 0).toLocaleString('tr-TR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }) + ' ₺';
         }
 
         function formatDate(dateStr) {
-            return new Date(dateStr).toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            if (Number.isNaN(d.getTime())) return '';
+            return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' });
         }
 
         const SCREENS = {
@@ -1677,13 +1684,12 @@
                 const details = Array.isArray(acc.details) && acc.details.length
                     ? `<p class="text-kiosk-xs text-municipalGray-500 mt-1">${acc.details.join(' · ')}</p>`
                     : '';
-                const hasDebt = acc.totalDebt !== null && acc.totalDebt !== undefined && acc.totalDebt !== '';
-                const debtBlock = hasDebt
-                    ? `<div class="shrink-0 text-right">
-                            <p class="text-kiosk-xs text-municipalGray-500">Toplam borç</p>
-                            <p class="text-kiosk-lg font-bold text-municipal-700 mt-0.5">${formatCurrency(Number(acc.totalDebt) || 0)}</p>
-                       </div>`
-                    : `<span class="shrink-0 text-municipal-600 font-bold text-kiosk-lg">›</span>`;
+                const debtAmount = formatCurrency(Number(acc.totalDebt) || 0);
+                const debtBlock = `
+                    <div class="shrink-0 text-right pl-2">
+                        <p class="text-kiosk-xs text-municipalGray-500">Toplam borç</p>
+                        <p class="text-kiosk-lg font-bold text-municipal-700 mt-0.5 tabular-nums">${debtAmount}</p>
+                    </div>`;
                 return `
                 <button type="button" class="account-card touch-btn w-full text-left bg-white border-2 border-municipal-200 hover:border-municipal-500 rounded-2xl px-5 py-4 shadow-sm"
                     data-account-key="${key}" role="listitem">
@@ -1714,6 +1720,7 @@
                             gensicilNo: account.gensicilNo,
                             sicilNo: account.sicilNo || account.gensicilNo,
                             aboneNo: account.aboneNo || '',
+                            totalDebt: account.totalDebt,
                             fullName: account.fullName || session.citizen.fullName,
                             address: account.address || '',
                             adi: account.adi || session.citizen.adi,
@@ -1736,7 +1743,21 @@
             const gensicilNo = citizen.gensicilNo || '';
             const aboneNo = citizen.aboneNo || '';
             const { debts } = await fetchDebts(identityNo, 'tc', gensicilNo || undefined, aboneNo || undefined);
-            session.debts = debts;
+            let list = Array.isArray(debts) ? debts : [];
+
+            // API boş dönerse karttaki abone toplam borcunu listeye düşür
+            if (!list.length && citizen.totalDebt !== null && citizen.totalDebt !== undefined
+                && Number(citizen.totalDebt) > 0) {
+                list = [{
+                    id: 'abone-' + (aboneNo || gensicilNo || identityNo),
+                    type: 'Su aboneliği borcu',
+                    period: aboneNo ? ('Abone No: ' + aboneNo) : '',
+                    amount: Number(citizen.totalDebt),
+                    dueDate: null,
+                }];
+            }
+
+            session.debts = list;
             session.selectedIds.clear();
             renderDebtList();
             const tag = [
@@ -1780,7 +1801,11 @@
                 return;
             }
 
-            container.innerHTML = session.debts.map(debt => `
+            container.innerHTML = session.debts.map(debt => {
+                const periodLine = [debt.period, debt.dueDate ? formatDate(debt.dueDate) : '']
+                    .filter(Boolean)
+                    .join(' · ');
+                return `
                 <label class="block cursor-pointer" role="listitem">
                     <input type="checkbox" class="debt-checkbox sr-only" data-id="${debt.id}" />
                     <div class="debt-card-inner flex items-center gap-3 bg-white border-2 border-municipalGray-400/30 rounded-2xl px-4 py-3 shadow-sm hover:border-municipal-300 transition-all">
@@ -1788,16 +1813,17 @@
                             <svg class="w-5 h-5 text-municipal-600 hidden check-icon" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-kiosk-sm font-bold text-municipalGray-800 debt-type-clamp leading-tight">${debt.type}</p>
-                            <p class="text-kiosk-xs text-municipalGray-500 mt-0.5 truncate">${debt.period} · ${formatDate(debt.dueDate)}</p>
+                            <p class="text-kiosk-sm font-bold text-municipalGray-800 debt-type-clamp leading-tight">${debt.type || 'Borç'}</p>
+                            ${periodLine ? `<p class="text-kiosk-xs text-municipalGray-500 mt-0.5 truncate">${periodLine}</p>` : ''}
                         </div>
                         <div class="text-right shrink-0">
-                            <p class="text-kiosk-base font-bold text-municipal-700">${formatCurrency(debt.amount)}</p>
+                            <p class="text-kiosk-base font-bold text-municipal-700 tabular-nums">${formatCurrency(debt.amount)}</p>
                             <p class="text-[0.7rem] text-municipalGray-400 mt-0.5">${debt.id}</p>
                         </div>
                     </div>
                 </label>
-            `).join('');
+            `;
+            }).join('');
 
             container.querySelectorAll('.debt-checkbox').forEach(cb => {
                 cb.addEventListener('change', () => {

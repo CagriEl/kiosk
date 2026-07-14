@@ -953,6 +953,14 @@ class BelsisBorcSorgulaService
         $beyan = $this->fetchWaterBeyanEntriesForGensicil($gensicil);
 
         if ($beyan['entries'] !== []) {
+            // Tek su abonesi: kart tutarını satır borç toplamıyla hizala (beyan özeti bazen eski/farklı)
+            if (count($beyan['entries']) === 1) {
+                $sum = $this->sumSuModuleDebtsForGensicil($gensicil);
+                if ($sum !== null) {
+                    $beyan['entries'][0]['toplamBorc'] = $sum;
+                }
+            }
+
             $accounts = [];
             foreach ($beyan['entries'] as $entry) {
                 $accounts[] = $this->mapTcAccountCard($row, $gensicil, $entry);
@@ -1017,9 +1025,7 @@ class BelsisBorcSorgulaService
             $addressParts = [$label];
         }
 
-        $totalDebt = isset($beyanEntry['toplamBorc'])
-            ? round((float) $beyanEntry['toplamBorc'], 2)
-            : null;
+        $totalDebt = round($this->parseMoney(is_array($beyanEntry) ? ($beyanEntry['toplamBorc'] ?? 0) : 0), 2);
 
         return [
             'gensicilNo' => (string) $gensicil,
@@ -1097,16 +1103,18 @@ class BelsisBorcSorgulaService
                 }
 
                 if (isset($seenAbone[$aboneNo])) {
+                    $idx = $seenAbone[$aboneNo];
+                    $entries[$idx]['toplamBorc'] += $this->parseMoney($item['toplamBorc'] ?? 0);
                     continue;
                 }
-                $seenAbone[$aboneNo] = true;
+                $seenAbone[$aboneNo] = count($entries);
 
                 $entries[] = [
                     'aboneNo'    => $aboneNo,
                     'modulNo'    => $modulNo,
                     'beyanId'    => $beyanId,
                     'label'      => $label,
-                    'toplamBorc' => (float) ($item['toplamBorc'] ?? 0),
+                    'toplamBorc' => $this->parseMoney($item['toplamBorc'] ?? 0),
                 ];
             }
 
@@ -1124,6 +1132,112 @@ class BelsisBorcSorgulaService
                 'hadAnyBeyan' => false,
             ];
         }
+    }
+
+    /**
+     * Su modulündeki online borç satırları toplamı (tek abone kartı tutarı için).
+     */
+    private function sumSuModuleDebtsForGensicil(int $gensicil): ?float
+    {
+        $tips = config('belsis.borc_sorgu_tips_gensicil', ['1']);
+        $waterModules = array_map('strval', config('belsis.water_modul_nos', ['24']));
+
+        foreach ($tips as $tip) {
+            try {
+                $result = $this->client->callTahsilat('borcSorgula', array_merge(
+                    $this->auth->baseParams(),
+                    [
+                        'sorguTip'            => $tip,
+                        'sorguNo'             => (string) $gensicil,
+                        'gensicilno'          => $gensicil,
+                        'indirimliOdenecekMi' => 0,
+                        'indirimHakkiVarMi'   => 0,
+                    ],
+                ));
+
+                $sicil = $result['Sicil'] ?? $result['sicil'] ?? null;
+                if (! is_array($sicil)) {
+                    continue;
+                }
+
+                $sicilNo = (int) ($sicil['sicilNo'] ?? $sicil['gensicilno'] ?? $sicil['gensicilNo'] ?? 0);
+                if ($sicilNo !== $gensicil) {
+                    continue;
+                }
+
+                $sum = 0.0;
+                $found = false;
+                $moduls = $this->normalizeList($sicil['modulListesi']['Modul'] ?? $sicil['modulListesi'] ?? []);
+
+                foreach ($moduls as $modul) {
+                    if (! is_array($modul)) {
+                        continue;
+                    }
+
+                    $modulNo = (string) ($modul['modulNo'] ?? '');
+                    $modulBilgisi = mb_strtolower((string) ($modul['modulBilgisi'] ?? ''));
+                    $isSu = ($modulNo !== '' && in_array($modulNo, $waterModules, true))
+                        || str_contains($modulBilgisi, 'su')
+                        || str_contains($modulBilgisi, 'atık')
+                        || str_contains($modulBilgisi, 'atik');
+
+                    if (! $isSu) {
+                        continue;
+                    }
+
+                    $donems = $this->normalizeList($modul['donemListesi']['Donem'] ?? $modul['donemListesi'] ?? []);
+                    foreach ($donems as $donem) {
+                        if (! is_array($donem)) {
+                            continue;
+                        }
+                        $tahs = $this->normalizeList($donem['tahakkukListesi']['Tahakkuk'] ?? $donem['tahakkukListesi'] ?? []);
+                        foreach ($tahs as $tahakkuk) {
+                            if (! is_array($tahakkuk)) {
+                                continue;
+                            }
+                            $amount = $this->parseMoney($tahakkuk['odenecekTutar'] ?? 0);
+                            if ($amount <= 0) {
+                                continue;
+                            }
+                            $sum += $amount;
+                            $found = true;
+                        }
+                    }
+                }
+
+                if ($found) {
+                    return round($sum, 2);
+                }
+            } catch (BelsisException $e) {
+                if ($this->isInfrastructureError($e)) {
+                    throw $e;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function parseMoney(mixed $value): float
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return 0.0;
+        }
+
+        // "3.240,50" / "3240,50" / "3240.50"
+        if (preg_match('/^\d{1,3}(\.\d{3})+(,\d+)?$/', $raw)) {
+            $raw = str_replace('.', '', $raw);
+            $raw = str_replace(',', '.', $raw);
+        } elseif (str_contains($raw, ',') && ! str_contains($raw, '.')) {
+            $raw = str_replace(',', '.', $raw);
+        }
+
+        return (float) $raw;
     }
 
     /**

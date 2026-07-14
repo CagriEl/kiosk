@@ -76,6 +76,7 @@ class BelsisTahsilatQueryService
             'gensicilNo'     => $needsSelection ? '' : (string) $primary['gensicilNo'],
             'sicilNo'        => $needsSelection ? '' : (string) $primary['sicilNo'],
             'aboneNo'        => $needsSelection ? '' : (string) ($primary['aboneNo'] ?? ''),
+            'totalDebt'      => $needsSelection ? null : (isset($primary['totalDebt']) ? (float) $primary['totalDebt'] : null),
             'fullName'       => (string) $primary['fullName'],
             'searchType'     => 'tc',
             'adi'            => (string) ($primary['adi'] ?? ''),
@@ -167,21 +168,7 @@ class BelsisTahsilatQueryService
 
         // Abone seçildiyse yalnızca o abonenin borçları (sicil toplamı değil)
         if ($aboneNo !== '') {
-            $filtered = $this->filterDebtsForAbone($debts, $aboneNo, null);
-            if ($filtered !== []) {
-                return $filtered;
-            }
-
-            $beyanDebts = $this->filterDebtsForAbone(
-                $this->fetchSicilBorcBeyanDebts($gensicilno),
-                $aboneNo,
-                null,
-            );
-            if ($beyanDebts !== []) {
-                return $beyanDebts;
-            }
-
-            return [];
+            return $this->resolveDebtsForAbone($gensicilno, $aboneNo, $debts);
         }
 
         if ($debts === []) {
@@ -193,6 +180,158 @@ class BelsisTahsilatQueryService
         }
 
         return $this->filterDebtsForAbone($debts, null, $modulNo !== '' ? $modulNo : null);
+    }
+
+    /**
+     * Seçilen su abonesine ait borç listesi.
+     *
+     * @param  array<int, array<string, mixed>>  $lineDebts
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveDebtsForAbone(int $gensicilno, string $aboneNo, array $lineDebts): array
+    {
+        $filtered = $this->filterDebtsForAbone($lineDebts, $aboneNo, null);
+        if ($filtered !== []) {
+            return $this->tagDebtsWithAbone($filtered, $aboneNo);
+        }
+
+        $beyanDebts = $this->fetchSicilBorcBeyanDebts($gensicilno);
+        $waterBeyan = $this->filterWaterBeyanDebts($beyanDebts);
+        $matchingBeyan = $this->filterDebtsForAbone($waterBeyan, $aboneNo, null);
+        $distinctAbones = array_values(array_unique(array_filter(array_map(
+            fn (array $d) => (string) ($d['meta']['aboneNo'] ?? ''),
+            $waterBeyan,
+        ))));
+
+        // Tek su abonesi → su / atık su modulündeki satır borçları
+        if (count($distinctAbones) <= 1) {
+            $suLines = $this->filterSuModuleDebts($lineDebts);
+            if ($suLines !== []) {
+                return $this->tagDebtsWithAbone($suLines, $aboneNo);
+            }
+        }
+
+        // Çoklu abone veya satır yok → seçilen abonenin beyan toplamı mutlaka listede olsun
+        if ($matchingBeyan !== []) {
+            return $this->tagDebtsWithAbone(
+                $this->normalizeBeyanDebtLabels($matchingBeyan),
+                $aboneNo,
+            );
+        }
+
+        $synthesized = $this->synthesizeAboneBeyanDebt($gensicilno, $aboneNo);
+        if ($synthesized !== null) {
+            return [$synthesized];
+        }
+
+        return [];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $debts
+     * @return array<int, array<string, mixed>>
+     */
+    private function tagDebtsWithAbone(array $debts, string $aboneNo): array
+    {
+        if ($aboneNo === '') {
+            return $debts;
+        }
+
+        return array_values(array_map(function (array $debt) use ($aboneNo) {
+            $meta = is_array($debt['meta'] ?? null) ? $debt['meta'] : [];
+            $meta['aboneNo'] = $aboneNo;
+            $debt['meta'] = $meta;
+
+            $period = trim((string) ($debt['period'] ?? ''));
+            $aboneTag = 'Abone No: '.$aboneNo;
+            if ($period === '') {
+                $debt['period'] = $aboneTag;
+            } elseif (! str_contains(mb_strtolower($period), 'abone')) {
+                $debt['period'] = $aboneTag.' · '.$period;
+            }
+
+            return $debt;
+        }, $debts));
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function synthesizeAboneBeyanDebt(int $gensicilno, string $aboneNo): ?array
+    {
+        try {
+            $result = $this->sicilBorcBeyanSorgula($gensicilno);
+            $items = $this->normalizeList(
+                $result['sicilBorcBeyanListesi']['sicilBorcBeyanListesi'] ?? $result['sicilBorcBeyanListesi'] ?? [],
+            );
+        } catch (BelsisException $e) {
+            if ($this->isInfrastructureError($e)) {
+                throw $e;
+            }
+
+            return null;
+        }
+
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $label = trim((string) ($item['beyanAciklama'] ?? ''));
+            $beyanId = trim((string) ($item['beyanID'] ?? $item['beyanId'] ?? ''));
+            $modulNo = trim((string) ($item['modulno'] ?? $item['modulNo'] ?? ''));
+            if ($label === '' || str_contains(mb_strtoupper($label), 'HEPSİ')) {
+                continue;
+            }
+
+            $itemAbone = $this->extractAboneNoFromText($label.' '.$beyanId);
+            if ($itemAbone !== $aboneNo) {
+                continue;
+            }
+
+            $amount = $this->parseMoneyAmount($item['toplamBorc'] ?? 0);
+            if ($amount <= 0) {
+                continue;
+            }
+
+            return [
+                'id'      => $beyanId !== '' ? $beyanId : ('abone-'.$aboneNo),
+                'type'    => 'Su aboneliği borcu',
+                'period'  => 'Abone No: '.$aboneNo,
+                'amount'  => round($amount, 2),
+                'dueDate' => null,
+                'meta'    => [
+                    'modulNo'  => $modulNo,
+                    'modulno'  => $modulNo,
+                    'beyanID'  => $beyanId !== '' ? $beyanId : null,
+                    'aboneNo'  => $aboneNo,
+                    'kaynak'   => 'sicilBorcBeyanSorgula',
+                ],
+            ];
+        }
+
+        return null;
+    }
+
+    private function parseMoneyAmount(mixed $value): float
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return 0.0;
+        }
+
+        if (preg_match('/^\d{1,3}(\.\d{3})+(,\d+)?$/', $raw)) {
+            $raw = str_replace('.', '', $raw);
+            $raw = str_replace(',', '.', $raw);
+        } elseif (str_contains($raw, ',') && ! str_contains($raw, '.')) {
+            $raw = str_replace(',', '.', $raw);
+        }
+
+        return (float) $raw;
     }
 
     /**
@@ -266,6 +405,91 @@ class BelsisTahsilatQueryService
             '/abone\s*no\s*[:\.]?\s*'.preg_quote($aboneNo, '/').'\b/u',
             $haystack,
         );
+    }
+
+    /**
+     * Su / atık su modulüne ait satır borçları.
+     *
+     * @param  array<int, array<string, mixed>>  $debts
+     * @return array<int, array<string, mixed>>
+     */
+    private function filterSuModuleDebts(array $debts): array
+    {
+        $waterModules = array_map('strval', config('belsis.water_modul_nos', ['24']));
+
+        return array_values(array_filter($debts, function (array $debt) use ($waterModules) {
+            $meta = is_array($debt['meta'] ?? null) ? $debt['meta'] : [];
+            $modulNo = (string) ($meta['modulNo'] ?? $meta['modulno'] ?? '');
+            if ($modulNo !== '' && in_array($modulNo, $waterModules, true)) {
+                return true;
+            }
+
+            $haystack = mb_strtolower(implode(' ', array_filter([
+                (string) ($debt['type'] ?? ''),
+                (string) ($meta['modulBilgisi'] ?? ''),
+                (string) ($meta['beyanBilgisi'] ?? ''),
+            ])));
+
+            return str_contains($haystack, 'su')
+                || str_contains($haystack, 'atık')
+                || str_contains($haystack, 'atik')
+                || str_contains($haystack, 'katı atık')
+                || str_contains($haystack, 'kati atik');
+        }));
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $debts
+     * @return array<int, array<string, mixed>>
+     */
+    private function filterWaterBeyanDebts(array $debts): array
+    {
+        $waterModules = array_map('strval', config('belsis.water_modul_nos', ['24']));
+
+        return array_values(array_filter($debts, function (array $debt) use ($waterModules) {
+            $meta = is_array($debt['meta'] ?? null) ? $debt['meta'] : [];
+            $modulNo = (string) ($meta['modulNo'] ?? $meta['modulno'] ?? '');
+            $aboneNo = (string) ($meta['aboneNo'] ?? '');
+            $type = (string) ($debt['type'] ?? '');
+
+            if ($aboneNo === '' && ! preg_match('/abone\s*no/iu', $type)) {
+                return false;
+            }
+
+            if ($modulNo !== '' && in_array($modulNo, $waterModules, true)) {
+                return true;
+            }
+
+            return (bool) preg_match('/abone\s*no/iu', $type)
+                || str_contains(mb_strtolower($type), 'su');
+        }));
+    }
+
+    /**
+     * Beyan özet satırlarını kiosk’ta okunaklı borç kartına çevirir.
+     *
+     * @param  array<int, array<string, mixed>>  $debts
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeBeyanDebtLabels(array $debts): array
+    {
+        return array_values(array_map(function (array $debt) {
+            $meta = is_array($debt['meta'] ?? null) ? $debt['meta'] : [];
+            $aboneNo = (string) ($meta['aboneNo'] ?? '');
+            $type = trim((string) ($debt['type'] ?? ''));
+
+            if (preg_match('/^abone\s*no/iu', $type) || $type === '') {
+                $debt['type'] = 'Su aboneliği borcu';
+            }
+
+            if ($aboneNo !== '' && trim((string) ($debt['period'] ?? '')) === '') {
+                $debt['period'] = 'Abone No: '.$aboneNo;
+            }
+
+            $debt['amount'] = round((float) ($debt['amount'] ?? 0), 2);
+
+            return $debt;
+        }, $debts));
     }
 
     /**
@@ -460,6 +684,7 @@ class BelsisTahsilatQueryService
                             'indirimTutari'  => (float) ($tahakkuk['indirimTutari'] ?? 0),
                             'odenenTutar'    => (float) ($tahakkuk['odenenTutar'] ?? 0),
                             'modulNo'        => $modul['modulNo'] ?? null,
+                            'modulBilgisi'   => $modul['modulBilgisi'] ?? null,
                             'beyanID'        => $beyanId !== '' ? $beyanId : null,
                             'beyanBilgisi'   => $beyanBilgisi !== '' ? $beyanBilgisi : null,
                             'aciklama'       => $aciklama !== '' ? $aciklama : null,
@@ -649,7 +874,7 @@ class BelsisTahsilatQueryService
                     continue;
                 }
 
-                $amount = (float) ($item['toplamBorc'] ?? 0);
+                $amount = $this->parseMoneyAmount($item['toplamBorc'] ?? 0);
                 if ($amount <= 0) {
                     continue;
                 }
