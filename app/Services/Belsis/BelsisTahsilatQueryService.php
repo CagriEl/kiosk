@@ -19,9 +19,10 @@ class BelsisTahsilatQueryService
     ) {}
 
     /**
-     * Sicil (gensicilno) veya 11 haneli T.C. Kimlik No ile vatandaş çözümler.
+     * Sicil veya T.C. ile vatandaş çözümler.
+     * TC’de birden fazla abonelik varsa needsSelection=true + accounts listesi döner.
      *
-     * @return array{identityNo: string, gensicilNo: string, sicilNo: string, fullName: string, searchType: string, adi: string, soyadi: string}
+     * @return array<string, mixed>
      */
     public function getCitizen(string $identityNo, ?string $searchType = null): array
     {
@@ -29,17 +30,10 @@ class BelsisTahsilatQueryService
         $searchType = $this->resolveSearchType($identityNo, $searchType);
 
         if ($searchType === 'tc') {
-            $gensicils = $this->identity->resolveAllGensicilsFromTc($identityNo);
-            if ($gensicils === []) {
-                throw new BelsisException(
-                    'T.C. Kimlik No belediye kaydınızla eşleştirilemedi. Kayıtlarınızdaki TC güncel olmayabilir.',
-                );
-            }
-            $gensicilno = (int) $gensicils[0];
-        } else {
-            $gensicilno = $this->resolveToGensicil($identityNo, $searchType);
+            return $this->getCitizenByTc($identityNo);
         }
 
+        $gensicilno = $this->resolveToGensicil($identityNo, $searchType);
         $profile = $this->fetchSicilProfile($gensicilno);
 
         $adi = $profile['adi'];
@@ -50,49 +44,85 @@ class BelsisTahsilatQueryService
         }
 
         return [
-            'identityNo' => $identityNo,
-            'gensicilNo' => (string) $profile['gensicilno'],
-            'sicilNo'    => (string) $profile['gensicilno'],
-            'fullName'   => $profile['fullName'],
-            'searchType' => $searchType,
-            'adi'        => $adi,
-            'soyadi'     => $soyadi,
+            'identityNo'     => $identityNo,
+            'gensicilNo'     => (string) $profile['gensicilno'],
+            'sicilNo'        => (string) $profile['gensicilno'],
+            'fullName'       => $profile['fullName'],
+            'searchType'     => $searchType,
+            'adi'            => $adi,
+            'soyadi'         => $soyadi,
+            'needsSelection' => false,
+            'accounts'       => [],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getCitizenByTc(string $tcKimlikNo): array
+    {
+        $accounts = $this->identity->resolveAccountsFromTc($tcKimlikNo);
+        if ($accounts === []) {
+            throw new BelsisException(
+                'T.C. Kimlik No belediye kaydınızla eşleştirilemedi. Kayıtlarınızdaki TC güncel olmayabilir.',
+            );
+        }
+
+        $primary = $accounts[0];
+        $needsSelection = count($accounts) > 1;
+
+        return [
+            'identityNo'     => $tcKimlikNo,
+            'gensicilNo'     => $needsSelection ? '' : (string) $primary['gensicilNo'],
+            'sicilNo'        => $needsSelection ? '' : (string) $primary['sicilNo'],
+            'aboneNo'        => $needsSelection ? '' : (string) ($primary['aboneNo'] ?? ''),
+            'fullName'       => (string) $primary['fullName'],
+            'searchType'     => 'tc',
+            'adi'            => (string) ($primary['adi'] ?? ''),
+            'soyadi'         => (string) ($primary['soyadi'] ?? ''),
+            'address'        => (string) ($primary['address'] ?? ''),
+            'needsSelection' => $needsSelection,
+            'accounts'       => $accounts,
         ];
     }
 
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function getDebts(string $identityNo, ?string $searchType = null): array
+    public function getDebts(string $identityNo, ?string $searchType = null, ?string $gensicilNo = null): array
     {
         $identityNo = trim($identityNo);
         $searchType = $this->resolveSearchType($identityNo, $searchType);
 
-        // TC → önce eşleşen sicil(ler) bulunur, sonra o sicilin borçları çekilir.
         if ($searchType === 'tc') {
-            return $this->getDebtsByTc($identityNo);
+            return $this->getDebtsByTc($identityNo, $gensicilNo);
         }
 
-        $gensicilno = $this->resolveToGensicil($identityNo, $searchType);
-
-        return $this->getDebtsByGensicil($gensicilno);
+        return $this->getDebtsByGensicil($this->resolveToGensicil($identityNo, $searchType));
     }
 
     /**
-     * TC yazılınca: arama/borcSorgula ile sicil bulunur → o sicilin borcu döner.
-     * Bir TC'ye birden fazla sicil bağlıysa borçlar birleştirilir.
-     *
      * @return array<int, array<string, mixed>>
      */
-    private function getDebtsByTc(string $tcKimlikNo): array
+    private function getDebtsByTc(string $tcKimlikNo, ?string $gensicilNo = null): array
     {
-        // 1) Doğrudan borcSorgula(TC) — Belsis tek çağrıda sicil + borç dönebilir
+        $selected = $gensicilNo !== null ? trim($gensicilNo) : '';
+
+        if ($selected !== '' && ctype_digit($selected) && (int) $selected > 0) {
+            $accounts = $this->identity->resolveAccountsFromTc($tcKimlikNo);
+            $allowed = array_column($accounts, 'gensicilNo');
+            if ($accounts !== [] && ! in_array($selected, $allowed, true)) {
+                throw new BelsisException('Seçilen abonelik bu T.C. Kimlik No ile eşleşmiyor.');
+            }
+
+            return $this->getDebtsByGensicil((int) $selected);
+        }
+
         $direct = $this->fetchBorcSorgulaDebtsByTc($tcKimlikNo);
         if ($direct !== []) {
             return $direct;
         }
 
-        // 2) TC → gensicil listesi, her sicil için borç topla
         $gensicils = $this->identity->resolveAllGensicilsFromTc($tcKimlikNo);
         if ($gensicils === []) {
             throw new BelsisException(
@@ -100,23 +130,13 @@ class BelsisTahsilatQueryService
             );
         }
 
-        $merged = [];
-        $seen = [];
-
-        foreach ($gensicils as $gensicil) {
-            foreach ($this->getDebtsByGensicil((int) $gensicil) as $debt) {
-                $key = (string) ($debt['id'] ?? '');
-                if ($key !== '' && isset($seen[$key])) {
-                    continue;
-                }
-                if ($key !== '') {
-                    $seen[$key] = true;
-                }
-                $merged[] = $debt;
-            }
+        if (count($gensicils) === 1) {
+            return $this->getDebtsByGensicil((int) $gensicils[0]);
         }
 
-        return $merged;
+        throw new BelsisException(
+            'Bu T.C. için birden fazla abonelik bulundu. Lütfen abonelik seçiniz.',
+        );
     }
 
     /**

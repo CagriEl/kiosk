@@ -37,14 +37,16 @@ class BelsisKioskService
     /**
      * @return array{debts: array<int, array<string, mixed>>}
      */
-    public function getDebts(string $identityNo, ?string $searchType = null): array
+    public function getDebts(string $identityNo, ?string $searchType = null, ?string $gensicilNo = null): array
     {
         if ($this->shouldUseMock($identityNo)) {
             return ['debts' => $this->mockDebts()];
         }
 
         try {
-            return ['debts' => $this->withSessionRetry(fn () => $this->query->getDebts($identityNo, $searchType))];
+            return ['debts' => $this->withSessionRetry(
+                fn () => $this->query->getDebts($identityNo, $searchType, $gensicilNo),
+            )];
         } catch (BelsisException $e) {
             Log::error('Belsis borç sorgusu hatası', ['message' => $e->getMessage(), 'code' => $e->sonucKodu]);
             throw $e;
@@ -87,10 +89,14 @@ class BelsisKioskService
      * @param  array<int, string>  $debtIds
      * @return array{transactionId: string, total: float, status: string, paymentMethod: string}
      */
-    public function initiatePayment(string $identityNo, array $debtIds, ?string $searchType = null): array
-    {
-        $citizen = $this->getCitizen($identityNo, $searchType);
-        $debts = $this->getDebts($identityNo, $searchType)['debts'];
+    public function initiatePayment(
+        string $identityNo,
+        array $debtIds,
+        ?string $searchType = null,
+        ?string $gensicilNo = null,
+    ): array {
+        $citizen = $this->resolveCitizenForPayment($identityNo, $searchType, $gensicilNo);
+        $debts = $this->getDebts($identityNo, $searchType, $citizen['gensicilNo'] ?? $gensicilNo)['debts'];
         $selected = collect($debts)->whereIn('id', $debtIds)->values();
 
         if ($selected->isEmpty()) {
@@ -108,10 +114,15 @@ class BelsisKioskService
      * @param  array<int, string>  $debtIds
      * @return array<string, mixed>
      */
-    public function confirmPayment(string $identityNo, array $debtIds, string $transactionId, ?string $searchType = null): array
-    {
-        $citizen = $this->getCitizen($identityNo, $searchType);
-        $debts = $this->getDebts($identityNo, $searchType)['debts'];
+    public function confirmPayment(
+        string $identityNo,
+        array $debtIds,
+        string $transactionId,
+        ?string $searchType = null,
+        ?string $gensicilNo = null,
+    ): array {
+        $citizen = $this->resolveCitizenForPayment($identityNo, $searchType, $gensicilNo);
+        $debts = $this->getDebts($identityNo, $searchType, $citizen['gensicilNo'] ?? $gensicilNo)['debts'];
 
         if ($this->shouldUseMock($identityNo)) {
             return [
@@ -136,6 +147,37 @@ class BelsisKioskService
             $transactionId,
             $citizen,
         ));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function resolveCitizenForPayment(string $identityNo, ?string $searchType, ?string $gensicilNo): array
+    {
+        $citizen = $this->getCitizen($identityNo, $searchType);
+
+        if (! empty($gensicilNo) && ! empty($citizen['accounts']) && is_array($citizen['accounts'])) {
+            foreach ($citizen['accounts'] as $account) {
+                if ((string) ($account['gensicilNo'] ?? '') === (string) $gensicilNo) {
+                    return array_merge($citizen, [
+                        'gensicilNo' => (string) $account['gensicilNo'],
+                        'sicilNo'    => (string) ($account['sicilNo'] ?? $account['gensicilNo']),
+                        'aboneNo'    => (string) ($account['aboneNo'] ?? ''),
+                        'fullName'   => (string) ($account['fullName'] ?? $citizen['fullName'] ?? ''),
+                        'address'    => (string) ($account['address'] ?? ''),
+                        'adi'        => (string) ($account['adi'] ?? ''),
+                        'soyadi'     => (string) ($account['soyadi'] ?? ''),
+                        'needsSelection' => false,
+                    ]);
+                }
+            }
+        }
+
+        if (! empty($citizen['needsSelection']) && empty($gensicilNo)) {
+            throw new BelsisException('Bu T.C. için birden fazla abonelik bulundu. Lütfen abonelik seçiniz.');
+        }
+
+        return $citizen;
     }
 
     /**

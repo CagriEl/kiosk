@@ -854,92 +854,242 @@ class BelsisBorcSorgulaService
 
     /**
      * TC'ye bağlı tüm gensicilno adaylarını döner.
-     * Kırklareli: arama/borcSorgula(TC) SP'de çalışmıyor; asıl yol
-     * sicilSorgula(mukellefNo=TC) + tcKimlikNo birebir doğrulama.
      *
      * @return array<int, string>
      */
     public function resolveAllGensicilsFromTc(string $tcKimlikNo): array
+    {
+        return array_values(array_map(
+            fn (array $account) => (string) $account['gensicilNo'],
+            $this->resolveAccountsFromTc($tcKimlikNo),
+        ));
+    }
+
+    /**
+     * TC’ye bağlı abonelik/sicil kartları (çoklu seçim ekranı için).
+     *
+     * @return array<int, array{
+     *   gensicilNo: string,
+     *   sicilNo: string,
+     *   aboneNo: string,
+     *   uyeNo: string,
+     *   fullName: string,
+     *   adi: string,
+     *   soyadi: string,
+     *   address: string,
+     *   koyAdi: string,
+     *   details: array<int, string>
+     * }>
+     */
+    public function resolveAccountsFromTc(string $tcKimlikNo): array
     {
         $tcKimlikNo = preg_replace('/\D/', '', trim($tcKimlikNo));
         if (strlen($tcKimlikNo) !== 11) {
             return [];
         }
 
-        $found = [];
+        $rows = $this->fetchSicilRecordsByTcKimlikNo($tcKimlikNo);
 
-        // 1) Primary — sicilSorgula(mukellefNo = TC)
-        foreach ($this->resolveSicilsByTcKimlikNo($tcKimlikNo) as $gensicil) {
-            $found[$gensicil] = $gensicil;
-        }
-
-        if ($found !== []) {
-            return array_values($found);
-        }
-
-        // 2) arama(TC) — SP düzelirse devreye girer
-        foreach ($this->tcAramaTips() as $tip) {
-            foreach ($this->tryAramaAllRecords($tip, $tcKimlikNo, true) as $record) {
-                $gensicil = (int) ($record['gensicilno'] ?? $record['gensicilNo'] ?? 0);
-                if ($gensicil > 0) {
-                    $found[(string) $gensicil] = (string) $gensicil;
+        if ($rows === []) {
+            foreach ($this->tcAramaTips() as $tip) {
+                foreach ($this->tryAramaAllRecords($tip, $tcKimlikNo, true) as $record) {
+                    $gensicil = (int) ($record['gensicilno'] ?? $record['gensicilNo'] ?? 0);
+                    if ($gensicil <= 0) {
+                        continue;
+                    }
+                    $enriched = $this->fetchSicilByGensicil($gensicil) ?? $record;
+                    $rows[] = $enriched;
                 }
             }
         }
 
-        // 3) borcSorgula(TC) — tip desteklenirse Sicil.sicilNo
-        $fromBorc = $this->resolveGensicilFromTcBorcResponse($tcKimlikNo);
-        if ($fromBorc !== null) {
-            $found[$fromBorc] = $fromBorc;
+        if ($rows === []) {
+            $fromBorc = $this->resolveGensicilFromTcBorcResponse($tcKimlikNo);
+            if ($fromBorc !== null) {
+                $enriched = $this->fetchSicilByGensicil((int) $fromBorc);
+                if ($enriched !== null) {
+                    $rows[] = $enriched;
+                } else {
+                    $rows[] = ['gensicilno' => (int) $fromBorc, 'tcKimlikNo' => $tcKimlikNo];
+                }
+            }
         }
 
-        return array_values($found);
+        $accounts = [];
+        $seen = [];
+
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $gensicil = (int) ($row['gensicilno'] ?? $row['gensicilNo'] ?? 0);
+            if ($gensicil <= 0 || isset($seen[$gensicil])) {
+                continue;
+            }
+            $seen[$gensicil] = true;
+
+            $accounts[] = $this->mapTcAccountCard($row, $gensicil);
+        }
+
+        return $accounts;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array{
+     *   gensicilNo: string,
+     *   sicilNo: string,
+     *   aboneNo: string,
+     *   uyeNo: string,
+     *   fullName: string,
+     *   adi: string,
+     *   soyadi: string,
+     *   address: string,
+     *   koyAdi: string,
+     *   details: array<int, string>
+     * }
+     */
+    private function mapTcAccountCard(array $row, int $gensicil): array
+    {
+        $adi = trim((string) ($row['adi'] ?? ''));
+        $soyadi = trim((string) ($row['soyadi'] ?? ''));
+        $unvan = trim((string) ($row['unvan'] ?? ''));
+        $uyeNo = (int) ($row['uyeNo'] ?? 0);
+        $koyAdi = trim((string) ($row['koyAdi'] ?? ''));
+
+        $beyanDetails = $this->fetchBeyanLabelsForGensicil($gensicil);
+        $aboneFromBeyan = $this->extractAboneNoFromBeyanLabels($beyanDetails);
+        $aboneNo = $aboneFromBeyan !== ''
+            ? $aboneFromBeyan
+            : ($uyeNo > 0 ? (string) $uyeNo : (string) $gensicil);
+
+        $addressParts = array_values(array_filter([
+            $koyAdi !== '' ? $koyAdi : null,
+        ]));
+
+        // koyAdi yoksa beyan açıklamaları (abone/adres satırları) seçimde ayırt edici olur
+        if ($addressParts === [] && $beyanDetails !== []) {
+            $addressParts = $beyanDetails;
+        }
+
+        return [
+            'gensicilNo' => (string) $gensicil,
+            'sicilNo'    => (string) $gensicil,
+            'aboneNo'    => $aboneNo,
+            'uyeNo'      => $uyeNo > 0 ? (string) $uyeNo : '',
+            'fullName'   => $unvan !== '' ? $unvan : (trim($adi.' '.$soyadi) ?: ('Sicil: '.$gensicil)),
+            'adi'        => $adi,
+            'soyadi'     => $soyadi,
+            'address'    => $addressParts !== [] ? implode(' · ', $addressParts) : 'Adres bilgisi kayıtta yok',
+            'koyAdi'     => $koyAdi,
+            'details'    => $beyanDetails,
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function fetchBeyanLabelsForGensicil(int $gensicil): array
+    {
+        try {
+            $result = $this->client->callTahsilat('sicilBorcBeyanSorgula', array_merge(
+                $this->auth->baseParams(),
+                ['gensicilno' => $gensicil],
+            ));
+
+            $items = $this->normalizeList(
+                $result['sicilBorcBeyanListesi']['sicilBorcBeyanListesi']
+                ?? $result['sicilBorcBeyanListesi']
+                ?? [],
+            );
+
+            $labels = [];
+            foreach ($items as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+                $label = trim((string) ($item['beyanAciklama'] ?? ''));
+                if ($label === '' || str_contains(mb_strtoupper($label), 'HEPSİ')) {
+                    continue;
+                }
+                $labels[] = $label;
+            }
+
+            return array_values(array_unique($labels));
+        } catch (BelsisException $e) {
+            if ($this->isInfrastructureError($e)) {
+                throw $e;
+            }
+
+            return [];
+        }
+    }
+
+    /**
+     * @param  array<int, string>  $labels
+     */
+    private function extractAboneNoFromBeyanLabels(array $labels): string
+    {
+        foreach ($labels as $label) {
+            if (preg_match('/abone\s*no\s*[:\.]?\s*(\d+)/iu', $label, $m)) {
+                return $m[1];
+            }
+        }
+
+        return '';
     }
 
     /**
      * sicilSorgula(mukellefNo=TC) — yalnızca tcKimlikNo birebir eşleşen kayıtlar.
      *
-     * @return array<int, string>
+     * @return array<int, array<string, mixed>>
      */
-    private function resolveSicilsByTcKimlikNo(string $tcKimlikNo): array
+    private function fetchSicilRecordsByTcKimlikNo(string $tcKimlikNo): array
     {
         $paramSets = [
             ['gensicilno' => 0, 'koyID' => 0, 'mukellefNo' => $tcKimlikNo],
         ];
 
-        $found = [];
+        $rows = [];
 
-        // Kırklareli'de TC eşlemesi tahsilat sicilSorgula(mukellefNo=TC) ile çalışıyor.
-        // Tahakkuk oturumu ayrı login ister; burayı düşürmemek için önce tahsilat yeterli.
         foreach ($paramSets as $params) {
             foreach ($this->fetchSicilSorgulaRows('tahsilat', $params) as $row) {
                 $rowTc = preg_replace('/\D/', '', (string) ($row['tcKimlikNo'] ?? ''));
-                if ($rowTc !== $tcKimlikNo) {
-                    continue;
-                }
-
-                $gensicil = (int) ($row['gensicilno'] ?? $row['gensicilNo'] ?? 0);
-                if ($gensicil > 0) {
-                    $found[(string) $gensicil] = (string) $gensicil;
+                if ($rowTc === $tcKimlikNo) {
+                    $rows[] = $row;
                 }
             }
         }
 
-        if ($found !== []) {
-            return array_values($found);
+        if ($rows !== []) {
+            return $rows;
         }
 
         foreach ($paramSets as $params) {
             foreach ($this->fetchSicilSorgulaRows('tahakkuk', $params) as $row) {
                 $rowTc = preg_replace('/\D/', '', (string) ($row['tcKimlikNo'] ?? ''));
-                if ($rowTc !== $tcKimlikNo) {
-                    continue;
+                if ($rowTc === $tcKimlikNo) {
+                    $rows[] = $row;
                 }
+            }
+        }
 
-                $gensicil = (int) ($row['gensicilno'] ?? $row['gensicilNo'] ?? 0);
-                if ($gensicil > 0) {
-                    $found[(string) $gensicil] = (string) $gensicil;
-                }
+        return $rows;
+    }
+
+    /**
+     * @deprecated use fetchSicilRecordsByTcKimlikNo
+     *
+     * @return array<int, string>
+     */
+    private function resolveSicilsByTcKimlikNo(string $tcKimlikNo): array
+    {
+        $found = [];
+        foreach ($this->fetchSicilRecordsByTcKimlikNo($tcKimlikNo) as $row) {
+            $gensicil = (int) ($row['gensicilno'] ?? $row['gensicilNo'] ?? 0);
+            if ($gensicil > 0) {
+                $found[(string) $gensicil] = (string) $gensicil;
             }
         }
 

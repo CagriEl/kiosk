@@ -679,6 +679,27 @@
         </div>
     </section>
 
+    {{-- EKRAN: ABONELİK SEÇİMİ (aynı TC’de birden fazla kayıt) --}}
+    <section id="screen-accounts" class="kiosk-screen flex-col bg-gray-50">
+        <header class="bg-municipal-600 text-white px-8 py-4 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
+                <button id="btn-back-accounts" type="button" class="touch-btn w-11 h-11 shrink-0 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <div class="min-w-0">
+                    <h2 class="text-kiosk-lg font-bold">Abonelik Seçimi</h2>
+                    <p id="accounts-subtitle" class="text-kiosk-xs opacity-80 mt-0.5 truncate"></p>
+                </div>
+            </div>
+            <span class="text-kiosk-xs opacity-75 shrink-0">Adım 1b / 2</span>
+        </header>
+        <div class="flex-1 px-8 py-6 overflow-y-auto">
+            <p class="text-kiosk-sm text-municipalGray-600 mb-4">Bu T.C. Kimlik No’ya birden fazla abonelik kayıtlı. Devam etmek için birini seçiniz.</p>
+            <div id="accounts-list" class="space-y-3 max-w-4xl mx-auto" role="list"></div>
+            <p id="accounts-error" class="mt-4 text-kiosk-sm text-red-600 hidden" role="alert"></p>
+        </div>
+    </section>
+
     {{-- EKRAN 3: BORÇ LİSTESİ --}}
     <section id="screen-debts" class="kiosk-screen flex-col bg-gray-50">
         <header class="bg-municipal-600 text-white px-8 py-4 flex items-center justify-between shrink-0">
@@ -827,24 +848,37 @@
             return apiRequest(`${API_BASE}/citizen/${accountNo}${qs}`);
         }
 
-        async function fetchDebts(accountNo, searchType) {
-            const qs = searchType ? `?searchType=${encodeURIComponent(searchType)}` : '';
+        async function fetchDebts(accountNo, searchType, gensicilNo) {
+            const params = new URLSearchParams();
+            if (searchType) params.set('searchType', searchType);
+            if (gensicilNo) params.set('gensicilNo', gensicilNo);
+            const qs = params.toString() ? `?${params}` : '';
             return apiRequest(`${API_BASE}/debts/${accountNo}${qs}`);
         }
 
-        async function initiateBankPayment(identityNo, selectedDebtIds, searchType) {
+        async function initiateBankPayment(identityNo, selectedDebtIds, searchType, gensicilNo) {
             return apiRequest(`${API_BASE}/payment/bank`, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
-                body: JSON.stringify({ identityNo, debtIds: selectedDebtIds, searchType: searchType || undefined }),
+                body: JSON.stringify({
+                    identityNo,
+                    debtIds: selectedDebtIds,
+                    searchType: searchType || undefined,
+                    gensicilNo: gensicilNo || undefined,
+                }),
             });
         }
 
-        async function confirmPayment(transactionId, identityNo, debtIds, searchType) {
+        async function confirmPayment(transactionId, identityNo, debtIds, searchType, gensicilNo) {
             return apiRequest(`${API_BASE}/payment/${transactionId}/confirm`, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
-                body: JSON.stringify({ identityNo, debtIds, searchType: searchType || undefined }),
+                body: JSON.stringify({
+                    identityNo,
+                    debtIds,
+                    searchType: searchType || undefined,
+                    gensicilNo: gensicilNo || undefined,
+                }),
             });
         }
 
@@ -936,6 +970,7 @@
             welcome:       document.getElementById('screen-welcome'),
             menu:          document.getElementById('screen-menu'),
             login:         document.getElementById('screen-login'),
+            accounts:      document.getElementById('screen-accounts'),
             debts:         document.getElementById('screen-debts'),
             success:       document.getElementById('screen-success'),
             waterVendor:   document.getElementById('screen-water-vendor'),
@@ -949,7 +984,10 @@
 
         const KONTOR_OPTIONS = [5, 10, 20, 30, 40, 50];
 
-        const session = { citizen: null, debts: [], selectedIds: new Set(), currentScreen: 'welcome', pendingPayment: null };
+        const session = {
+            citizen: null, debts: [], selectedIds: new Set(),
+            currentScreen: 'welcome', pendingPayment: null, accounts: [],
+        };
         const water = {
             vendor: null, action: null, subscriber: null,
             invoices: [], selectedInvoiceIds: new Set(),
@@ -1604,15 +1642,19 @@
             onUserActivity();
             try {
                 const citizen = await fetchCitizen(identityNo, 'tc');
-                const { debts } = await fetchDebts(identityNo, 'tc');
                 session.citizen = citizen;
-                session.debts = debts;
+                session.accounts = Array.isArray(citizen.accounts) ? citizen.accounts : [];
                 session.selectedIds.clear();
-                renderDebtList();
-                const tag = 'T.C.: ' + identityNo + (citizen.sicilNo ? ' · Sicil: ' + citizen.sicilNo : '');
-                document.getElementById('citizen-name').textContent =
-                    subscriberDisplayName(citizen) + ' — ' + tag;
-                showScreen('debts');
+                session.debts = [];
+
+                if (citizen.needsSelection && session.accounts.length > 1) {
+                    renderAccountsList();
+                    document.getElementById('accounts-subtitle').textContent =
+                        subscriberDisplayName(citizen) + ' — T.C.: ' + identityNo;
+                    showScreen('accounts');
+                } else {
+                    await loadDebtsForCitizen(citizen);
+                }
             } catch (err) {
                 loginError.textContent = err.message;
                 loginError.classList.remove('hidden');
@@ -1622,8 +1664,93 @@
             }
         });
 
+        function renderAccountsList() {
+            const container = document.getElementById('accounts-list');
+            const errEl = document.getElementById('accounts-error');
+            errEl.classList.add('hidden');
+            container.innerHTML = session.accounts.map((acc) => {
+                const abone = acc.aboneNo || acc.uyeNo || acc.sicilNo || acc.gensicilNo;
+                const details = Array.isArray(acc.details) && acc.details.length
+                    ? `<p class="text-kiosk-xs text-municipalGray-500 mt-1">${acc.details.join(' · ')}</p>`
+                    : '';
+                return `
+                <button type="button" class="account-card touch-btn w-full text-left bg-white border-2 border-municipal-200 hover:border-municipal-500 rounded-2xl px-5 py-4 shadow-sm"
+                    data-gensicil="${acc.gensicilNo}" role="listitem">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-kiosk-base font-bold text-municipalGray-800">${acc.fullName || 'Abonelik'}</p>
+                            <p class="text-kiosk-sm text-municipal-700 font-semibold mt-1">Abone No: ${abone} · Sicil: ${acc.sicilNo || acc.gensicilNo}</p>
+                            <p class="text-kiosk-sm text-municipalGray-600 mt-2 leading-snug">${acc.address || 'Adres bilgisi kayıtta yok'}</p>
+                            ${details}
+                        </div>
+                        <span class="shrink-0 text-municipal-600 font-bold text-kiosk-lg">›</span>
+                    </div>
+                </button>`;
+            }).join('');
+
+            container.querySelectorAll('.account-card').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    const gensicil = btn.dataset.gensicil;
+                    const account = session.accounts.find(a => String(a.gensicilNo) === String(gensicil));
+                    if (!account || !session.citizen) return;
+                    errEl.classList.add('hidden');
+                    btn.disabled = true;
+                    onUserActivity();
+                    try {
+                        session.citizen = {
+                            ...session.citizen,
+                            gensicilNo: account.gensicilNo,
+                            sicilNo: account.sicilNo || account.gensicilNo,
+                            aboneNo: account.aboneNo || '',
+                            fullName: account.fullName || session.citizen.fullName,
+                            address: account.address || '',
+                            adi: account.adi || session.citizen.adi,
+                            soyadi: account.soyadi || session.citizen.soyadi,
+                            needsSelection: false,
+                        };
+                        await loadDebtsForCitizen(session.citizen);
+                    } catch (err) {
+                        errEl.textContent = err.message;
+                        errEl.classList.remove('hidden');
+                        btn.disabled = false;
+                    }
+                });
+            });
+        }
+
+        async function loadDebtsForCitizen(citizen) {
+            const identityNo = citizen.identityNo;
+            const gensicilNo = citizen.gensicilNo || '';
+            const { debts } = await fetchDebts(identityNo, 'tc', gensicilNo || undefined);
+            session.debts = debts;
+            session.selectedIds.clear();
+            renderDebtList();
+            const tag = [
+                'T.C.: ' + identityNo,
+                citizen.aboneNo ? ('Abone: ' + citizen.aboneNo) : null,
+                citizen.sicilNo ? ('Sicil: ' + citizen.sicilNo) : null,
+            ].filter(Boolean).join(' · ');
+            document.getElementById('citizen-name').textContent =
+                subscriberDisplayName(citizen) + ' — ' + tag;
+            showScreen('debts');
+        }
+
+        document.getElementById('btn-back-accounts').addEventListener('click', () => {
+            session.accounts = [];
+            session.citizen = null;
+            showScreen('login');
+            onUserActivity();
+        });
+
         document.getElementById('btn-back-login').addEventListener('click', () => {
-            session.debts = []; session.selectedIds.clear(); showScreen('login');
+            session.debts = [];
+            session.selectedIds.clear();
+            if (session.accounts && session.accounts.length > 1) {
+                showScreen('accounts');
+            } else {
+                showScreen('login');
+            }
+            onUserActivity();
         });
 
         function renderDebtList() {
@@ -1712,6 +1839,7 @@
                     session.citizen.identityNo,
                     selectedIds,
                     'tc',
+                    session.citizen.gensicilNo || undefined,
                 );
                 session.pendingPayment = { transactionId: payment.transactionId, debtIds: selectedIds };
                 openBankModal(total);
@@ -1766,6 +1894,7 @@
                         session.citizen.identityNo,
                         debtIds,
                         'tc',
+                        session.citizen.gensicilNo || undefined,
                     );
                     if (confirmation.status === 'completed') {
                         closeBankModal();

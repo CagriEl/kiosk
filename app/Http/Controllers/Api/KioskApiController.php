@@ -49,8 +49,13 @@ class KioskApiController extends Controller
     {
         try {
             $this->assertTcKimlikNo($identityNo);
+            $gensicilNo = $request->query('gensicilNo');
+            $gensicilNo = is_string($gensicilNo) ? trim($gensicilNo) : null;
+            if ($gensicilNo !== null && ($gensicilNo === '' || ! ctype_digit($gensicilNo))) {
+                throw new BelsisException('Geçersiz abonelik numarası.');
+            }
 
-            return response()->json($this->belsis->getDebts($identityNo, 'tc'));
+            return response()->json($this->belsis->getDebts($identityNo, 'tc', $gensicilNo));
         } catch (BelsisException $e) {
             return $this->belsisError($e);
         } catch (Throwable $e) {
@@ -93,6 +98,7 @@ class KioskApiController extends Controller
     {
         $validated = $request->validate([
             'identityNo' => 'required|string|regex:/^\d{11}$/',
+            'gensicilNo' => 'nullable|string|regex:/^\d{1,10}$/',
             'debtIds'    => 'required|array|min:1',
             'debtIds.*'  => 'required|string',
         ]);
@@ -105,6 +111,7 @@ class KioskApiController extends Controller
                     $validated['identityNo'],
                     $validated['debtIds'],
                     'tc',
+                    $validated['gensicilNo'] ?? null,
                 ),
             );
         } catch (BelsisException $e) {
@@ -116,6 +123,7 @@ class KioskApiController extends Controller
     {
         $validated = $request->validate([
             'identityNo' => 'required|string|regex:/^\d{11}$/',
+            'gensicilNo' => 'nullable|string|regex:/^\d{1,10}$/',
             'debtIds'    => 'required|array|min:1',
             'debtIds.*'  => 'required|string',
         ]);
@@ -129,6 +137,7 @@ class KioskApiController extends Controller
                     $validated['debtIds'],
                     $transactionId,
                     'tc',
+                    $validated['gensicilNo'] ?? null,
                 ),
             );
         } catch (BelsisException $e) {

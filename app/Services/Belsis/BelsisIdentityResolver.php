@@ -14,12 +14,18 @@ class BelsisIdentityResolver
     }
 
     /**
-     * TC kimliğe bağlı tüm sicil (gensicilno) listesi.
-     *
      * @return array<int, string>
      */
     public function resolveAllGensicilsFromTc(string $tcKimlikNo): array
     {
         return $this->borc->resolveAllGensicilsFromTc($tcKimlikNo);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function resolveAccountsFromTc(string $tcKimlikNo): array
+    {
+        return $this->borc->resolveAccountsFromTc($tcKimlikNo);
     }
 }
