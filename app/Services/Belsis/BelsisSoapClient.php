@@ -215,7 +215,8 @@ class BelsisSoapClient
         if (str_contains($detail, 'Could not resolve host') || str_contains($detail, 'getaddrinfo')) {
             return 'Belsis hostname çözülemedi (DNS: '.$host.'). '
                 .'Ping başka bilgisayarda çalışsa bile PHP’nin çalıştığı sunucuda DNS farklı olabilir. '
-                .'.env URL’sinde hostname yerine IP deneyin. Teknik: '.$detail;
+                .'.env’ye BELSIS_HOST_IP=10.0.0.98 ekleyin (URL hostname kalsın; düz IP IIS’te Invalid Hostname verir). '
+                .'Teknik: '.$detail;
         }
 
         if (str_contains($detail, 'Connection timed out') || str_contains($detail, 'Operation timed out') || str_contains($detail, 'timed out')) {
