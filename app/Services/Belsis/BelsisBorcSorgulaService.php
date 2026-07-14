@@ -942,26 +942,32 @@ class BelsisBorcSorgulaService
     }
 
     /**
-     * Tek sicil kaydını beyan abone numaralarına göre ayrı abonelik kartlarına böler.
-     * Aynı yerde/sicilde abone no farklıysa her biri ayrı görünür.
+     * Tek sicil kaydını yalnızca su aboneliklerine göre kartlara böler.
+     * Bina / emlak / ÇTV vb. beyanlar seçim ekranına gelmez.
      *
      * @param  array<string, mixed>  $row
      * @return array<int, array<string, mixed>>
      */
     private function expandAccountsFromSicilRow(array $row, int $gensicil): array
     {
-        $beyanEntries = $this->fetchBeyanEntriesForGensicil($gensicil);
+        $beyan = $this->fetchWaterBeyanEntriesForGensicil($gensicil);
 
-        if ($beyanEntries === []) {
-            return [$this->mapTcAccountCard($row, $gensicil, null)];
+        if ($beyan['entries'] !== []) {
+            $accounts = [];
+            foreach ($beyan['entries'] as $entry) {
+                $accounts[] = $this->mapTcAccountCard($row, $gensicil, $entry);
+            }
+
+            return $accounts;
         }
 
-        $accounts = [];
-        foreach ($beyanEntries as $entry) {
-            $accounts[] = $this->mapTcAccountCard($row, $gensicil, $entry);
+        // Beyan geldi ama su yok (yalnızca bina vb.) — bu sicili seçime koyma
+        if ($beyan['hadAnyBeyan']) {
+            return [];
         }
 
-        return $accounts;
+        // Beyan yanıtı boş / alınamadı — tek kart (eski davranış)
+        return [$this->mapTcAccountCard($row, $gensicil, null)];
     }
 
     /**
@@ -1029,9 +1035,12 @@ class BelsisBorcSorgulaService
     }
 
     /**
-     * @return array<int, array{aboneNo: string, modulNo: string, beyanId: string, label: string, toplamBorc: float}>
+     * @return array{
+     *   entries: array<int, array{aboneNo: string, modulNo: string, beyanId: string, label: string, toplamBorc: float}>,
+     *   hadAnyBeyan: bool
+     * }
      */
-    private function fetchBeyanEntriesForGensicil(int $gensicil): array
+    private function fetchWaterBeyanEntriesForGensicil(int $gensicil): array
     {
         try {
             $result = $this->client->callTahsilat('sicilBorcBeyanSorgula', array_merge(
@@ -1047,6 +1056,7 @@ class BelsisBorcSorgulaService
 
             $entries = [];
             $seenAbone = [];
+            $hadAnyBeyan = false;
 
             foreach ($items as $item) {
                 if (! is_array($item)) {
@@ -1061,6 +1071,12 @@ class BelsisBorcSorgulaService
                     continue;
                 }
 
+                $hadAnyBeyan = true;
+
+                if (! $this->isWaterSubscriptionBeyan($label, $modulNo, $beyanId)) {
+                    continue;
+                }
+
                 $aboneNo = '';
                 if (preg_match('/abone\s*no\s*[:\.]?\s*(\d+)/iu', $label, $m)) {
                     $aboneNo = $m[1];
@@ -1072,8 +1088,7 @@ class BelsisBorcSorgulaService
                 }
 
                 if ($aboneNo === '') {
-                    // Abone no çıkarılamayan beyan satırı da ayrı kart olabilir (etiket ile)
-                    $aboneNo = $beyanId !== '' ? $beyanId : ('m'.$modulNo);
+                    continue;
                 }
 
                 if (isset($seenAbone[$aboneNo])) {
@@ -1090,14 +1105,58 @@ class BelsisBorcSorgulaService
                 ];
             }
 
-            return $entries;
+            return [
+                'entries'     => $entries,
+                'hadAnyBeyan' => $hadAnyBeyan,
+            ];
         } catch (BelsisException $e) {
             if ($this->isInfrastructureError($e)) {
                 throw $e;
             }
 
-            return [];
+            return [
+                'entries'     => [],
+                'hadAnyBeyan' => false,
+            ];
         }
+    }
+
+    /**
+     * Su aboneliği beyanı mı? (bina/emlak/ÇTV vb. hariç)
+     */
+    private function isWaterSubscriptionBeyan(string $label, string $modulNo, string $beyanId): bool
+    {
+        $combined = mb_strtolower(trim($label.' '.$modulNo.' '.$beyanId));
+
+        if (preg_match(
+            '/\b(bina|emlak|arsa|çtv|ctv|ilan|reklam|çevre\s*temizlik|cevre\s*temizlik|işyeri|isyeri|ruhsat|haciz|gelir)\b/u',
+            $combined,
+        ) && ! preg_match('/abone\s*no/u', $combined) && ! preg_match('/\bsu\b/u', $combined)) {
+            return false;
+        }
+
+        if (preg_match('/abone\s*no/iu', $label)) {
+            return true;
+        }
+
+        if (preg_match('/\b(su\s*abon|su\s*borc|içme\s*su|icme\s*su|\bsu\b)/u', $combined)) {
+            return true;
+        }
+
+        $waterModules = array_map('strval', config('belsis.water_modul_nos', ['24']));
+
+        if ($modulNo !== '' && in_array($modulNo, $waterModules, true)) {
+            return true;
+        }
+
+        if (preg_match('/^(\d+)\|(\d+)$/', $beyanId, $m)
+            && in_array($m[1], $waterModules, true)
+            && $m[2] !== '0'
+        ) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -1107,7 +1166,7 @@ class BelsisBorcSorgulaService
     {
         return array_values(array_map(
             fn (array $entry) => $entry['label'],
-            $this->fetchBeyanEntriesForGensicil($gensicil),
+            $this->fetchWaterBeyanEntriesForGensicil($gensicil)['entries'],
         ));
     }
 

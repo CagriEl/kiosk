@@ -109,4 +109,10 @@ return [
         'baylan' => array_filter(array_map('trim', explode(',', env('BELSIS_WATER_MOCK_BAYLAN', '12345,27126')))),
         'metlab' => array_filter(array_map('trim', explode(',', env('BELSIS_WATER_MOCK_METLAB', '67890,54321')))),
     ],
+
+    // Tahsilat sicilBorcBeyanSorgula — su abonelik modul numaraları (ör. beyanID 24|41911)
+    'water_modul_nos' => array_values(array_filter(array_map('trim', explode(',', env(
+        'BELSIS_WATER_MODUL_NOS',
+        '24',
+    ))))),
 ];
