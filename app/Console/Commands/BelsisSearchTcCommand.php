@@ -43,6 +43,40 @@ class BelsisSearchTcCommand extends Command
         $borcTips = config('belsis.borc_sorgu_tips_tc', ['2', 'TC', 'TcKimlikNo', 'TCKIMLIK']);
 
         $this->newLine();
+        $this->info('=== sicilSorgula(mukellefNo=TC) — Kırklareli asıl yol ===');
+        try {
+            $result = $client->callTahsilat('sicilSorgula', array_merge($base, [
+                'gensicilno' => 0,
+                'koyID'      => 0,
+                'mukellefNo' => $tc,
+            ]));
+            $list = $result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? [];
+            $rows = [];
+            if (is_array($list)) {
+                $rows = isset($list[0]) || ! isset($list['gensicilno']) ? $list : [$list];
+            }
+            $matched = false;
+            foreach ($rows as $row) {
+                if (! is_array($row)) {
+                    continue;
+                }
+                $rowTc = preg_replace('/\D/', '', (string) ($row['tcKimlikNo'] ?? ''));
+                $g = $row['gensicilno'] ?? '?';
+                $ad = trim(($row['adi'] ?? '').' '.($row['soyadi'] ?? ''));
+                $ok = $rowTc === $tc ? 'EŞLEŞTİ' : 'tc='.$rowTc;
+                $this->line("  gensicilno: <info>{$g}</info> — {$ad} [{$ok}]");
+                if ($rowTc === $tc) {
+                    $matched = true;
+                }
+            }
+            if (! $matched) {
+                $this->warn('  TC ile birebir eşleşen sicil yok');
+            }
+        } catch (BelsisException $e) {
+            $this->warn('  Hata: '.$e->getMessage());
+        }
+
+        $this->newLine();
         $this->info('=== arama methodu (TC → gensicil) ===');
         foreach ($aramaTips as $tip) {
             $this->line("sorguTip=<comment>{$tip}</comment>");

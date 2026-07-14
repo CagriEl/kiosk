@@ -230,7 +230,20 @@ class BelsisBorcSorgulaService
     {
         $lastError = null;
 
-        // Webservis akışı: önce arama(TC) → gensicilno, sonra borcSorgula(sicil tipi)
+        // Kırklareli: sicilSorgula(mukellefNo=TC) → gensicil → borc
+        foreach ($this->resolveSicilsByTcKimlikNo($tcKimlikNo) as $gensicil) {
+            $borc = $this->queryBorcByGensicil($gensicil, $lastError);
+            if ($borc !== null) {
+                return $borc;
+            }
+
+            $record = $this->fetchSicilByGensicil((int) $gensicil);
+            if ($record !== null) {
+                return $this->buildFallbackBorcFromSicil($record);
+            }
+        }
+
+        // Webservis akışı: arama(TC) → gensicilno, sonra borcSorgula(sicil tipi)
         foreach ($this->tcAramaTips() as $tip) {
             try {
                 $record = $this->tryAramaRecord($tip, $tcKimlikNo, true);
@@ -840,7 +853,9 @@ class BelsisBorcSorgulaService
     }
 
     /**
-     * TC'ye bağlı tüm gensicilno adaylarını döner (tekil öncelik sırası korunur).
+     * TC'ye bağlı tüm gensicilno adaylarını döner.
+     * Kırklareli: arama/borcSorgula(TC) SP'de çalışmıyor; asıl yol
+     * sicilSorgula(mukellefNo=TC) + tcKimlikNo birebir doğrulama.
      *
      * @return array<int, string>
      */
@@ -853,6 +868,16 @@ class BelsisBorcSorgulaService
 
         $found = [];
 
+        // 1) Primary — sicilSorgula(mukellefNo = TC)
+        foreach ($this->resolveSicilsByTcKimlikNo($tcKimlikNo) as $gensicil) {
+            $found[$gensicil] = $gensicil;
+        }
+
+        if ($found !== []) {
+            return array_values($found);
+        }
+
+        // 2) arama(TC) — SP düzelirse devreye girer
         foreach ($this->tcAramaTips() as $tip) {
             foreach ($this->tryAramaAllRecords($tip, $tcKimlikNo, true) as $record) {
                 $gensicil = (int) ($record['gensicilno'] ?? $record['gensicilNo'] ?? 0);
@@ -862,6 +887,7 @@ class BelsisBorcSorgulaService
             }
         }
 
+        // 3) borcSorgula(TC) — tip desteklenirse Sicil.sicilNo
         $fromBorc = $this->resolveGensicilFromTcBorcResponse($tcKimlikNo);
         if ($fromBorc !== null) {
             $found[$fromBorc] = $fromBorc;
@@ -871,9 +897,86 @@ class BelsisBorcSorgulaService
     }
 
     /**
+     * sicilSorgula(mukellefNo=TC) — yalnızca tcKimlikNo birebir eşleşen kayıtlar.
+     *
+     * @return array<int, string>
+     */
+    private function resolveSicilsByTcKimlikNo(string $tcKimlikNo): array
+    {
+        $paramSets = [
+            ['gensicilno' => 0, 'koyID' => 0, 'mukellefNo' => $tcKimlikNo],
+        ];
+
+        $found = [];
+
+        // Kırklareli'de TC eşlemesi tahsilat sicilSorgula(mukellefNo=TC) ile çalışıyor.
+        // Tahakkuk oturumu ayrı login ister; burayı düşürmemek için önce tahsilat yeterli.
+        foreach ($paramSets as $params) {
+            foreach ($this->fetchSicilSorgulaRows('tahsilat', $params) as $row) {
+                $rowTc = preg_replace('/\D/', '', (string) ($row['tcKimlikNo'] ?? ''));
+                if ($rowTc !== $tcKimlikNo) {
+                    continue;
+                }
+
+                $gensicil = (int) ($row['gensicilno'] ?? $row['gensicilNo'] ?? 0);
+                if ($gensicil > 0) {
+                    $found[(string) $gensicil] = (string) $gensicil;
+                }
+            }
+        }
+
+        if ($found !== []) {
+            return array_values($found);
+        }
+
+        foreach ($paramSets as $params) {
+            foreach ($this->fetchSicilSorgulaRows('tahakkuk', $params) as $row) {
+                $rowTc = preg_replace('/\D/', '', (string) ($row['tcKimlikNo'] ?? ''));
+                if ($rowTc !== $tcKimlikNo) {
+                    continue;
+                }
+
+                $gensicil = (int) ($row['gensicilno'] ?? $row['gensicilNo'] ?? 0);
+                if ($gensicil > 0) {
+                    $found[(string) $gensicil] = (string) $gensicil;
+                }
+            }
+        }
+
+        return array_values($found);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array<int, array<string, mixed>>
+     */
+    private function fetchSicilSorgulaRows(string $service, array $params): array
+    {
+        try {
+            $result = $service === 'tahakkuk'
+                ? $this->client->callTahakkuk('sicilSorgula', array_merge($this->auth->baseParamsTahakkuk(), $params))
+                : $this->client->callTahsilat('sicilSorgula', array_merge($this->auth->baseParams(), $params));
+
+            return $this->normalizeList($result['sicilListesi']['sicilAlanlari'] ?? $result['sicilListesi'] ?? []);
+        } catch (BelsisException $e) {
+            // Tahakkuk oturumu / geçici hatalar TC çözümünü tamamen bozmasın
+            if ($service === 'tahakkuk') {
+                return [];
+            }
+
+            if ($this->isInfrastructureError($e)) {
+                throw $e;
+            }
+
+            return [];
+        }
+    }
+
+    /**
      * TC → gensicilno çözümler.
-     * 1) arama(sorguTip=TC) — Kırklareli için bilinçli olarak arama_enabled bayrağından bağımsız denenir
-     * 2) borcSorgula(TC, gensicilno=0) yanıtındaki Sicil.sicilNo
+     * 1) sicilSorgula(mukellefNo=TC)
+     * 2) arama(TC)
+     * 3) borcSorgula(TC)
      */
     public function resolveGensicilFromTc(string $tcKimlikNo): ?string
     {
