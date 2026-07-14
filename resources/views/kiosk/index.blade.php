@@ -1677,10 +1677,17 @@
                 const details = Array.isArray(acc.details) && acc.details.length
                     ? `<p class="text-kiosk-xs text-municipalGray-500 mt-1">${acc.details.join(' · ')}</p>`
                     : '';
+                const hasDebt = acc.totalDebt !== null && acc.totalDebt !== undefined && acc.totalDebt !== '';
+                const debtBlock = hasDebt
+                    ? `<div class="shrink-0 text-right">
+                            <p class="text-kiosk-xs text-municipalGray-500">Toplam borç</p>
+                            <p class="text-kiosk-lg font-bold text-municipal-700 mt-0.5">${formatCurrency(Number(acc.totalDebt) || 0)}</p>
+                       </div>`
+                    : `<span class="shrink-0 text-municipal-600 font-bold text-kiosk-lg">›</span>`;
                 return `
                 <button type="button" class="account-card touch-btn w-full text-left bg-white border-2 border-municipal-200 hover:border-municipal-500 rounded-2xl px-5 py-4 shadow-sm"
                     data-account-key="${key}" role="listitem">
-                    <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start justify-between gap-4">
                         <div class="min-w-0">
                             <p class="text-kiosk-base font-bold text-municipalGray-800">${acc.fullName || 'Abonelik'}</p>
                             <p class="text-kiosk-sm text-municipal-700 font-semibold mt-1">Abone No: ${abone}</p>
@@ -1688,7 +1695,7 @@
                             <p class="text-kiosk-sm text-municipalGray-600 mt-2 leading-snug">${acc.address || 'Adres bilgisi kayıtta yok'}</p>
                             ${details}
                         </div>
-                        <span class="shrink-0 text-municipal-600 font-bold text-kiosk-lg">›</span>
+                        ${debtBlock}
                     </div>
                 </button>`;
             }).join('');

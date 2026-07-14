@@ -1017,6 +1017,10 @@ class BelsisBorcSorgulaService
             $addressParts = [$label];
         }
 
+        $totalDebt = isset($beyanEntry['toplamBorc'])
+            ? round((float) $beyanEntry['toplamBorc'], 2)
+            : null;
+
         return [
             'gensicilNo' => (string) $gensicil,
             'sicilNo'    => (string) $gensicil,
@@ -1030,6 +1034,7 @@ class BelsisBorcSorgulaService
             'details'    => $details,
             'modulNo'    => (string) ($beyanEntry['modulNo'] ?? ''),
             'beyanId'    => (string) ($beyanEntry['beyanId'] ?? ''),
+            'totalDebt'  => $totalDebt,
             'accountKey' => $gensicil.'|'.$aboneNo,
         ];
     }

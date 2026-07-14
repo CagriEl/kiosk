@@ -160,7 +160,29 @@ class BelsisTahsilatQueryService
      */
     private function getDebtsByGensicil(int $gensicilno, ?string $aboneNo = null, ?string $modulNo = null): array
     {
+        $aboneNo = $aboneNo !== null ? trim($aboneNo) : '';
+        $modulNo = $modulNo !== null ? trim($modulNo) : '';
+
         $debts = $this->fetchBorcSorgulaDebts($gensicilno);
+
+        // Abone seçildiyse yalnızca o abonenin borçları (sicil toplamı değil)
+        if ($aboneNo !== '') {
+            $filtered = $this->filterDebtsForAbone($debts, $aboneNo, null);
+            if ($filtered !== []) {
+                return $filtered;
+            }
+
+            $beyanDebts = $this->filterDebtsForAbone(
+                $this->fetchSicilBorcBeyanDebts($gensicilno),
+                $aboneNo,
+                null,
+            );
+            if ($beyanDebts !== []) {
+                return $beyanDebts;
+            }
+
+            return [];
+        }
 
         if ($debts === []) {
             $debts = $this->fetchSicilBorcBeyanDebts($gensicilno);
@@ -170,12 +192,12 @@ class BelsisTahsilatQueryService
             $debts = $this->fetchTahakkukFallbackDebts($gensicilno);
         }
 
-        return $this->filterDebtsForAbone($debts, $aboneNo, $modulNo);
+        return $this->filterDebtsForAbone($debts, null, $modulNo !== '' ? $modulNo : null);
     }
 
     /**
-     * Seçilen abone/modul ile ilişkilendirilebilen borçları ayıklar.
-     * Eşleşme yoksa (meta yok) tüm liste korunur — boş ekran yerine yanlış filtre olmasın.
+     * Seçilen aboneye ait borçları ayıklar.
+     * Abone seçiliyken eşleşme yoksa boş döner — tüm sicil borçlarını göstermez.
      *
      * @param  array<int, array<string, mixed>>  $debts
      * @return array<int, array<string, mixed>>
@@ -190,33 +212,60 @@ class BelsisTahsilatQueryService
         }
 
         $filtered = array_values(array_filter($debts, function (array $debt) use ($aboneNo, $modulNo) {
+            if ($aboneNo !== '') {
+                return $this->debtMatchesAbone($debt, $aboneNo);
+            }
+
             $meta = is_array($debt['meta'] ?? null) ? $debt['meta'] : [];
-            $haystack = mb_strtolower(implode(' ', array_filter([
-                (string) ($debt['type'] ?? ''),
-                (string) ($debt['period'] ?? ''),
-                (string) ($meta['aboneNo'] ?? ''),
-                (string) ($meta['beyanBilgisi'] ?? ''),
-                (string) ($meta['aciklama'] ?? ''),
-            ])));
 
-            if ($aboneNo !== '' && (
-                (string) ($meta['aboneNo'] ?? '') === $aboneNo
-                || str_contains($haystack, mb_strtolower('abone no:'.$aboneNo))
-                || str_contains($haystack, mb_strtolower('abone no '.$aboneNo))
-                || preg_match('/\b'.preg_quote($aboneNo, '/').'\b/', $haystack)
-            )) {
-                return true;
-            }
-
-            if ($modulNo !== '' && (string) ($meta['modulNo'] ?? '') === $modulNo) {
-                return true;
-            }
-
-            return false;
+            return $modulNo !== '' && (
+                (string) ($meta['modulNo'] ?? '') === $modulNo
+                || (string) ($meta['modulno'] ?? '') === $modulNo
+            );
         }));
 
-        // Meta ile ayırt edilemiyorsa hepsini göster (sicil ortak borçlar)
+        if ($aboneNo !== '') {
+            return $filtered;
+        }
+
+        // Modul filtresi: eşleşme yoksa listeyi koru
         return $filtered !== [] ? $filtered : $debts;
+    }
+
+    /**
+     * @param  array<string, mixed>  $debt
+     */
+    private function debtMatchesAbone(array $debt, string $aboneNo): bool
+    {
+        $meta = is_array($debt['meta'] ?? null) ? $debt['meta'] : [];
+        $beyanId = (string) ($meta['beyanID'] ?? $meta['beyanId'] ?? '');
+        $debtAbone = (string) ($meta['aboneNo'] ?? '');
+
+        if ($debtAbone === $aboneNo || $beyanId === $aboneNo) {
+            return true;
+        }
+
+        if ($beyanId !== '' && (
+            str_ends_with($beyanId, '|'.$aboneNo)
+            || preg_match('/^'.preg_quote($aboneNo, '/').'$/', $beyanId)
+        )) {
+            return true;
+        }
+
+        $haystack = mb_strtolower(implode(' ', array_filter([
+            (string) ($debt['type'] ?? ''),
+            (string) ($debt['period'] ?? ''),
+            (string) ($debt['id'] ?? ''),
+            $beyanId,
+            (string) ($meta['beyanBilgisi'] ?? ''),
+            (string) ($meta['aciklama'] ?? ''),
+            $debtAbone,
+        ])));
+
+        return (bool) preg_match(
+            '/abone\s*no\s*[:\.]?\s*'.preg_quote($aboneNo, '/').'\b/u',
+            $haystack,
+        );
     }
 
     /**
@@ -383,7 +432,14 @@ class BelsisTahsilatQueryService
                         continue;
                     }
 
-                    $type = (string) ($tahakkuk['turu'] ?? $tahakkuk['aciklama'] ?? $tahakkuk['beyanBilgisi'] ?? $modul['modulBilgisi'] ?? 'Borç');
+                    $beyanId = (string) ($tahakkuk['beyanID'] ?? $tahakkuk['beyanId'] ?? '');
+                    $beyanBilgisi = (string) ($tahakkuk['beyanBilgisi'] ?? '');
+                    $aciklama = (string) ($tahakkuk['aciklama'] ?? '');
+                    $type = trim((string) ($tahakkuk['turu'] ?? ''));
+                    if ($type === '') {
+                        $type = $aciklama !== '' ? $aciklama : ($beyanBilgisi !== '' ? $beyanBilgisi : (string) ($modul['modulBilgisi'] ?? 'Borç'));
+                    }
+                    $aboneNo = $this->extractAboneNoFromText(implode(' ', [$type, $beyanBilgisi, $aciklama, $beyanId]));
 
                     $period = trim(implode(' / ', array_filter([
                         $borcYili ? $borcYili.' Yılı' : null,
@@ -404,6 +460,10 @@ class BelsisTahsilatQueryService
                             'indirimTutari'  => (float) ($tahakkuk['indirimTutari'] ?? 0),
                             'odenenTutar'    => (float) ($tahakkuk['odenenTutar'] ?? 0),
                             'modulNo'        => $modul['modulNo'] ?? null,
+                            'beyanID'        => $beyanId !== '' ? $beyanId : null,
+                            'beyanBilgisi'   => $beyanBilgisi !== '' ? $beyanBilgisi : null,
+                            'aciklama'       => $aciklama !== '' ? $aciklama : null,
+                            'aboneNo'        => $aboneNo !== '' ? $aboneNo : null,
                             'borcYili'       => $borcYili,
                             'taksit'         => $taksit,
                             'kaynak'         => 'borcSorgula',
@@ -414,6 +474,19 @@ class BelsisTahsilatQueryService
         }
 
         return $debts;
+    }
+
+    private function extractAboneNoFromText(string $text): string
+    {
+        if (preg_match('/abone\s*no\s*[:\.]?\s*(\d+)/iu', $text, $m)) {
+            return $m[1];
+        }
+
+        if (preg_match('/^(\d+)\|(\d+)$/', trim($text), $m) && $m[2] !== '0') {
+            return $m[2];
+        }
+
+        return '';
     }
 
     /**
@@ -581,17 +654,26 @@ class BelsisTahsilatQueryService
                     continue;
                 }
 
-                $modulno = (string) ($item['modulno'] ?? '');
-                $beyanId = (string) ($item['beyanID'] ?? $modulno);
+                $label = trim((string) ($item['beyanAciklama'] ?? 'Borç Beyanı'));
+                if ($label !== '' && str_contains(mb_strtoupper($label), 'HEPSİ')) {
+                    continue;
+                }
+
+                $modulno = (string) ($item['modulno'] ?? $item['modulNo'] ?? '');
+                $beyanId = (string) ($item['beyanID'] ?? $item['beyanId'] ?? $modulno);
+                $aboneNo = $this->extractAboneNoFromText($label.' '.$beyanId);
+
                 $debts[] = [
                     'id'      => $beyanId !== '' ? $beyanId : 'beyan-'.$modulno,
-                    'type'    => (string) ($item['beyanAciklama'] ?? 'Borç Beyanı'),
+                    'type'    => $label !== '' ? $label : 'Borç Beyanı',
                     'period'  => '',
                     'amount'  => $amount,
                     'dueDate' => null,
                     'meta'    => [
                         'modulno'  => $modulno,
-                        'beyanID'  => $item['beyanID'] ?? null,
+                        'modulNo'  => $modulno,
+                        'beyanID'  => $beyanId !== '' ? $beyanId : null,
+                        'aboneNo'  => $aboneNo !== '' ? $aboneNo : null,
                         'kaynak'   => 'sicilBorcBeyanSorgula',
                     ],
                 ];
