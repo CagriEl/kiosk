@@ -225,7 +225,7 @@ class BelsisBorcSorgulaService
             return $searchType;
         }
 
-        return strlen($identityNo) === 11 ? 'tc' : 'abone';
+        return strlen($identityNo) === 11 ? 'tc' : 'sicil';
     }
 
     /**

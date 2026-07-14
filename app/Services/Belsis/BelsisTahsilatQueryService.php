@@ -23,10 +23,10 @@ class BelsisTahsilatQueryService
      *
      * @return array{identityNo: string, gensicilNo: string, sicilNo: string, fullName: string, searchType: string, adi: string, soyadi: string}
      */
-    public function getCitizen(string $identityNo): array
+    public function getCitizen(string $identityNo, ?string $searchType = null): array
     {
         $identityNo = trim($identityNo);
-        $searchType = $this->detectSearchType($identityNo);
+        $searchType = $this->resolveSearchType($identityNo, $searchType);
         $gensicilno = $this->resolveToGensicil($identityNo, $searchType);
         $profile = $this->fetchSicilProfile($gensicilno);
 
@@ -51,10 +51,10 @@ class BelsisTahsilatQueryService
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function getDebts(string $identityNo): array
+    public function getDebts(string $identityNo, ?string $searchType = null): array
     {
         $identityNo = trim($identityNo);
-        $searchType = $this->detectSearchType($identityNo);
+        $searchType = $this->resolveSearchType($identityNo, $searchType);
         $gensicilno = $this->resolveToGensicil($identityNo, $searchType);
 
         $debts = $this->fetchBorcSorgulaDebts($gensicilno);
@@ -237,18 +237,18 @@ class BelsisTahsilatQueryService
         }
     }
 
-    private function detectSearchType(string $identityNo): string
+    private function resolveSearchType(string $identityNo, ?string $searchType): string
     {
+        if (in_array($searchType, ['tc', 'sicil'], true)) {
+            return $searchType;
+        }
+
         return strlen($identityNo) === 11 ? 'tc' : 'sicil';
     }
 
     private function resolveToGensicil(string $identityNo, string $searchType): int
     {
-        if ($searchType === 'tc') {
-            return (int) $this->identity->resolveGensicilNo($identityNo, 'tc');
-        }
-
-        return $this->parseGensicilNo($identityNo);
+        return (int) $this->identity->resolveGensicilNo($identityNo, $searchType);
     }
 
     private function parseGensicilNo(string $identityNo): int

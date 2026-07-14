@@ -836,27 +836,29 @@
             }
         }
 
-        async function fetchCitizen(accountNo) {
-            return apiRequest(`${API_BASE}/citizen/${accountNo}`);
+        async function fetchCitizen(accountNo, searchType) {
+            const qs = searchType ? `?searchType=${encodeURIComponent(searchType)}` : '';
+            return apiRequest(`${API_BASE}/citizen/${accountNo}${qs}`);
         }
 
-        async function fetchDebts(accountNo) {
-            return apiRequest(`${API_BASE}/debts/${accountNo}`);
+        async function fetchDebts(accountNo, searchType) {
+            const qs = searchType ? `?searchType=${encodeURIComponent(searchType)}` : '';
+            return apiRequest(`${API_BASE}/debts/${accountNo}${qs}`);
         }
 
-        async function initiateBankPayment(identityNo, selectedDebtIds) {
+        async function initiateBankPayment(identityNo, selectedDebtIds, searchType) {
             return apiRequest(`${API_BASE}/payment/bank`, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
-                body: JSON.stringify({ identityNo, debtIds: selectedDebtIds }),
+                body: JSON.stringify({ identityNo, debtIds: selectedDebtIds, searchType: searchType || undefined }),
             });
         }
 
-        async function confirmPayment(transactionId, identityNo, debtIds) {
+        async function confirmPayment(transactionId, identityNo, debtIds, searchType) {
             return apiRequest(`${API_BASE}/payment/${transactionId}/confirm`, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
-                body: JSON.stringify({ identityNo, debtIds }),
+                body: JSON.stringify({ identityNo, debtIds, searchType: searchType || undefined }),
             });
         }
 
@@ -1672,13 +1674,13 @@
             loginError.classList.add('hidden');
             onUserActivity();
             try {
-                const citizen = await fetchCitizen(identityNo);
-                const { debts } = await fetchDebts(identityNo);
+                const citizen = await fetchCitizen(identityNo, searchMode);
+                const { debts } = await fetchDebts(identityNo, searchMode);
                 session.citizen = citizen;
                 session.debts = debts;
                 session.selectedIds.clear();
                 renderDebtList();
-                const tag = citizen.searchType === 'tc'
+                const tag = (citizen.searchType || searchMode) === 'tc'
                     ? ('T.C.: ' + identityNo + (citizen.sicilNo ? ' · Sicil: ' + citizen.sicilNo : ''))
                     : ('Sicil: ' + (citizen.sicilNo || identityNo));
                 document.getElementById('citizen-name').textContent =
@@ -1779,7 +1781,11 @@
             btnPay.disabled = true;
             onUserActivity();
             try {
-                const payment = await initiateBankPayment(session.citizen.identityNo, selectedIds);
+                const payment = await initiateBankPayment(
+                    session.citizen.identityNo,
+                    selectedIds,
+                    session.citizen.searchType || searchMode,
+                );
                 session.pendingPayment = { transactionId: payment.transactionId, debtIds: selectedIds };
                 openBankModal(total);
             } catch (err) {
@@ -1828,7 +1834,12 @@
                     showWaterSuccess('Kontör Yüklendi', confirmation.message + ' Makbuz: ' + confirmation.receiptNo);
                 } else if (session.pendingPayment) {
                     const { transactionId, debtIds } = session.pendingPayment;
-                    const confirmation = await confirmPayment(transactionId, session.citizen.identityNo, debtIds);
+                    const confirmation = await confirmPayment(
+                        transactionId,
+                        session.citizen.identityNo,
+                        debtIds,
+                        session.citizen.searchType || searchMode,
+                    );
                     if (confirmation.status === 'completed') {
                         closeBankModal();
                         const receipt = confirmation.receipt || {};

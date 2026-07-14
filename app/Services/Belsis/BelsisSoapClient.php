@@ -219,10 +219,21 @@ class BelsisSoapClient
                 .'Teknik: '.$detail;
         }
 
-        if (str_contains($detail, 'Connection timed out') || str_contains($detail, 'Operation timed out') || str_contains($detail, 'timed out')) {
-            return 'Belsis TCP bağlantısı zaman aşımına uğradı ('.$target.'). '
-                .'Ping (ICMP) açık olabilir ama port kapalı/filtrelenmiş olabilir. '
-                .'PHP sunucusundan port erişimini kontrol edin. Teknik: '.$detail;
+        if (
+            str_contains($detail, 'Connection timed out')
+            || str_contains($detail, 'Operation timed out')
+            || str_contains($detail, 'timed out')
+            || str_contains(strtolower($detail), 'connection timeout')
+            || str_contains($detail, 'cURL error 28')
+        ) {
+            $forcedIp = trim((string) config('belsis.host_ip', ''));
+            $via = $forcedIp !== '' ? "BELSIS_HOST_IP={$forcedIp}" : 'DNS';
+            $reach = $forcedIp !== '' ? "{$forcedIp}:1685" : "{$target}";
+
+            return 'Belsis TCP zaman aşımı ('.$target.', '.$via.'). '
+                .'URL hostname `webservis.kirklareli.local` olmalı (`.locla` yazım hatası bağlanmayı bozar). '
+                .'Kiosk sunucusundan '.$reach.' TCP erişimi olmalı (aynı iç ağ / firewall). '
+                .'Teknik: '.$detail;
         }
 
         if (str_contains($detail, 'Failed to connect') || str_contains($detail, 'Connection refused')) {
