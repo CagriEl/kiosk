@@ -8,6 +8,7 @@ use App\Services\Belsis\BelsisKioskService;
 use App\Services\Belsis\WaterCardKioskService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Throwable;
 
 class KioskApiController extends Controller
 {
@@ -19,11 +20,17 @@ class KioskApiController extends Controller
     public function citizen(Request $request, string $identityNo): JsonResponse
     {
         try {
-            $this->assertSicilNo($identityNo);
+            $this->assertIdentityNo($identityNo);
 
             return response()->json($this->belsis->getCitizen($identityNo));
         } catch (BelsisException $e) {
             return $this->belsisError($e);
+        } catch (Throwable $e) {
+            report($e);
+
+            return $this->belsisError(new BelsisException(
+                'Sorgulama sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyiniz.',
+            ));
         }
     }
 
@@ -41,11 +48,17 @@ class KioskApiController extends Controller
     public function debts(Request $request, string $identityNo): JsonResponse
     {
         try {
-            $this->assertSicilNo($identityNo);
+            $this->assertIdentityNo($identityNo);
 
             return response()->json($this->belsis->getDebts($identityNo));
         } catch (BelsisException $e) {
             return $this->belsisError($e);
+        } catch (Throwable $e) {
+            report($e);
+
+            return $this->belsisError(new BelsisException(
+                'Borç sorgusu sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyiniz.',
+            ));
         }
     }
 
@@ -79,7 +92,7 @@ class KioskApiController extends Controller
     public function initiatePayment(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'identityNo' => 'required|string|regex:/^\d{1,10}$/',
+            'identityNo' => 'required|string|regex:/^\d{1,11}$/',
             'debtIds'    => 'required|array|min:1',
             'debtIds.*'  => 'required|string',
         ]);
@@ -99,7 +112,7 @@ class KioskApiController extends Controller
     public function paymentStatus(Request $request, string $transactionId): JsonResponse
     {
         $validated = $request->validate([
-            'identityNo' => 'required|string|regex:/^\d{1,10}$/',
+            'identityNo' => 'required|string|regex:/^\d{1,11}$/',
             'debtIds'    => 'required|array|min:1',
             'debtIds.*'  => 'required|string',
         ]);
@@ -278,7 +291,7 @@ class KioskApiController extends Controller
         $message = mb_strtolower($e->getMessage());
         $status = 422;
 
-        if (str_contains($message, '11 haneli') || str_contains($message, 'sicil numarası')) {
+        if (str_contains($message, '11 haneli') || str_contains($message, 'sicil numarası') || str_contains($message, 't.c. kimlik')) {
             $status = 400;
         } elseif (
             str_contains($message, 'bulunamad')
@@ -310,6 +323,23 @@ class KioskApiController extends Controller
             'message'   => $e->getMessage(),
             'sonucKodu' => $e->sonucKodu,
         ], $status);
+    }
+
+    private function assertIdentityNo(string $identityNo): void
+    {
+        $identityNo = trim($identityNo);
+
+        if (! ctype_digit($identityNo) || strlen($identityNo) < 1 || strlen($identityNo) > 11) {
+            throw new BelsisException('T.C. Kimlik No 11 haneli, sicil numarası 1–10 haneli olmalıdır.');
+        }
+
+        if (strlen($identityNo) === 11) {
+            return;
+        }
+
+        if (strlen($identityNo) > 10) {
+            throw new BelsisException('Sicil numarası 1–10 haneli olmalıdır.');
+        }
     }
 
     private function assertSicilNo(string $sicilNo): void

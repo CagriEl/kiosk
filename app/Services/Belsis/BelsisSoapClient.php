@@ -3,8 +3,11 @@
 namespace App\Services\Belsis;
 
 use App\Exceptions\BelsisException;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class BelsisSoapClient
 {
@@ -49,7 +52,7 @@ class BelsisSoapClient
                 return $this->sendRequest($candidate, $method, $params, $wrapper);
             } catch (BelsisException $e) {
                 $lastError = $e;
-                if ($this->isIpAuthorizationError($e->getMessage())) {
+                if ($this->isIpAuthorizationError($e->getMessage()) || $this->isUnreachableHostError($e->getMessage())) {
                     throw $e;
                 }
             }
@@ -69,8 +72,9 @@ class BelsisSoapClient
 
         Log::debug('Belsis SOAP request', ['method' => $method, 'endpoint' => $endpoint]);
 
-        $request = Http::timeout(config('belsis.timeout'))
-            ->withOptions(['allow_redirects' => false])
+        $request = Http::withOptions(['allow_redirects' => false])
+            ->connectTimeout((int) min(5, max(1, (int) config('belsis.timeout', 30))))
+            ->timeout((int) config('belsis.timeout', 30))
             ->withHeaders([
                 'Content-Type'   => 'text/xml; charset=utf-8',
                 'Content-Length' => (string) strlen($body),
@@ -82,7 +86,30 @@ class BelsisSoapClient
             $request = $request->withoutVerifying();
         }
 
-        $response = $request->post($endpoint);
+        try {
+            $response = $request->post($endpoint);
+        } catch (ConnectionException $e) {
+            $message = $this->explainConnectionError($e, $endpoint);
+            Log::warning('Belsis SOAP connection error', [
+                'method'   => $method,
+                'endpoint' => $endpoint,
+                'message'  => $message,
+            ]);
+            throw new BelsisException($message);
+        } catch (Throwable $e) {
+            if ($e instanceof BelsisException) {
+                throw $e;
+            }
+
+            $message = 'Belsis servisine bağlanılamadı: '.$e->getMessage();
+            Log::warning('Belsis SOAP client error', [
+                'method'   => $method,
+                'endpoint' => $endpoint,
+                'message'  => $message,
+            ]);
+            throw new BelsisException($message);
+        }
+
         $raw = $response->body();
         $status = $response->status();
 
@@ -117,12 +144,29 @@ class BelsisSoapClient
     private function endpointCandidates(string $endpoint): array
     {
         $candidates = [$endpoint];
+        $host = strtolower((string) parse_url($endpoint, PHP_URL_HOST));
 
-        if (str_starts_with($endpoint, 'http://')) {
+        // İç DNS (.local) veya açıkça HTTP verilen lokal kurulumlarda HTTPS denemesi
+        // sadece zaman kaybettirir; DNS yoksa fatal max_execution_time'a gider.
+        $isLocalHost = $host === 'localhost'
+            || str_ends_with($host, '.local')
+            || filter_var($host, FILTER_VALIDATE_IP) !== false;
+
+        if (! $isLocalHost && str_starts_with($endpoint, 'http://')) {
             $candidates[] = 'https://'.substr($endpoint, 7);
         }
 
         return array_values(array_unique($candidates));
+    }
+
+    private function isUnreachableHostError(string $message): bool
+    {
+        return str_contains($message, 'DNS:')
+            || str_contains($message, 'ulaşılamadı')
+            || str_contains($message, 'bağlanılamadı')
+            || str_contains($message, 'baglanilamadi')
+            || str_contains($message, 'zaman aşımı')
+            || str_contains($message, 'Could not resolve host');
     }
 
     private function looksLikeHtml(string $raw): bool
@@ -133,6 +177,30 @@ class BelsisSoapClient
             || str_contains($sample, '<!doctype')
             || str_contains($sample, 'loginform')
             || str_contains($sample, 'length required');
+    }
+
+    private function explainConnectionError(ConnectionException $e, string $endpoint): string
+    {
+        $detail = $e->getMessage();
+        $host = parse_url($endpoint, PHP_URL_HOST) ?: $endpoint;
+
+        if (str_contains($detail, 'Could not resolve host') || str_contains($detail, 'getaddrinfo')) {
+            return 'Belsis sunucusuna ulaşılamadı (DNS: '.$host.'). '
+                .'Kiosk uygulamasının belediye iç ağında çalıştığından ve '
+                .'BELSIS_TAHSILAT_URL / BELSIS_TAHAKKUK_URL adreslerinin doğru olduğundan emin olun.';
+        }
+
+        if (str_contains($detail, 'Connection timed out') || str_contains($detail, 'timed out')) {
+            return 'Belsis sunucusuna zaman aşımı ('.$host.'). '
+                .'Ağ bağlantısını ve port erişimini kontrol ediniz.';
+        }
+
+        if (str_contains($detail, 'Failed to connect') || str_contains($detail, 'Connection refused')) {
+            return 'Belsis sunucusuna bağlanılamadı ('.$host.'). '
+                .'Servis kapalı olabilir veya güvenlik duvarı engelliyor olabilir.';
+        }
+
+        return 'Belsis servisine bağlanılamadı ('.$host.'): '.$detail;
     }
 
     private function explainRedirect(string $location, string $endpoint): string

@@ -136,10 +136,15 @@
             box-shadow: 0 0 0 3px rgba(30, 90, 158, 0.2);
             background: #fff;
         }
-        .btn-query-wide {
-            width: 100%;
-            padding: 1.125rem 1rem;
-            font-size: 1.25rem;
+        .search-mode-tab.is-active {
+            background: #1e5a9e;
+            border-color: #1e5a9e;
+            color: #fff;
+        }
+        .search-mode-tab:not(.is-active) {
+            background: #fff;
+            border-color: #bfdbfe;
+            color: #334155;
         }
         .loading-spinner {
             border: 4px solid #dbeafe; border-top-color: #1e5a9e;
@@ -388,7 +393,7 @@
                     <svg class="w-9 h-9 text-municipal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                 </div>
                 <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-2">Borç Ödeme &amp; Sorgulama</h3>
-                <p class="text-kiosk-sm text-municipalGray-600">Abone numaranızla belediye borçlarınızı görüntüleyin ve ödeyin.</p>
+                <p class="text-kiosk-sm text-municipalGray-600">T.C. Kimlik No veya sicil numaranızla belediye borçlarınızı görüntüleyin ve ödeyin.</p>
             </button>
             <button id="btn-menu-water" type="button" class="touch-btn flex-1 max-w-md bg-white border-3 border-cyan-400 rounded-3xl p-10 shadow-xl hover:border-cyan-600 text-left">
                 <div class="w-16 h-16 rounded-2xl bg-cyan-100 flex items-center justify-center mb-5">
@@ -644,7 +649,7 @@
                 <button id="btn-back-welcome" type="button" class="touch-btn w-10 h-10 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <h2 class="text-kiosk-base font-bold">Sicil Bilgileri</h2>
+                <h2 class="text-kiosk-base font-bold">Kimlik Bilgileri</h2>
             </div>
             <span class="text-kiosk-xs opacity-75">Adım 1 / 2</span>
         </header>
@@ -652,15 +657,19 @@
             <div class="login-left">
                 <div>
                     <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-3">Borç Sorgulama</h3>
+                    <div id="search-mode-tabs" class="flex gap-2 mb-4" role="tablist">
+                        <button type="button" data-mode="tc" class="search-mode-tab is-active touch-btn flex-1 py-3 rounded-xl font-bold text-kiosk-sm border-2">T.C. Kimlik</button>
+                        <button type="button" data-mode="sicil" class="search-mode-tab touch-btn flex-1 py-3 rounded-xl font-bold text-kiosk-sm border-2">Sicil No</button>
+                    </div>
                     <p id="identity-hint" class="text-kiosk-sm text-municipalGray-600 leading-snug">
-                        Sicil numaranızı numaratör ya da fiziksel klavye (NumLock) ile giriniz.
+                        11 haneli T.C. Kimlik Numaranızı numaratör veya fiziksel klavye (NumLock) ile giriniz.
                     </p>
                 </div>
                 <div class="identity-strip">
-                    <p id="identity-strip-label" class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">Sicil No</p>
-                    <div id="digit-row" class="abone-digit-row justify-start flex-wrap" aria-live="polite"></div>
+                    <p id="identity-strip-label" class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">T.C. Kimlik No</p>
+                    <div id="digit-row" class="digit-row" aria-live="polite"></div>
                 </div>
-                <input id="input-identity" type="text" class="sr-only" maxlength="10" readonly aria-label="Sicil numarası" />
+                <input id="input-identity" type="text" class="sr-only" maxlength="11" readonly aria-label="T.C. Kimlik No" />
                 <p id="login-error" class="text-kiosk-sm text-red-600 font-medium hidden" role="alert"></p>
                 <button id="btn-query" type="button" disabled
                     class="touch-btn btn-query-wide bg-municipal-600 text-white font-bold rounded-2xl shadow-xl hover:bg-municipal-700 disabled:opacity-40">
@@ -1299,7 +1308,7 @@
             const digit = digitFromKeyEvent(e);
             if (digit !== null) {
                 e.preventDefault();
-                if (inputIdentity.value.length < MAX_ACCOUNT_DIGITS) {
+                if (inputIdentity.value.length < maxIdentityDigits()) {
                     setIdentityValue(inputIdentity.value + digit);
                 }
                 loginError.classList.add('hidden');
@@ -1430,39 +1439,91 @@
         const digitRow = document.getElementById('digit-row');
         const btnQuery = document.getElementById('btn-query');
         const loginError = document.getElementById('login-error');
-        const MAX_ACCOUNT_DIGITS = 10;
-        const MIN_ACCOUNT_DIGITS = 1;
+        let searchMode = 'tc'; // 'tc' | 'sicil'
+
+        function maxIdentityDigits() {
+            return searchMode === 'tc' ? 11 : 10;
+        }
+
+        function minIdentityDigits() {
+            return searchMode === 'tc' ? 11 : 1;
+        }
+
+        function applySearchMode(mode) {
+            searchMode = mode === 'sicil' ? 'sicil' : 'tc';
+            document.querySelectorAll('.search-mode-tab').forEach(tab => {
+                tab.classList.toggle('is-active', tab.dataset.mode === searchMode);
+            });
+            const hint = document.getElementById('identity-hint');
+            const label = document.getElementById('identity-strip-label');
+            if (searchMode === 'tc') {
+                hint.textContent = '11 haneli T.C. Kimlik Numaranızı numaratör veya fiziksel klavye (NumLock) ile giriniz.';
+                label.textContent = 'T.C. Kimlik No';
+                inputIdentity.setAttribute('aria-label', 'T.C. Kimlik No');
+                digitRow.className = 'digit-row';
+            } else {
+                hint.textContent = 'Sicil numaranızı numaratör veya fiziksel klavye (NumLock) ile giriniz.';
+                label.textContent = 'Sicil No';
+                inputIdentity.setAttribute('aria-label', 'Sicil numarası');
+                digitRow.className = 'abone-digit-row justify-start flex-wrap';
+            }
+            inputIdentity.maxLength = maxIdentityDigits();
+            setIdentityValue(inputIdentity.value);
+            loginError.classList.add('hidden');
+        }
 
         function renderIdentityDisplay() {
             const val = inputIdentity.value;
+            const max = maxIdentityDigits();
             let html = '';
-            const slotCount = Math.max(val.length + 1, MIN_ACCOUNT_DIGITS);
-            for (let i = 0; i < slotCount && i < MAX_ACCOUNT_DIGITS; i++) {
-                const ch = val[i] || '';
-                const cls = ['abone-digit'];
-                if (ch) cls.push('filled');
-                if (i === val.length && val.length < MAX_ACCOUNT_DIGITS) cls.push('active');
-                html += `<div class="${cls.join(' ')}" aria-hidden="true">${ch}</div>`;
+            if (searchMode === 'tc') {
+                for (let i = 0; i < 11; i++) {
+                    const ch = val[i] || '';
+                    const cls = ['digit-slot'];
+                    if (ch) cls.push('filled');
+                    if (i === val.length && val.length < 11) cls.push('active');
+                    html += `<div class="${cls.join(' ')}" aria-hidden="true">${ch}</div>`;
+                }
+            } else {
+                const slotCount = Math.max(val.length + 1, 1);
+                for (let i = 0; i < slotCount && i < max; i++) {
+                    const ch = val[i] || '';
+                    const cls = ['abone-digit'];
+                    if (ch) cls.push('filled');
+                    if (i === val.length && val.length < max) cls.push('active');
+                    html += `<div class="${cls.join(' ')}" aria-hidden="true">${ch}</div>`;
+                }
             }
             digitRow.innerHTML = html;
         }
 
         function updateQueryButton() {
             const len = inputIdentity.value.trim().length;
-            btnQuery.disabled = len < MIN_ACCOUNT_DIGITS || len > MAX_ACCOUNT_DIGITS;
+            if (searchMode === 'tc') {
+                btnQuery.disabled = len !== 11;
+            } else {
+                btnQuery.disabled = len < 1 || len > 10;
+            }
         }
 
         function setIdentityValue(val) {
-            inputIdentity.value = val.replace(/\D/g, '').slice(0, MAX_ACCOUNT_DIGITS);
+            inputIdentity.value = val.replace(/\D/g, '').slice(0, maxIdentityDigits());
             renderIdentityDisplay();
             updateQueryButton();
         }
+
+        document.querySelectorAll('.search-mode-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                applySearchMode(tab.dataset.mode);
+                onUserActivity();
+            });
+        });
 
         document.querySelectorAll('.numpad-key').forEach(key => {
             key.addEventListener('click', () => {
                 const action = key.dataset.key;
                 let val = inputIdentity.value;
-                const maxDigits = MAX_ACCOUNT_DIGITS;
+                const maxDigits = maxIdentityDigits();
                 if (action === 'clear') val = '';
                 else if (action === 'backspace') val = val.slice(0, -1);
                 else if (val.length < maxDigits) val += action;
@@ -1604,7 +1665,8 @@
 
         btnQuery.addEventListener('click', async () => {
             const identityNo = inputIdentity.value.trim();
-            if (identityNo.length < MIN_ACCOUNT_DIGITS || identityNo.length > MAX_ACCOUNT_DIGITS) return;
+            if (searchMode === 'tc' && identityNo.length !== 11) return;
+            if (searchMode === 'sicil' && (identityNo.length < 1 || identityNo.length > 10)) return;
             btnQuery.disabled = true;
             document.getElementById('login-loading').classList.remove('hidden');
             loginError.classList.add('hidden');
@@ -1616,8 +1678,11 @@
                 session.debts = debts;
                 session.selectedIds.clear();
                 renderDebtList();
+                const tag = citizen.searchType === 'tc'
+                    ? ('T.C.: ' + identityNo + (citizen.sicilNo ? ' · Sicil: ' + citizen.sicilNo : ''))
+                    : ('Sicil: ' + (citizen.sicilNo || identityNo));
                 document.getElementById('citizen-name').textContent =
-                    subscriberDisplayName(citizen) + ' — Sicil ' + (citizen.sicilNo || identityNo);
+                    subscriberDisplayName(citizen) + ' — ' + tag;
                 showScreen('debts');
             } catch (err) {
                 loginError.textContent = err.message;
@@ -1835,7 +1900,7 @@
             document.addEventListener(evt, onUserActivity, { passive: true });
         });
 
-        renderIdentityDisplay();
+        applySearchMode('tc');
         renderWaterAboneDisplay();
         showScreen('welcome');
     })();

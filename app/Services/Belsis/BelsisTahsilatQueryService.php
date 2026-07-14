@@ -15,18 +15,19 @@ class BelsisTahsilatQueryService
         private readonly BelsisSoapClient $client,
         private readonly BelsisAuthService $auth,
         private readonly BelsisTahakkukService $tahakkuk,
+        private readonly BelsisIdentityResolver $identity,
     ) {}
 
     /**
-     * Yalnızca gensicilno (sicil no) ile sorgu — abone no / TC yolu tamamen kaldırıldı.
-     * sicilSorgula gensicilno parametresiyle birebir eşleşen kaydı doğrular; eşleşmeyen
-     * kayıt asla "en yakın sonuç" olarak kabul edilmez (yanlış kişi riskini önler).
+     * Sicil (gensicilno) veya 11 haneli T.C. Kimlik No ile vatandaş çözümler.
      *
      * @return array{identityNo: string, gensicilNo: string, sicilNo: string, fullName: string, searchType: string, adi: string, soyadi: string}
      */
     public function getCitizen(string $identityNo): array
     {
-        $gensicilno = $this->parseGensicilNo($identityNo);
+        $identityNo = trim($identityNo);
+        $searchType = $this->detectSearchType($identityNo);
+        $gensicilno = $this->resolveToGensicil($identityNo, $searchType);
         $profile = $this->fetchSicilProfile($gensicilno);
 
         $adi = $profile['adi'];
@@ -37,11 +38,11 @@ class BelsisTahsilatQueryService
         }
 
         return [
-            'identityNo' => (string) $gensicilno,
+            'identityNo' => $identityNo,
             'gensicilNo' => (string) $profile['gensicilno'],
             'sicilNo'    => (string) $profile['gensicilno'],
             'fullName'   => $profile['fullName'],
-            'searchType' => 'sicil',
+            'searchType' => $searchType,
             'adi'        => $adi,
             'soyadi'     => $soyadi,
         ];
@@ -52,7 +53,9 @@ class BelsisTahsilatQueryService
      */
     public function getDebts(string $identityNo): array
     {
-        $gensicilno = $this->parseGensicilNo($identityNo);
+        $identityNo = trim($identityNo);
+        $searchType = $this->detectSearchType($identityNo);
+        $gensicilno = $this->resolveToGensicil($identityNo, $searchType);
 
         $debts = $this->fetchBorcSorgulaDebts($gensicilno);
 
@@ -234,12 +237,30 @@ class BelsisTahsilatQueryService
         }
     }
 
+    private function detectSearchType(string $identityNo): string
+    {
+        return strlen($identityNo) === 11 ? 'tc' : 'sicil';
+    }
+
+    private function resolveToGensicil(string $identityNo, string $searchType): int
+    {
+        if ($searchType === 'tc') {
+            return (int) $this->identity->resolveGensicilNo($identityNo, 'tc');
+        }
+
+        return $this->parseGensicilNo($identityNo);
+    }
+
     private function parseGensicilNo(string $identityNo): int
     {
         $identityNo = trim($identityNo);
 
         if (! ctype_digit($identityNo)) {
             throw new BelsisException('Geçersiz sicil numarası. Sadece rakam giriniz.');
+        }
+
+        if (strlen($identityNo) === 11) {
+            throw new BelsisException('Sicil numarası en fazla 10 haneli olabilir. T.C. için T.C. sekmesini kullanınız.');
         }
 
         $gensicilno = (int) $identityNo;
