@@ -291,7 +291,13 @@ class KioskApiController extends Controller
         $message = mb_strtolower($e->getMessage());
         $status = 422;
 
-        if (str_contains($message, '11 haneli') || str_contains($message, 'sicil numarası') || str_contains($message, 't.c. kimlik')) {
+        if (
+            str_contains($message, '11 haneli olmalıdır')
+            || str_contains($message, '1–10 haneli')
+            || str_contains($message, '1-10 haneli')
+            || str_contains($message, 'geçersiz sicil')
+            || str_contains($message, 'geçersiz abone')
+        ) {
             $status = 400;
         } elseif (
             str_contains($message, 'bulunamad')
@@ -312,6 +318,11 @@ class KioskApiController extends Controller
             str_contains($message, 'yetkisiz')
             || str_contains($message, 'bağlanılamadı')
             || str_contains($message, 'baglanilamadi')
+            || str_contains($message, 'ulaşılamadı')
+            || str_contains($message, 'ulasilamadi')
+            || str_contains($message, 'zaman aşımı')
+            || str_contains($message, 'zaman asimi')
+            || str_contains($message, 'dns:')
             || str_contains($message, 'sistem hatas')
             || str_contains($message, 'oturum')
             || str_contains($message, 'ip adresini tanımıyor')

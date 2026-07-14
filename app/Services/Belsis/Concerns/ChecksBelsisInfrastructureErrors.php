@@ -17,9 +17,13 @@ trait ChecksBelsisInfrastructureErrors
         return str_contains($message, 'yetkisiz_ip')
             || str_contains($message, 'bağlanılamadı')
             || str_contains($message, 'baglanilamadi')
+            || str_contains($message, 'ulaşılamadı')
+            || str_contains($message, 'ulasilamadi')
+            || str_contains($message, 'dns:')
             || str_contains($message, 'html')
             || str_contains($message, 'oturum')
             || str_contains($message, 'ip adresini tanımıyor')
+            || str_contains($message, 'zaman aşımı')
             || in_array($e->sonucKodu, ['401', '403', '1002', '1003'], true);
     }
 
