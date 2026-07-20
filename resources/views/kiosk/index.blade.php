@@ -427,12 +427,6 @@
                     <p class="text-kiosk-xs text-municipalGray-400 mt-3">Microsoft Edge · Internet Explorer modu</p>
                 </button>
             </div>
-            <p class="text-kiosk-xs text-municipalGray-500 mt-8 text-center max-w-xl">
-                İlk kurulum (bu PC’de bir kez):
-                <a href="{{ url('/baylan-ie/kurulum.reg') }}" class="text-cyan-700 font-semibold underline mx-1">kurulum.reg</a>
-                indirip çalıştırın (yönetici onayı gerekebilir) → Chrome’u tamamen kapatıp açın.
-                Sonraki BAYLAN tıklamalarında uyarı çıkmadan Edge IE modu açılır.
-            </p>
         </div>
     </section>
 
