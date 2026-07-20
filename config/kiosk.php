@@ -1,0 +1,26 @@
+<?php
+
+return [
+    // Her fiziksel kiosk cihazı için benzersiz kimlik (log + rate limit)
+    'id' => env('KIOSK_ID', 'kiosk-1'),
+
+    // Boş bırakılırsa API key kontrolü yapılmaz. Doluysa X-Kiosk-Key zorunlu.
+    'api_key' => env('KIOSK_API_KEY', ''),
+
+    'support_phone' => env('KIOSK_SUPPORT_PHONE', '444 01 39'),
+
+    // Yerel test sorgusu butonu — varsayılan kapalı
+    'enable_test_query' => filter_var(env('KIOSK_ENABLE_TEST_QUERY', false), FILTER_VALIDATE_BOOLEAN),
+
+    // Doğum tarihi / sorgu deneme limiti
+    'rate_limit' => [
+        'max_attempts' => (int) env('KIOSK_RATE_LIMIT_ATTEMPTS', 5),
+        'decay_seconds' => (int) env('KIOSK_RATE_LIMIT_DECAY', 600), // 10 dk
+    ],
+
+    // Başarılı doğrulama sonrası borç sorgusu için token ömrü (sn)
+    'query_token_ttl' => (int) env('KIOSK_QUERY_TOKEN_TTL', 900), // 15 dk
+
+    // Sağlık kontrolü — Belsis oturum açmayı dener (hafif)
+    'health_check_belsis' => filter_var(env('KIOSK_HEALTH_CHECK_BELSIS', true), FILTER_VALIDATE_BOOLEAN),
+];

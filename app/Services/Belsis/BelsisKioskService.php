@@ -17,13 +17,13 @@ class BelsisKioskService
     /**
      * @return array{identityNo: string, fullName: string, sicilNo: string, searchType?: string}
      */
-    public function getCitizen(string $identityNo, ?string $searchType = null): array
+    public function getCitizen(string $identityNo, ?string $searchType = null, ?string $birthDate = null): array
     {
         if ($this->shouldUseMock($identityNo)) {
-            return $this->mockCitizen($identityNo, $searchType);
+            return $this->mockCitizen($identityNo, $searchType, $birthDate);
         }
 
-        return $this->withSessionRetry(fn () => $this->query->getCitizen($identityNo, $searchType));
+        return $this->withSessionRetry(fn () => $this->query->getCitizen($identityNo, $searchType, $birthDate));
     }
 
     /**
@@ -245,11 +245,29 @@ class BelsisKioskService
     /**
      * @return array{identityNo: string, fullName: string, sicilNo: string, adi?: string, soyadi?: string}
      */
-    private function mockCitizen(string $identityNo, ?string $searchType = null): array
+    private function mockCitizen(string $identityNo, ?string $searchType = null, ?string $birthDate = null): array
     {
         $resolvedType = in_array($searchType, ['tc', 'sicil'], true)
             ? $searchType
             : (strlen(trim($identityNo)) === 11 ? 'tc' : 'sicil');
+
+        // Demo kayıt doğum tarihi: 01/01/1990
+        $expected = '19900101';
+        $submitted = preg_replace('/\\D/', '', (string) $birthDate);
+        if (strlen((string) $submitted) === 8) {
+            // DDMMYYYY → Ymd
+            $submitted = substr($submitted, 4, 4).substr($submitted, 2, 2).substr($submitted, 0, 2);
+        } elseif (preg_match('/^(\\d{1,2})[\\.\\/\\-](\\d{1,2})[\\.\\/\\-](\\d{4})$/', (string) $birthDate, $m)) {
+            $submitted = sprintf('%04d%02d%02d', (int) $m[3], (int) $m[2], (int) $m[1]);
+        }
+
+        if ($submitted !== $expected) {
+            throw new BelsisException(
+                $birthDate === null || trim((string) $birthDate) === ''
+                    ? 'Doğum tarihinizi gün/ay/yıl olarak giriniz (örn. 01/01/1990).'
+                    : 'Doğum tarihi eşleşmedi. Lütfen kontrol edip tekrar deneyiniz.'
+            );
+        }
 
         return [
             'sicilNo'    => $identityNo,

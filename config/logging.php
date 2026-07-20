@@ -118,6 +118,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'kiosk_audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/kiosk-audit.log'),
+            'level' => 'info',
+            'days' => (int) env('KIOSK_AUDIT_LOG_DAYS', 90),
+            'replace_placeholders' => true,
+        ],
+
         'null' => [
             'driver' => 'monolog',
             'handler' => NullHandler::class,

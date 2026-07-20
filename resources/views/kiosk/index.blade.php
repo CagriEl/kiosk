@@ -55,14 +55,13 @@
             display: grid;
             grid-template-columns: 624px 400px;
             min-height: 0;
-            height: 712px;
         }
         .login-left {
-            padding: 2rem 2.5rem;
+            padding: 1.25rem 2rem;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            gap: 1.25rem;
+            gap: 0.85rem;
             min-width: 0;
         }
         .login-numpad {
@@ -103,27 +102,33 @@
         .identity-strip {
             width: 100%;
             background: #fff;
-            border: 3px solid #1e5a9e;
+            border: 3px solid #bfdbfe;
             border-radius: 1rem;
-            padding: 1.25rem 1rem;
-            box-shadow: 0 4px 14px rgba(30, 90, 158, 0.12);
+            padding: 0.85rem 0.85rem;
+            box-shadow: 0 4px 14px rgba(30, 90, 158, 0.08);
+            cursor: pointer;
+            transition: border-color .15s ease, box-shadow .15s ease;
+        }
+        .identity-strip.is-focused {
+            border-color: #1e5a9e;
+            box-shadow: 0 4px 14px rgba(30, 90, 158, 0.16);
         }
         .digit-row {
             display: flex;
             justify-content: space-between;
-            gap: 6px;
+            gap: 5px;
         }
         .digit-slot {
             flex: 1;
             min-width: 0;
-            height: 80px;
+            height: 56px;
             border: 2px solid #bfdbfe;
-            border-radius: 0.75rem;
+            border-radius: 0.65rem;
             background: #f8fafc;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.125rem;
+            font-size: 1.5rem;
             font-weight: 700;
             color: #123a6b;
         }
@@ -135,6 +140,22 @@
             border-color: #1e5a9e;
             box-shadow: 0 0 0 3px rgba(30, 90, 158, 0.2);
             background: #fff;
+        }
+        .birth-sep {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 12px;
+            flex-shrink: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #93c5fd;
+        }
+        .btn-query-wide {
+            width: 100%;
+            padding: 1.25rem 1.25rem;
+            font-size: 1.375rem;
+            letter-spacing: 0.02em;
         }
         .loading-spinner {
             border: 4px solid #dbeafe; border-top-color: #1e5a9e;
@@ -332,29 +353,11 @@
 
     {{-- EKRAN 1: KARŞILAMA --}}
     <section id="screen-welcome" class="kiosk-screen active flex-col items-center justify-center bg-gradient-to-b from-municipal-500 to-municipal-700 relative">
-        <div class="absolute top-0 left-0 right-0 flex items-center justify-between px-8 py-5">
-            <div class="flex items-center gap-4">
-                <div class="w-20 h-14 rounded-md overflow-hidden shadow-xl border-2 border-white/30" aria-hidden="true">
-                    <div class="w-full h-full relative bg-[#e30a17]">
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <div class="w-8 h-8 rounded-full bg-white relative">
-                                <div class="absolute w-6 h-6 rounded-full bg-[#e30a17] top-1/2 left-1/2 -translate-x-1/3 -translate-y-1/2"></div>
-                                <div class="absolute w-1.5 h-1.5 bg-white rounded-full top-[18%] left-[62%]"></div>
-                                <div class="absolute w-1.5 h-1.5 bg-white rounded-full top-[38%] left-[72%]"></div>
-                                <div class="absolute w-1.5 h-1.5 bg-white rounded-full top-[62%] left-[72%]"></div>
-                                <div class="absolute w-1.5 h-1.5 bg-white rounded-full top-[78%] left-[58%]"></div>
-                                <div class="absolute w-1.5 h-1.5 bg-white rounded-full top-[78%] left-[38%]"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="text-white">
-                    <p class="text-kiosk-xs font-medium opacity-80">T.C.</p>
-                    <p class="text-kiosk-base font-bold tracking-wide">Belediye Hizmetleri</p>
-                </div>
-            </div>
-            <div class="w-16 h-16 rounded-full bg-white/15 border-2 border-white/40 flex items-center justify-center shadow-lg" aria-label="Belediye Logosu">
-                <svg class="w-9 h-9 text-white/90" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z"/></svg>
+        <div class="absolute top-0 left-0 flex items-center gap-4 px-8 py-5">
+            <img src="{{ asset('images/logo.png') }}" alt="T.C. Kırklareli Belediyesi" class="h-24 w-auto drop-shadow-xl" />
+            <div class="text-white">
+                <p class="text-kiosk-base font-bold tracking-wide leading-tight">T.C. Kırklareli Belediye Başkanlığı</p>
+                <p class="text-kiosk-sm font-medium opacity-90 leading-tight mt-0.5">Akıllı Ödeme Sistemleri</p>
             </div>
         </div>
         <div class="text-center text-white mb-10 animate-fade-in">
@@ -369,12 +372,24 @@
 
     {{-- EKRAN 1b: HİZMET MENÜSÜ --}}
     <section id="screen-menu" class="kiosk-screen flex-col bg-gray-50">
-        <header class="bg-municipal-600 text-white px-8 py-4 flex items-center justify-between shrink-0">
-            <div class="flex items-center gap-3">
-                <button id="btn-menu-back" type="button" class="touch-btn w-11 h-11 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+        <header class="bg-municipal-600 text-white px-8 py-3 flex items-center justify-between shrink-0 gap-4">
+            <div class="flex items-center gap-3 min-w-0">
+                <button id="btn-menu-back" type="button" class="touch-btn w-11 h-11 shrink-0 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <h2 class="text-kiosk-lg font-bold">Hizmet Seçimi</h2>
+                @include('kiosk.partials.brand', ['screenTitle' => 'Hizmet Seçimi'])
+            </div>
+            <div class="flex items-center gap-3 shrink-0 bg-white/10 rounded-2xl px-4 py-2.5 border border-white/20">
+                <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                    </svg>
+                </div>
+                <div class="leading-tight">
+                    <p class="text-kiosk-xs font-semibold opacity-90">Destek için</p>
+                    <p class="text-kiosk-sm font-bold tracking-wide">444 01 39</p>
+                    <p class="text-[0.7rem] opacity-75">nolu hattı arayabilirsiniz</p>
+                </div>
             </div>
         </header>
         <div class="flex-1 flex items-center justify-center px-10 gap-8">
@@ -390,49 +405,47 @@
                     <svg class="w-9 h-9 text-cyan-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3c-4 4-6 7-6 10a6 6 0 1012 0c0-3-2-6-6-10z"/></svg>
                 </div>
                 <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-2">Kartlı Su Sayacı</h3>
-                <p class="text-kiosk-sm text-municipalGray-600">Baylan veya Metlab kartınızla fatura ödeyin, avans veya kontör yükleyin.</p>
+                <p class="text-kiosk-sm text-municipalGray-600">Baylan kartınızla avans veya kontör yükleyin.</p>
             </button>
         </div>
     </section>
 
     {{-- EKRAN: SU — MARKA SEÇİMİ --}}
     <section id="screen-water-vendor" class="kiosk-screen flex-col bg-gray-50">
-        <header class="bg-cyan-700 text-white px-8 py-4 flex items-center gap-3 shrink-0">
-            <button id="btn-water-vendor-back" type="button" class="touch-btn w-11 h-11 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+        <header class="bg-cyan-700 text-white px-8 py-3 flex items-center gap-3 shrink-0">
+            <button id="btn-water-vendor-back" type="button" class="touch-btn w-11 h-11 shrink-0 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
             </button>
-            <h2 class="text-kiosk-lg font-bold">Sayaç Markası</h2>
+            @include('kiosk.partials.brand', ['screenTitle' => 'Sayaç Markası'])
         </header>
         <div class="flex-1 flex flex-col items-center justify-center px-10">
-            <p class="text-kiosk-base text-municipalGray-600 mb-8 text-center">Abonelik kartınızın markasını seçiniz</p>
+            <p class="text-kiosk-base text-municipalGray-600 mb-8 text-center">Baylan işlemine devam etmek için dokunun</p>
             <div class="flex gap-8 w-full max-w-3xl justify-center">
-                <button type="button" data-vendor="baylan" class="vendor-card touch-btn flex-1 max-w-sm bg-white border-3 border-cyan-300 rounded-3xl p-8 text-center shadow-lg">
+                <button type="button" data-vendor="baylan" id="btn-open-baylan" class="vendor-card touch-btn flex-1 max-w-sm bg-white border-3 border-cyan-300 rounded-3xl p-8 text-center shadow-lg">
                     <div class="text-kiosk-2xl font-black text-cyan-700 mb-2">BAYLAN</div>
                     <p class="text-kiosk-sm text-municipalGray-500">Avans kredi yükleme · NFC kart</p>
-                    <p class="text-kiosk-xs text-municipalGray-400 mt-3">Test: 12345, 27126</p>
-                </button>
-                <button type="button" data-vendor="metlab" class="vendor-card touch-btn flex-1 max-w-sm bg-white border-3 border-municipal-200 rounded-3xl p-8 text-center shadow-lg">
-                    <div class="text-kiosk-2xl font-black text-emerald-700 mb-2">METLAB</div>
-                    <p class="text-kiosk-sm text-municipalGray-500">IC akıllı kart</p>
-                    <p class="text-kiosk-xs text-municipalGray-400 mt-3">Test: 67890, 54321</p>
+                    <p class="text-kiosk-xs text-municipalGray-400 mt-3">Microsoft Edge · Internet Explorer modu</p>
                 </button>
             </div>
+            <p class="text-kiosk-xs text-municipalGray-500 mt-8 text-center max-w-xl">
+                İlk kurulum (bu PC’de bir kez):
+                <a href="{{ url('/baylan-ie/kurulum.reg') }}" class="text-cyan-700 font-semibold underline mx-1">kurulum.reg</a>
+                indirip çalıştırın (yönetici onayı gerekebilir) → Chrome’u tamamen kapatıp açın.
+                Sonraki BAYLAN tıklamalarında uyarı çıkmadan Edge IE modu açılır.
+            </p>
         </div>
     </section>
 
     {{-- EKRAN: BAYLAN AVANS KREDİ (genel.7z baylan.aspx akışı) --}}
     <section id="screen-baylan" class="kiosk-screen flex-col">
-        <header class="bg-cyan-700 text-white px-8 py-4 flex items-center justify-between shrink-0">
-            <div class="flex items-center gap-3">
-                <button id="btn-baylan-back" type="button" class="touch-btn w-11 h-11 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+        <header class="bg-cyan-700 text-white px-8 py-3 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
+                <button id="btn-baylan-back" type="button" class="touch-btn w-11 h-11 shrink-0 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <div>
-                    <h2 class="text-kiosk-lg font-bold tracking-wide">BAYLAN</h2>
-                    <p class="text-kiosk-xs opacity-80">Avans Kredi Yükleme</p>
-                </div>
+                @include('kiosk.partials.brand', ['screenTitle' => 'BAYLAN · Avans Kredi Yükleme'])
             </div>
-            <span id="baylan-step" class="text-kiosk-xs opacity-75">Adım 1</span>
+            <span id="baylan-step" class="text-kiosk-xs opacity-75 shrink-0">Adım 1</span>
         </header>
 
         <div class="flex-1 flex flex-col justify-center px-8 py-6 overflow-y-auto">
@@ -492,15 +505,12 @@
 
     {{-- EKRAN: SU — İŞLEM TÜRÜ --}}
     <section id="screen-water-action" class="kiosk-screen flex-col bg-gray-50">
-        <header class="bg-cyan-700 text-white px-8 py-4 flex items-center justify-between shrink-0">
-            <div class="flex items-center gap-3">
-                <button id="btn-water-action-back" type="button" class="touch-btn w-11 h-11 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+        <header class="bg-cyan-700 text-white px-8 py-3 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
+                <button id="btn-water-action-back" type="button" class="touch-btn w-11 h-11 shrink-0 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <div>
-                    <h2 class="text-kiosk-lg font-bold">İşlem Türü</h2>
-                    <p id="water-vendor-label" class="text-kiosk-xs opacity-80"></p>
-                </div>
+                @include('kiosk.partials.brand', ['screenTitle' => 'İşlem Türü', 'subtitleId' => 'water-vendor-label'])
             </div>
         </header>
         <div class="flex-1 flex flex-col items-center justify-center px-10 gap-5 max-w-2xl mx-auto w-full">
@@ -521,14 +531,14 @@
 
     {{-- EKRAN: SU — KART OKUMA --}}
     <section id="screen-water-card" class="kiosk-screen flex-col bg-gray-50">
-        <header class="bg-cyan-700 text-white px-8 py-3 flex items-center justify-between shrink-0 h-14">
-            <div class="flex items-center gap-3">
-                <button id="btn-water-card-back" type="button" class="touch-btn w-10 h-10 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+        <header class="bg-cyan-700 text-white px-8 py-3 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
+                <button id="btn-water-card-back" type="button" class="touch-btn w-10 h-10 shrink-0 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <h2 class="text-kiosk-base font-bold">Kart Okuma</h2>
+                @include('kiosk.partials.brand', ['screenTitle' => 'Kart Okuma', 'logoClass' => 'h-10'])
             </div>
-            <span id="water-step-label" class="text-kiosk-xs opacity-75">Adım 1</span>
+            <span id="water-step-label" class="text-kiosk-xs opacity-75 shrink-0">Adım 1</span>
         </header>
         <div class="flex-1 grid grid-cols-2 min-h-0">
             <div class="p-8 flex flex-col justify-center gap-5 border-r border-municipal-200">
@@ -563,11 +573,11 @@
 
     {{-- EKRAN: SU — ABONE ÖZET (avans onay) --}}
     <section id="screen-water-advance" class="kiosk-screen flex-col bg-gray-50">
-        <header class="bg-cyan-700 text-white px-8 py-4 flex items-center gap-3 shrink-0">
-            <button id="btn-water-advance-back" type="button" class="touch-btn w-11 h-11 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+        <header class="bg-cyan-700 text-white px-8 py-3 flex items-center gap-3 shrink-0">
+            <button id="btn-water-advance-back" type="button" class="touch-btn w-11 h-11 shrink-0 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
             </button>
-            <h2 class="text-kiosk-lg font-bold">Avans Kredi Yükleme</h2>
+            @include('kiosk.partials.brand', ['screenTitle' => 'Avans Kredi Yükleme'])
         </header>
         <div class="flex-1 flex flex-col items-center justify-center px-10 text-center max-w-2xl mx-auto">
             <div id="water-advance-info" class="bg-white rounded-3xl border-2 border-amber-200 p-8 shadow-lg w-full mb-8 text-left space-y-3"></div>
@@ -579,15 +589,12 @@
 
     {{-- EKRAN: SU — FATURA LİSTESİ --}}
     <section id="screen-water-invoices" class="kiosk-screen bg-gray-50">
-        <header class="bg-cyan-700 text-white px-8 py-4 flex items-center justify-between shrink-0">
+        <header class="bg-cyan-700 text-white px-8 py-3 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-3 min-w-0">
                 <button id="btn-water-invoices-back" type="button" class="touch-btn w-11 h-11 shrink-0 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <div class="min-w-0">
-                    <h2 class="text-kiosk-lg font-bold">Su Faturaları</h2>
-                    <p id="water-invoice-subscriber" class="text-kiosk-xs opacity-80 truncate"></p>
-                </div>
+                @include('kiosk.partials.brand', ['screenTitle' => 'Su Faturaları', 'subtitleId' => 'water-invoice-subscriber'])
             </div>
         </header>
         <div class="flex-1 flex overflow-hidden min-h-0">
@@ -605,15 +612,12 @@
 
     {{-- EKRAN: SU — KONTÖR SEÇİMİ --}}
     <section id="screen-water-kontor" class="kiosk-screen flex-col bg-gray-50">
-        <header class="bg-cyan-700 text-white px-8 py-4 flex items-center justify-between shrink-0">
+        <header class="bg-cyan-700 text-white px-8 py-3 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-3 min-w-0">
-                <button id="btn-water-kontor-back" type="button" class="touch-btn w-11 h-11 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+                <button id="btn-water-kontor-back" type="button" class="touch-btn w-11 h-11 shrink-0 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <div class="min-w-0">
-                    <h2 class="text-kiosk-lg font-bold">Kontör Yükleme</h2>
-                    <p id="water-kontor-subscriber" class="text-kiosk-xs opacity-80 truncate"></p>
-                </div>
+                @include('kiosk.partials.brand', ['screenTitle' => 'Kontör Yükleme', 'subtitleId' => 'water-kontor-subscriber'])
             </div>
         </header>
         <div class="flex-1 flex flex-col items-center justify-center px-10">
@@ -634,33 +638,59 @@
 
     {{-- EKRAN 2: VATANDAŞ GİRİŞİ — sol: uzun numara alanı, sağ: numaratör --}}
     <section id="screen-login" class="kiosk-screen bg-gray-50">
-        <header class="bg-municipal-600 text-white px-8 py-3 flex items-center justify-between shrink-0 h-14">
-            <div class="flex items-center gap-3">
-                <button id="btn-back-welcome" type="button" class="touch-btn w-10 h-10 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
+        <header class="bg-municipal-600 text-white px-8 py-3 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
+                <button id="btn-back-welcome" type="button" class="touch-btn w-10 h-10 shrink-0 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <h2 class="text-kiosk-base font-bold">Kimlik Bilgileri</h2>
+                @include('kiosk.partials.brand', ['screenTitle' => 'Kimlik Bilgileri', 'logoClass' => 'h-10'])
             </div>
-            <span class="text-kiosk-xs opacity-75">Adım 1 / 2</span>
+            <span class="text-kiosk-xs opacity-75 shrink-0">Adım 1 / 2</span>
         </header>
         <div class="login-split">
             <div class="login-left">
                 <div>
-                    <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-3">Borç Sorgulama</h3>
+                    <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-2">Borç Sorgulama</h3>
                     <p id="identity-hint" class="text-kiosk-sm text-municipalGray-600 leading-snug">
-                        11 haneli T.C. Kimlik Numaranızı numaratör veya fiziksel klavye (NumLock) ile giriniz.
+                        T.C. Kimlik No ve doğum tarihinizi giriniz. Doğum tarihi, yetkisiz sorguları engellemek içindir.
                     </p>
                 </div>
-                <div class="identity-strip">
-                    <p id="identity-strip-label" class="text-kiosk-xs text-municipalGray-500 mb-2 font-medium uppercase tracking-wide">T.C. Kimlik No</p>
+                <div id="strip-tc" class="identity-strip is-focused" data-focus="tc" role="button" tabindex="0">
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <p id="identity-strip-label" class="text-kiosk-xs text-municipalGray-500 font-medium uppercase tracking-wide">T.C. Kimlik No</p>
+                        <button id="btn-reveal-tc" type="button"
+                            class="touch-btn flex items-center gap-2 px-3 py-1.5 rounded-xl bg-municipal-50 border-2 border-municipal-200 text-municipal-700 hover:bg-municipal-100"
+                            aria-label="T.C. Kimlik No’yu göster (basılı tutun)"
+                            title="Kontrol için basılı tutun">
+                            <svg id="icon-eye-open" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg id="icon-eye-off" class="w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                            </svg>
+                            <span class="text-kiosk-xs font-semibold">Göster</span>
+                        </button>
+                    </div>
                     <div id="digit-row" class="digit-row" aria-live="polite"></div>
                 </div>
+                <div id="strip-birth" class="identity-strip" data-focus="birth" role="button" tabindex="0">
+                    <p class="text-kiosk-xs text-municipalGray-500 font-medium uppercase tracking-wide mb-2">Doğum Tarihi (Gün / Ay / Yıl)</p>
+                    <div id="birth-digit-row" class="digit-row" aria-live="polite"></div>
+                </div>
                 <input id="input-identity" type="text" class="sr-only" maxlength="11" readonly aria-label="T.C. Kimlik No" />
+                <input id="input-birth" type="text" class="sr-only" maxlength="8" readonly aria-label="Doğum Tarihi" />
                 <p id="login-error" class="text-kiosk-sm text-red-600 font-medium hidden" role="alert"></p>
                 <button id="btn-query" type="button" disabled
                     class="touch-btn btn-query-wide bg-municipal-600 text-white font-bold rounded-2xl shadow-xl hover:bg-municipal-700 disabled:opacity-40">
                     BORÇLARI SORGULA
                 </button>
+                @if (config('kiosk.enable_test_query'))
+                <button id="btn-test-query" type="button"
+                    class="touch-btn w-full py-3 text-kiosk-sm font-semibold text-municipal-600 bg-municipal-50 border-2 border-municipal-200 rounded-xl hover:bg-municipal-100">
+                    Test sorgusu (API yok)
+                </button>
+                @endif
                 <div id="login-loading" class="hidden flex items-center gap-3">
                     <div class="loading-spinner w-8 h-8" style="border-width:3px"></div>
                     <span class="text-kiosk-sm text-municipalGray-600">Sorgulanıyor, lütfen bekleyiniz...</span>
@@ -681,15 +711,12 @@
 
     {{-- EKRAN: ABONELİK SEÇİMİ (aynı TC’de birden fazla kayıt) --}}
     <section id="screen-accounts" class="kiosk-screen flex-col bg-gray-50">
-        <header class="bg-municipal-600 text-white px-8 py-4 flex items-center justify-between shrink-0">
+        <header class="bg-municipal-600 text-white px-8 py-3 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-3 min-w-0">
                 <button id="btn-back-accounts" type="button" class="touch-btn w-11 h-11 shrink-0 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <div class="min-w-0">
-                    <h2 class="text-kiosk-lg font-bold">Abonelik Seçimi</h2>
-                    <p id="accounts-subtitle" class="text-kiosk-xs opacity-80 mt-0.5 truncate"></p>
-                </div>
+                @include('kiosk.partials.brand', ['screenTitle' => 'Abonelik Seçimi', 'subtitleId' => 'accounts-subtitle'])
             </div>
             <span class="text-kiosk-xs opacity-75 shrink-0">Adım 1b / 2</span>
         </header>
@@ -702,15 +729,12 @@
 
     {{-- EKRAN 3: BORÇ LİSTESİ --}}
     <section id="screen-debts" class="kiosk-screen flex-col bg-gray-50">
-        <header class="bg-municipal-600 text-white px-8 py-4 flex items-center justify-between shrink-0">
+        <header class="bg-municipal-600 text-white px-8 py-3 flex items-center justify-between shrink-0">
             <div class="flex items-center gap-3 min-w-0">
                 <button id="btn-back-login" type="button" class="touch-btn w-11 h-11 shrink-0 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center" aria-label="Geri">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <div class="min-w-0">
-                    <h2 class="text-kiosk-lg font-bold">Borç Listesi</h2>
-                    <p id="citizen-name" class="text-kiosk-xs opacity-80 mt-0.5 truncate"></p>
-                </div>
+                @include('kiosk.partials.brand', ['screenTitle' => 'Borç Listesi', 'subtitleId' => 'citizen-name'])
             </div>
             <span class="text-kiosk-xs opacity-75 shrink-0">Adım 2 / 2</span>
         </header>
@@ -748,7 +772,14 @@
     </section>
 
     {{-- EKRAN 4: BAŞARILI --}}
-    <section id="screen-success" class="kiosk-screen flex-col items-center justify-center bg-gradient-to-b from-green-50 to-white">
+    <section id="screen-success" class="kiosk-screen flex-col items-center justify-center bg-gradient-to-b from-green-50 to-white relative">
+        <div class="absolute top-0 left-0 flex items-center gap-3 px-8 py-5">
+            <img src="{{ asset('images/logo.png') }}" alt="T.C. Kırklareli Belediyesi" class="h-16 w-auto" />
+            <div>
+                <p class="text-kiosk-sm font-bold tracking-wide leading-tight text-municipal-800">T.C. Kırklareli Belediye Başkanlığı</p>
+                <p class="text-kiosk-xs text-municipalGray-600 leading-tight mt-0.5">Akıllı Ödeme Sistemleri</p>
+            </div>
+        </div>
         <div class="relative mb-8 animate-scale-in">
             <div class="success-check-ring absolute inset-0 rounded-full bg-green-400/30"></div>
             <div class="w-32 h-32 rounded-full bg-green-500 flex items-center justify-center shadow-2xl relative z-10">
@@ -810,6 +841,33 @@
         </div>
     </div>
 
+    {{-- SİSTEM KAPALI / BELSİS OFFLINE — tam ekran (manuel / kritik) --}}
+    <div id="offline-overlay" class="fixed inset-0 z-50 hidden items-center justify-center inactivity-overlay bg-black/70" role="alertdialog" aria-modal="true" aria-labelledby="offline-title">
+        <div class="bg-white rounded-2xl shadow-2xl px-10 py-9 text-center w-[600px] border-2 border-red-200">
+            <div class="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-5">
+                <svg class="w-9 h-9 text-red-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            </div>
+            <h3 id="offline-title" class="text-kiosk-lg font-bold text-municipalGray-800 mb-3">Sistem Geçici Olarak Kullanılamıyor</h3>
+            <p id="offline-message" class="text-kiosk-sm text-municipalGray-600 mb-5 leading-relaxed">
+                Belediye ödeme sistemi şu an erişilemiyor. Lütfen daha sonra tekrar deneyiniz.
+            </p>
+            <div class="bg-municipal-50 border-2 border-municipal-200 rounded-2xl px-5 py-4 mb-6">
+                <p class="text-kiosk-xs text-municipalGray-500 mb-1">Destek hattı</p>
+                <p id="offline-support-phone" class="text-kiosk-xl font-bold text-municipal-700 tracking-wide">{{ config('kiosk.support_phone') }}</p>
+            </div>
+            <div class="flex gap-3">
+                <button id="btn-offline-dismiss" type="button" class="touch-btn flex-1 bg-municipalGray-100 text-municipalGray-700 font-bold text-kiosk-sm py-5 rounded-2xl border-2 border-municipalGray-300">YİNE DE DEVAM ET</button>
+                <button id="btn-offline-retry" type="button" class="touch-btn flex-1 bg-municipal-600 text-white font-bold text-kiosk-sm py-5 rounded-2xl shadow-xl hover:bg-municipal-700">TEKRAR DENE</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Hafif uyarı bandı (Belsis erişilemiyor ama ekranı kilitlemez) --}}
+    <div id="health-banner" class="fixed top-0 left-0 right-0 z-40 hidden px-6 py-3 bg-amber-500 text-white text-center shadow-lg">
+        <p id="health-banner-text" class="text-kiosk-sm font-semibold">Belediye sistemi şu an yanıt vermiyor. Destek: {{ config('kiosk.support_phone') }}</p>
+        <button id="btn-health-banner-close" type="button" class="absolute right-4 top-1/2 -translate-y-1/2 touch-btn w-10 h-10 rounded-lg bg-white/20 hover:bg-white/30 font-bold">×</button>
+    </div>
+
     <script>
     (function () {
         'use strict';
@@ -821,18 +879,49 @@
 
         const API_BASE = resolveApiBase();
         const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
+        const KIOSK_ID = @json(config('kiosk.id'));
+        const KIOSK_API_KEY = @json(config('kiosk.api_key') ?: '');
+        const KIOSK_SUPPORT_PHONE = @json(config('kiosk.support_phone'));
+        const KIOSK_ENABLE_TEST = @json((bool) config('kiosk.enable_test_query'));
+        const BAYLAN_IE_URL = @json(config('belsis.baylan_ie_url'));
+        const BAYLAN_IE_PROTOCOL = 'baylan-ie:open';
+
+        /** Chrome'dan istemci PC'de Edge IE modunu açar (baylan-ie: protokolü gerekir). */
+        function openBaylanInEdgeIe() {
+            const a = document.createElement('a');
+            a.href = BAYLAN_IE_PROTOCOL;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        function kioskHeaders(extra = {}) {
+            const headers = {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-Kiosk-Id': KIOSK_ID,
+                ...extra,
+            };
+            if (KIOSK_API_KEY) headers['X-Kiosk-Key'] = KIOSK_API_KEY;
+            return headers;
+        }
 
         async function apiRequest(url, options = {}) {
             try {
+                const { headers: extraHeaders, ...rest } = options;
                 const res = await fetch(url, {
-                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', ...options.headers },
                     credentials: 'same-origin',
-                    ...options,
+                    ...rest,
+                    headers: kioskHeaders(extraHeaders || {}),
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) {
                     const detail = data.sonucKodu ? ` (${data.sonucKodu})` : '';
-                    throw new Error((data.message || `Sunucu hatası (${res.status})`) + detail);
+                    const err = new Error((data.message || `Sunucu hatası (${res.status})`) + detail);
+                    err.status = res.status;
+                    err.payload = data;
+                    throw err;
                 }
                 return data;
             } catch (err) {
@@ -843,18 +932,144 @@
             }
         }
 
-        async function fetchCitizen(accountNo, searchType) {
-            const qs = searchType ? `?searchType=${encodeURIComponent(searchType)}` : '';
+        async function checkSystemHealth() {
+            try {
+                const res = await fetch(`${API_BASE}/health`, {
+                    headers: kioskHeaders(),
+                    credentials: 'same-origin',
+                });
+                const data = await res.json().catch(() => ({}));
+                // Belsis erişilemiyorsa tam ekran kilidi yok — üstte uyarı bandı
+                if (!res.ok || data.status === 'degraded' || data.belsis === 'down') {
+                    showHealthBanner(
+                        data.message || ('Belediye sistemi şu an yanıt vermiyor. Destek: ' + (data.support_phone || KIOSK_SUPPORT_PHONE))
+                    );
+                    hideOfflineOverlay();
+                    return false;
+                }
+                hideHealthBanner();
+                hideOfflineOverlay();
+                return true;
+            } catch (err) {
+                // API’nin kendisi yoksa (sunucu düşmüş) tam ekran göster
+                showOfflineOverlay(
+                    'Kiosk sunucusuna bağlanılamadı. Lütfen daha sonra tekrar deneyiniz.',
+                    KIOSK_SUPPORT_PHONE
+                );
+                return false;
+            }
+        }
+
+        function showOfflineOverlay(message, phone) {
+            const el = document.getElementById('offline-overlay');
+            if (message) document.getElementById('offline-message').textContent = message;
+            if (phone) document.getElementById('offline-support-phone').textContent = phone;
+            el.classList.remove('hidden');
+            el.classList.add('flex');
+        }
+
+        function hideOfflineOverlay() {
+            const el = document.getElementById('offline-overlay');
+            el.classList.add('hidden');
+            el.classList.remove('flex');
+        }
+
+        function showHealthBanner(message) {
+            const banner = document.getElementById('health-banner');
+            if (message) document.getElementById('health-banner-text').textContent = message;
+            banner.classList.remove('hidden');
+        }
+
+        function hideHealthBanner() {
+            document.getElementById('health-banner').classList.add('hidden');
+        }
+
+        async function fetchCitizen(accountNo, searchType, birthDate) {
+            if (KIOSK_ENABLE_TEST && isTestIdentity(accountNo)) {
+                return getTestCitizen(accountNo, birthDate);
+            }
+            const params = new URLSearchParams();
+            if (searchType) params.set('searchType', searchType);
+            if (birthDate) params.set('birthDate', birthDate);
+            const qs = params.toString() ? `?${params}` : '';
             return apiRequest(`${API_BASE}/citizen/${accountNo}${qs}`);
         }
 
         async function fetchDebts(accountNo, searchType, gensicilNo, aboneNo) {
+            if (KIOSK_ENABLE_TEST && isTestIdentity(accountNo)) {
+                return getTestDebts();
+            }
             const params = new URLSearchParams();
             if (searchType) params.set('searchType', searchType);
             if (gensicilNo) params.set('gensicilNo', gensicilNo);
             if (aboneNo) params.set('aboneNo', aboneNo);
+            if (session.queryToken) params.set('queryToken', session.queryToken);
             const qs = params.toString() ? `?${params}` : '';
             return apiRequest(`${API_BASE}/debts/${accountNo}${qs}`);
+        }
+
+        /** Yerel test TC — API çağrılmaz (doğum: 01/01/1990) */
+        const TEST_TC = '11111111110';
+        const TEST_BIRTH = '01011990';
+
+        function isTestIdentity(identityNo) {
+            return String(identityNo || '').replace(/\D/g, '') === TEST_TC;
+        }
+
+        function getTestCitizen(identityNo, birthDate) {
+            const digits = String(birthDate || '').replace(/\D/g, '');
+            if (digits !== TEST_BIRTH) {
+                throw new Error(
+                    digits === ''
+                        ? 'Doğum tarihinizi gün/ay/yıl olarak giriniz (örn. 01/01/1990).'
+                        : 'Doğum tarihi eşleşmedi. Lütfen kontrol edip tekrar deneyiniz.'
+                );
+            }
+            return {
+                identityNo: identityNo,
+                fullName: 'Test Vatandaş',
+                adi: 'Test',
+                soyadi: 'Vatandaş',
+                gensicilNo: '10001',
+                sicilNo: '10001',
+                aboneNo: '200200',
+                address: 'Test Mah. Demo Cad. No:1 Kırklareli',
+                totalDebt: 375.50,
+                needsSelection: false,
+                accounts: [],
+            };
+        }
+
+        function getTestDebts() {
+            return {
+                debts: [
+                    {
+                        id: 'test-debt-1',
+                        type: 'Su abonelik borcu',
+                        period: '2026 / 03',
+                        amount: 185.75,
+                        dueDate: '2026-04-15',
+                        meta: {
+                            groupKey: 'test-su-2026-03',
+                            groupTitle: 'Su Aboneliği',
+                            aboneNo: '200200',
+                            modulBilgisi: 'Test modülü',
+                        },
+                    },
+                    {
+                        id: 'test-debt-2',
+                        type: 'Çevre temizlik vergisi',
+                        period: '2026 / 1. dönem',
+                        amount: 189.75,
+                        dueDate: '2026-06-30',
+                        meta: {
+                            groupKey: 'test-ctv-2026-1',
+                            groupTitle: 'Çevre Temizlik Vergisi',
+                            aboneNo: '200200',
+                        },
+                    },
+                ],
+            };
         }
 
         async function initiateBankPayment(identityNo, selectedDebtIds, searchType, gensicilNo, aboneNo) {
@@ -997,6 +1212,7 @@
         const session = {
             citizen: null, debts: [], selectedIds: new Set(),
             currentScreen: 'welcome', pendingPayment: null, accounts: [],
+            queryToken: null,
         };
         const water = {
             vendor: null, action: null, subscriber: null,
@@ -1016,7 +1232,10 @@
             SCREENS[name].classList.add('active');
             session.currentScreen = name;
             resetInactivityTimer();
-            if (name === 'login') renderIdentityDisplay();
+            if (name === 'login') {
+                renderIdentityDisplay();
+                renderBirthDisplay();
+            }
         }
 
         function resetWaterSession() {
@@ -1152,7 +1371,11 @@
 
         function resetSession() {
             session.citizen = null; session.debts = []; session.selectedIds.clear();
+            session.queryToken = null;
+            setTcRevealed(false);
+            setLoginFocus('tc');
             setIdentityValue('');
+            setBirthValue('');
             document.getElementById('login-error').classList.add('hidden');
             document.getElementById('btn-query').disabled = true;
             document.getElementById('login-loading').classList.add('hidden');
@@ -1168,6 +1391,7 @@
             clearTimeout(successTimer); clearInterval(successCountdownIv);
             closeInactivityModal();
             renderIdentityDisplay();
+            renderBirthDisplay();
         }
 
         function goHome() { resetSession(); showScreen('welcome'); }
@@ -1344,23 +1568,21 @@
             const digit = digitFromKeyEvent(e);
             if (digit !== null) {
                 e.preventDefault();
-                if (inputIdentity.value.length < TC_DIGITS) {
-                    setIdentityValue(inputIdentity.value + digit);
-                }
+                appendLoginDigit(digit);
                 loginError.classList.add('hidden');
                 onUserActivity();
                 return true;
             }
             if (e.key === 'Backspace') {
                 e.preventDefault();
-                setIdentityValue(inputIdentity.value.slice(0, -1));
+                backspaceLoginDigit();
                 loginError.classList.add('hidden');
                 onUserActivity();
                 return true;
             }
             if (e.key === 'Delete' || e.key === 'Escape') {
                 e.preventDefault();
-                setIdentityValue('');
+                clearActiveLoginField();
                 loginError.classList.add('hidden');
                 onUserActivity();
                 return true;
@@ -1472,42 +1694,186 @@
         }
 
         const inputIdentity = document.getElementById('input-identity');
+        const inputBirth = document.getElementById('input-birth');
         const digitRow = document.getElementById('digit-row');
+        const birthDigitRow = document.getElementById('birth-digit-row');
         const btnQuery = document.getElementById('btn-query');
         const loginError = document.getElementById('login-error');
+        const btnRevealTc = document.getElementById('btn-reveal-tc');
+        const stripTc = document.getElementById('strip-tc');
+        const stripBirth = document.getElementById('strip-birth');
         const TC_DIGITS = 11;
+        const BIRTH_DIGITS = 8;
+        let tcRevealed = false;
+        let loginFocus = 'tc'; // 'tc' | 'birth'
+
+        /** KVKK: ilk 3 + ortası yıldız + son 3 (örn. 123*****789) */
+        function maskTc(tc) {
+            const digits = String(tc || '').replace(/\D/g, '');
+            if (digits.length !== TC_DIGITS) return digits;
+            return digits.slice(0, 3) + '*****' + digits.slice(8);
+        }
+
+        function displayTcDigit(val, index) {
+            const ch = val[index];
+            if (!ch) return '';
+            if (tcRevealed) return ch;
+            if (index >= 3 && index <= 7) return '*';
+            return ch;
+        }
+
+        function formatBirthForApi(digits) {
+            const d = String(digits || '').replace(/\D/g, '');
+            if (d.length !== 8) return '';
+            return d.slice(0, 2) + '/' + d.slice(2, 4) + '/' + d.slice(4, 8);
+        }
+
+        function setLoginFocus(focus) {
+            loginFocus = focus === 'birth' ? 'birth' : 'tc';
+            stripTc.classList.toggle('is-focused', loginFocus === 'tc');
+            stripBirth.classList.toggle('is-focused', loginFocus === 'birth');
+            renderIdentityDisplay();
+            renderBirthDisplay();
+        }
+
+        function updateRevealTcUi() {
+            const eyeOpen = document.getElementById('icon-eye-open');
+            const eyeOff = document.getElementById('icon-eye-off');
+            if (tcRevealed) {
+                eyeOpen.classList.add('hidden');
+                eyeOff.classList.remove('hidden');
+                btnRevealTc.classList.add('bg-municipal-100', 'border-municipal-500');
+                btnRevealTc.setAttribute('aria-pressed', 'true');
+            } else {
+                eyeOpen.classList.remove('hidden');
+                eyeOff.classList.add('hidden');
+                btnRevealTc.classList.remove('bg-municipal-100', 'border-municipal-500');
+                btnRevealTc.setAttribute('aria-pressed', 'false');
+            }
+        }
+
+        function setTcRevealed(revealed) {
+            if (tcRevealed === revealed) return;
+            tcRevealed = revealed;
+            updateRevealTcUi();
+            renderIdentityDisplay();
+        }
 
         function renderIdentityDisplay() {
             const val = inputIdentity.value;
             let html = '';
             for (let i = 0; i < TC_DIGITS; i++) {
                 const ch = val[i] || '';
+                const shown = displayTcDigit(val, i);
                 const cls = ['digit-slot'];
                 if (ch) cls.push('filled');
-                if (i === val.length && val.length < TC_DIGITS) cls.push('active');
-                html += `<div class="${cls.join(' ')}" aria-hidden="true">${ch}</div>`;
+                if (loginFocus === 'tc' && i === val.length && val.length < TC_DIGITS) cls.push('active');
+                html += `<div class="${cls.join(' ')}" aria-hidden="true">${shown}</div>`;
             }
             digitRow.innerHTML = html;
         }
 
+        function renderBirthDisplay() {
+            const val = inputBirth.value;
+            let html = '';
+            for (let i = 0; i < BIRTH_DIGITS; i++) {
+                if (i === 2 || i === 4) html += '<span class="birth-sep" aria-hidden="true">/</span>';
+                const ch = val[i] || '';
+                const cls = ['digit-slot'];
+                if (ch) cls.push('filled');
+                if (loginFocus === 'birth' && i === val.length && val.length < BIRTH_DIGITS) cls.push('active');
+                html += `<div class="${cls.join(' ')}" aria-hidden="true">${ch}</div>`;
+            }
+            birthDigitRow.innerHTML = html;
+        }
+
         function updateQueryButton() {
-            btnQuery.disabled = inputIdentity.value.trim().length !== TC_DIGITS;
+            btnQuery.disabled = !(
+                inputIdentity.value.trim().length === TC_DIGITS
+                && inputBirth.value.trim().length === BIRTH_DIGITS
+            );
         }
 
         function setIdentityValue(val) {
             inputIdentity.value = val.replace(/\D/g, '').slice(0, TC_DIGITS);
             renderIdentityDisplay();
+            if (inputIdentity.value.length === TC_DIGITS && loginFocus === 'tc') {
+                setLoginFocus('birth');
+            }
             updateQueryButton();
         }
+
+        function setBirthValue(val) {
+            inputBirth.value = val.replace(/\D/g, '').slice(0, BIRTH_DIGITS);
+            renderBirthDisplay();
+            updateQueryButton();
+        }
+
+        function appendLoginDigit(digit) {
+            if (loginFocus === 'birth') {
+                if (inputBirth.value.length < BIRTH_DIGITS) {
+                    setBirthValue(inputBirth.value + digit);
+                }
+                return;
+            }
+            if (inputIdentity.value.length < TC_DIGITS) {
+                setIdentityValue(inputIdentity.value + digit);
+            }
+        }
+
+        function backspaceLoginDigit() {
+            if (loginFocus === 'birth') {
+                if (inputBirth.value.length > 0) {
+                    setBirthValue(inputBirth.value.slice(0, -1));
+                } else {
+                    setLoginFocus('tc');
+                }
+                return;
+            }
+            setIdentityValue(inputIdentity.value.slice(0, -1));
+        }
+
+        function clearActiveLoginField() {
+            if (loginFocus === 'birth') setBirthValue('');
+            else setIdentityValue('');
+        }
+
+        stripTc.addEventListener('click', (e) => {
+            if (e.target.closest('#btn-reveal-tc')) return;
+            setLoginFocus('tc');
+            onUserActivity();
+        });
+        stripBirth.addEventListener('click', () => {
+            setLoginFocus('birth');
+            onUserActivity();
+        });
+
+        // Basılı tutunca göster, bırakınca tekrar maskele
+        ['pointerdown', 'touchstart', 'mousedown'].forEach((evt) => {
+            btnRevealTc.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setTcRevealed(true);
+                onUserActivity();
+            });
+        });
+        ['pointerup', 'pointercancel', 'pointerleave', 'touchend', 'touchcancel', 'mouseup', 'mouseleave'].forEach((evt) => {
+            btnRevealTc.addEventListener(evt, (e) => {
+                e.stopPropagation();
+                setTcRevealed(false);
+            });
+        });
+        window.addEventListener('blur', () => setTcRevealed(false));
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) setTcRevealed(false);
+        });
 
         document.querySelectorAll('.numpad-key').forEach(key => {
             key.addEventListener('click', () => {
                 const action = key.dataset.key;
-                let val = inputIdentity.value;
-                if (action === 'clear') val = '';
-                else if (action === 'backspace') val = val.slice(0, -1);
-                else if (val.length < TC_DIGITS) val += action;
-                setIdentityValue(val);
+                if (action === 'clear') clearActiveLoginField();
+                else if (action === 'backspace') backspaceLoginDigit();
+                else appendLoginDigit(action);
                 loginError.classList.add('hidden');
                 onUserActivity();
             });
@@ -1525,15 +1891,14 @@
                 water.vendor = btn.dataset.vendor;
                 water.action = null;
                 water.subscriber = null;
-                document.getElementById('water-vendor-label').textContent = vendorLabel(water.vendor) + ' kartlı sayaç';
                 onUserActivity();
-                if (water.vendor === 'baylan') {
-                    water.action = 'advance';
-                    resetBaylanScreen();
-                    setTimeout(() => showScreen('baylan'), 180);
-                } else {
-                    setTimeout(() => showScreen('waterAction'), 180);
+
+                if (water.vendor !== 'baylan') {
+                    return;
                 }
+
+                openBaylanInEdgeIe();
+                setTimeout(() => btn.classList.remove('selected'), 400);
             });
         });
 
@@ -1645,14 +2010,16 @@
 
         btnQuery.addEventListener('click', async () => {
             const identityNo = inputIdentity.value.trim();
-            if (identityNo.length !== 11) return;
+            const birthDate = formatBirthForApi(inputBirth.value);
+            if (identityNo.length !== 11 || birthDate === '') return;
             btnQuery.disabled = true;
             document.getElementById('login-loading').classList.remove('hidden');
             loginError.classList.add('hidden');
             onUserActivity();
             try {
-                const citizen = await fetchCitizen(identityNo, 'tc');
+                const citizen = await fetchCitizen(identityNo, 'tc', birthDate);
                 session.citizen = citizen;
+                session.queryToken = citizen.queryToken || null;
                 session.accounts = Array.isArray(citizen.accounts) ? citizen.accounts : [];
                 session.selectedIds.clear();
                 session.debts = [];
@@ -1660,7 +2027,7 @@
                 if (citizen.needsSelection && session.accounts.length > 1) {
                     renderAccountsList();
                     document.getElementById('accounts-subtitle').textContent =
-                        subscriberDisplayName(citizen) + ' — T.C.: ' + identityNo;
+                        subscriberDisplayName(citizen) + ' — T.C.: ' + maskTc(identityNo);
                     showScreen('accounts');
                 } else {
                     await loadDebtsForCitizen(citizen);
@@ -1673,6 +2040,18 @@
                 document.getElementById('login-loading').classList.add('hidden');
             }
         });
+
+        const btnTestQuery = document.getElementById('btn-test-query');
+        if (btnTestQuery) {
+            btnTestQuery.addEventListener('click', () => {
+                setIdentityValue(TEST_TC);
+                setBirthValue(TEST_BIRTH);
+                setLoginFocus('birth');
+                loginError.classList.add('hidden');
+                onUserActivity();
+                btnQuery.click();
+            });
+        }
 
         function renderAccountsList() {
             const container = document.getElementById('accounts-list');
@@ -1761,7 +2140,7 @@
             session.selectedIds.clear();
             renderDebtList();
             const tag = [
-                'T.C.: ' + identityNo,
+                'T.C.: ' + maskTc(identityNo),
                 citizen.aboneNo ? ('Abone: ' + citizen.aboneNo) : null,
                 citizen.sicilNo ? ('Sicil: ' + citizen.sicilNo) : null,
             ].filter(Boolean).join(' · ');
@@ -2086,8 +2465,21 @@
         });
 
         renderIdentityDisplay();
+        renderBirthDisplay();
         renderWaterAboneDisplay();
         showScreen('welcome');
+
+        document.getElementById('btn-offline-retry').addEventListener('click', () => {
+            checkSystemHealth();
+        });
+        document.getElementById('btn-offline-dismiss').addEventListener('click', () => {
+            hideOfflineOverlay();
+        });
+        document.getElementById('btn-health-banner-close').addEventListener('click', () => {
+            hideHealthBanner();
+        });
+        checkSystemHealth();
+        setInterval(checkSystemHealth, 60000);
     })();
     </script>
 </body>

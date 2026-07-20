@@ -20,21 +20,23 @@ class BelsisTahsilatQueryService
 
     /**
      * Sicil veya T.C. ile vatandaş çözümler.
+     * TC sorgusunda doğum tarihi doğrulaması zorunludur (KVKK / yetkisiz sorgu engeli).
      * TC’de birden fazla abonelik varsa needsSelection=true + accounts listesi döner.
      *
      * @return array<string, mixed>
      */
-    public function getCitizen(string $identityNo, ?string $searchType = null): array
+    public function getCitizen(string $identityNo, ?string $searchType = null, ?string $birthDate = null): array
     {
         $identityNo = trim($identityNo);
         $searchType = $this->resolveSearchType($identityNo, $searchType);
 
         if ($searchType === 'tc') {
-            return $this->getCitizenByTc($identityNo);
+            return $this->getCitizenByTc($identityNo, $birthDate);
         }
 
         $gensicilno = $this->resolveToGensicil($identityNo, $searchType);
         $profile = $this->fetchSicilProfile($gensicilno);
+        $this->assertBirthDateMatches($birthDate, $profile['dogumTarihi'] ?? '');
 
         $adi = $profile['adi'];
         $soyadi = $profile['soyadi'];
@@ -59,7 +61,7 @@ class BelsisTahsilatQueryService
     /**
      * @return array<string, mixed>
      */
-    private function getCitizenByTc(string $tcKimlikNo): array
+    private function getCitizenByTc(string $tcKimlikNo, ?string $birthDate = null): array
     {
         $accounts = $this->identity->resolveAccountsFromTc($tcKimlikNo);
         if ($accounts === []) {
@@ -69,6 +71,14 @@ class BelsisTahsilatQueryService
         }
 
         $primary = $accounts[0];
+        $gensicil = (int) ($primary['gensicilNo'] ?? 0);
+        if ($gensicil <= 0) {
+            throw new BelsisException('Abonelik kaydı eksik. Lütfen görevliye başvurunuz.');
+        }
+
+        $profile = $this->fetchSicilProfile($gensicil);
+        $this->assertBirthDateMatches($birthDate, $profile['dogumTarihi'] ?? '');
+
         $needsSelection = count($accounts) > 1;
 
         return [
@@ -77,14 +87,83 @@ class BelsisTahsilatQueryService
             'sicilNo'        => $needsSelection ? '' : (string) $primary['sicilNo'],
             'aboneNo'        => $needsSelection ? '' : (string) ($primary['aboneNo'] ?? ''),
             'totalDebt'      => $needsSelection ? null : (isset($primary['totalDebt']) ? (float) $primary['totalDebt'] : null),
-            'fullName'       => (string) $primary['fullName'],
+            'fullName'       => (string) ($primary['fullName'] ?: $profile['fullName']),
             'searchType'     => 'tc',
-            'adi'            => (string) ($primary['adi'] ?? ''),
-            'soyadi'         => (string) ($primary['soyadi'] ?? ''),
+            'adi'            => (string) ($primary['adi'] ?? $profile['adi'] ?? ''),
+            'soyadi'         => (string) ($primary['soyadi'] ?? $profile['soyadi'] ?? ''),
             'address'        => (string) ($primary['address'] ?? ''),
             'needsSelection' => $needsSelection,
             'accounts'       => $accounts,
         ];
+    }
+
+    /**
+     * Belsis dogumTarihi ile kullanıcının girdiği tarihi karşılaştırır.
+     * Doğum tarihi API yanıtına eklenmez.
+     */
+    private function assertBirthDateMatches(?string $submitted, string $recorded): void
+    {
+        $submittedNorm = $this->normalizeBirthDate($submitted ?? '');
+        if ($submittedNorm === null) {
+            throw new BelsisException('Doğum tarihinizi gün/ay/yıl olarak giriniz (örn. 28/12/1980).');
+        }
+
+        $recordedNorm = $this->normalizeBirthDate($recorded);
+        if ($recordedNorm === null) {
+            throw new BelsisException(
+                'Belediye kaydınızda doğum tarihi bulunamadı. Lütfen görevliye başvurunuz.',
+            );
+        }
+
+        if ($submittedNorm !== $recordedNorm) {
+            throw new BelsisException('Doğum tarihi eşleşmedi. Lütfen kontrol edip tekrar deneyiniz.');
+        }
+    }
+
+    /**
+     * @return string|null Ymd (örn. 19801228) veya null
+     */
+    private function normalizeBirthDate(string $value): ?string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        // 28/12/1939 | 28.12.1939 | 28-12-1939
+        if (preg_match('/^(\d{1,2})[\\.\\/\\-](\\d{1,2})[\\.\\/\\-](\\d{4})$/', $value, $m)) {
+            $day = (int) $m[1];
+            $month = (int) $m[2];
+            $year = (int) $m[3];
+
+            return checkdate($month, $day, $year)
+                ? sprintf('%04d%02d%02d', $year, $month, $day)
+                : null;
+        }
+
+        // 28121939 (DDMMYYYY)
+        if (preg_match('/^(\\d{2})(\\d{2})(\\d{4})$/', $value, $m)) {
+            $day = (int) $m[1];
+            $month = (int) $m[2];
+            $year = (int) $m[3];
+
+            return checkdate($month, $day, $year)
+                ? sprintf('%04d%02d%02d', $year, $month, $day)
+                : null;
+        }
+
+        // 1939-12-28 (ISO)
+        if (preg_match('/^(\\d{4})-(\\d{2})-(\\d{2})$/', $value, $m)) {
+            $year = (int) $m[1];
+            $month = (int) $m[2];
+            $day = (int) $m[3];
+
+            return checkdate($month, $day, $year)
+                ? sprintf('%04d%02d%02d', $year, $month, $day)
+                : null;
+        }
+
+        return null;
     }
 
     /**
@@ -826,7 +905,7 @@ class BelsisTahsilatQueryService
     }
 
     /**
-     * @return array{gensicilno: int, fullName: string, adi: string, soyadi: string}
+     * @return array{gensicilno: int, fullName: string, adi: string, soyadi: string, dogumTarihi: string}
      */
     private function fetchSicilProfile(int $gensicilno): array
     {
@@ -843,10 +922,11 @@ class BelsisTahsilatQueryService
         $fullName = $unvan !== '' ? $unvan : (trim($ad.' '.$soyad) ?: 'Sicil No: '.$gensicilno);
 
         return [
-            'gensicilno' => (int) ($record['gensicilno'] ?? $gensicilno),
-            'fullName'   => $fullName,
-            'adi'        => $ad,
-            'soyadi'     => $soyad,
+            'gensicilno'   => (int) ($record['gensicilno'] ?? $gensicilno),
+            'fullName'     => $fullName,
+            'adi'          => $ad,
+            'soyadi'       => $soyad,
+            'dogumTarihi'  => trim((string) ($record['dogumTarihi'] ?? '')),
         ];
     }
 

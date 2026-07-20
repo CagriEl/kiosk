@@ -3,7 +3,8 @@
 use App\Http\Controllers\Api\KioskApiController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('kiosk')->group(function () {
+Route::prefix('kiosk')->middleware('kiosk.key')->group(function () {
+    Route::get('/health', [KioskApiController::class, 'health']);
     Route::get('/payment-methods', [KioskApiController::class, 'paymentMethods']);
     Route::get('/receipt/{makbuzId}', [KioskApiController::class, 'receipt']);
     Route::get('/citizen/{identityNo}', [KioskApiController::class, 'citizen'])

@@ -1,15 +1,20 @@
 <?php
 
 use App\Http\Controllers\Api\KioskApiController;
+use App\Http\Controllers\BaylanIeController;
 use App\Http\Controllers\KioskController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [KioskController::class, 'index'])->name('kiosk.index');
 Route::get('/kiosk', [KioskController::class, 'index']);
 
+// Chrome → Edge IE modu: istemci PC'de bir kez kurulum
+Route::get('/baylan-ie/kurulum.ps1', [BaylanIeController::class, 'installPs1']);
+Route::get('/baylan-ie/kurulum.reg', [BaylanIeController::class, 'registerReg']);
+
 // Kiosk API — web rotaları (paylaşımlı hosting /public altında güvenilir erişim)
-Route::prefix('api/kiosk')->group(function () {
-    Route::get('/health', fn () => response()->json(['status' => 'ok']));
+Route::prefix('api/kiosk')->middleware('kiosk.key')->group(function () {
+    Route::get('/health', [KioskApiController::class, 'health']);
     Route::get('/payment-methods', [KioskApiController::class, 'paymentMethods']);
     Route::get('/receipt/{makbuzId}', [KioskApiController::class, 'receipt']);
     Route::get('/citizen/{identityNo}', [KioskApiController::class, 'citizen'])
@@ -31,4 +36,5 @@ Route::prefix('api/kiosk')->group(function () {
     Route::post('/water/advance-load', [KioskApiController::class, 'waterAdvanceLoad']);
     Route::post('/water/kontor/pay', [KioskApiController::class, 'waterInitiateKontor']);
     Route::post('/water/kontor/{transactionId}/confirm', [KioskApiController::class, 'waterConfirmKontor']);
+    Route::post('/baylan/open', [KioskApiController::class, 'openBaylan']);
 });

@@ -16,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'api/kiosk/*',
         ]);
+        $middleware->alias([
+            'kiosk.key' => \App\Http\Middleware\EnsureKioskApiKey::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

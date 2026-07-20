@@ -115,4 +115,12 @@ return [
         'BELSIS_WATER_MODUL_NOS',
         '24',
     ))))),
+
+    // Baylan legacy ASPX — Windows kiosk'ta Edge IE modunda açılır
+    'baylan_ie_url' => env(
+        'BAYLAN_IE_URL',
+        'http://belapp.belediye.local/Belsis-Net/genel/kioskwebservisV1/baylan.aspx'
+            .'?txtKartId=&txtYukle=&txtAboneNoC=&txtDonemC=&txtGensicilnoC='
+            .'&txtIlkEndeksC=&txtYuklenecekC=&txtAtikSuMikC=',
+    ),
 ];

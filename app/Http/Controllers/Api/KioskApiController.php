@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\BelsisException;
 use App\Http\Controllers\Controller;
+use App\Services\Belsis\BelsisAuthService;
 use App\Services\Belsis\BelsisKioskService;
 use App\Services\Belsis\WaterCardKioskService;
+use App\Services\Kiosk\KioskAuditLogger;
+use App\Services\Kiosk\KioskQueryGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -15,18 +18,78 @@ class KioskApiController extends Controller
     public function __construct(
         private readonly BelsisKioskService $belsis,
         private readonly WaterCardKioskService $waterCard,
+        private readonly BelsisAuthService $belsisAuth,
+        private readonly KioskQueryGate $queryGate,
+        private readonly KioskAuditLogger $audit,
     ) {}
+
+    public function health(): JsonResponse
+    {
+        $kioskId = $this->queryGate->kioskId(request()->header('X-Kiosk-Id'));
+        $payload = [
+            'status' => 'ok',
+            'kiosk_id' => $kioskId,
+            'support_phone' => config('kiosk.support_phone'),
+            'belsis' => 'ok',
+            'message' => null,
+        ];
+
+        if (config('belsis.mock')) {
+            $payload['belsis'] = 'mock';
+
+            return response()->json($payload);
+        }
+
+        if (! config('kiosk.health_check_belsis', true)) {
+            $payload['belsis'] = 'skipped';
+
+            return response()->json($payload);
+        }
+
+        try {
+            $this->belsisAuth->getSession();
+        } catch (Throwable $e) {
+            $this->audit->log('health_check', false, null, $kioskId, $e->getMessage());
+
+            return response()->json([
+                'status' => 'degraded',
+                'kiosk_id' => $kioskId,
+                'support_phone' => config('kiosk.support_phone'),
+                'belsis' => 'down',
+                'message' => 'Belediye ödeme sistemi şu an kullanılamıyor. Lütfen '.config('kiosk.support_phone').' nolu hattı arayınız.',
+            ], 503);
+        }
+
+        return response()->json($payload);
+    }
 
     public function citizen(Request $request, string $identityNo): JsonResponse
     {
+        $kioskId = $this->queryGate->kioskId($request->header('X-Kiosk-Id'));
+
         try {
             $this->assertTcKimlikNo($identityNo);
+            $this->queryGate->assertNotRateLimited($kioskId, $identityNo);
 
-            return response()->json($this->belsis->getCitizen($identityNo, 'tc'));
+            $birthDate = $request->query('birthDate', $request->input('birthDate'));
+            $birthDate = is_string($birthDate) ? trim($birthDate) : null;
+
+            $citizen = $this->belsis->getCitizen($identityNo, 'tc', $birthDate);
+            $queryToken = $this->queryGate->recordSuccess($kioskId, $identityNo);
+            $citizen['queryToken'] = $queryToken;
+
+            return response()->json($citizen);
         } catch (BelsisException $e) {
+            if ($this->isVerificationFailure($e)) {
+                $this->queryGate->recordFailure($kioskId, $identityNo, $e->getMessage());
+            } else {
+                $this->audit->log('citizen_query', false, $identityNo, $kioskId, $e->getMessage());
+            }
+
             return $this->belsisError($e);
         } catch (Throwable $e) {
             report($e);
+            $this->audit->log('citizen_query', false, $identityNo, $kioskId, $e->getMessage());
 
             return $this->belsisError(new BelsisException(
                 'Sorgulama sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyiniz.',
@@ -47,8 +110,15 @@ class KioskApiController extends Controller
 
     public function debts(Request $request, string $identityNo): JsonResponse
     {
+        $kioskId = $this->queryGate->kioskId($request->header('X-Kiosk-Id'));
+
         try {
             $this->assertTcKimlikNo($identityNo);
+
+            $queryToken = $request->query('queryToken', $request->header('X-Query-Token'));
+            $queryToken = is_string($queryToken) ? trim($queryToken) : '';
+            $this->queryGate->assertQueryToken($queryToken, $identityNo, $kioskId);
+
             $gensicilNo = $request->query('gensicilNo');
             $gensicilNo = is_string($gensicilNo) ? trim($gensicilNo) : null;
             if ($gensicilNo !== null && ($gensicilNo === '' || ! ctype_digit($gensicilNo))) {
@@ -157,6 +227,41 @@ class KioskApiController extends Controller
             );
         } catch (BelsisException $e) {
             return $this->belsisError($e);
+        }
+    }
+
+    /**
+     * Baylan ASPX sayfasını Windows kiosk üzerinde Edge IE modunda açar.
+     */
+    public function openBaylan(): JsonResponse
+    {
+        $url = trim((string) config('belsis.baylan_ie_url'));
+        if ($url === '' || ! filter_var($url, FILTER_VALIDATE_URL)) {
+            return response()->json(['message' => 'Baylan adresi yapılandırılmamış.'], 500);
+        }
+
+        if (PHP_OS_FAMILY !== 'Windows') {
+            return response()->json([
+                'ok'      => false,
+                'opened'  => false,
+                'url'     => $url,
+                'message' => 'Edge IE modu yalnızca Windows kiosk üzerinde açılır.',
+            ]);
+        }
+
+        try {
+            $this->launchEdgeIeMode($url);
+
+            return response()->json(['ok' => true, 'opened' => true, 'url' => $url]);
+        } catch (Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'ok'      => false,
+                'opened'  => false,
+                'url'     => $url,
+                'message' => 'Edge IE modunda açılamadı. Lütfen kiosk bilgisayarını kontrol ediniz.',
+            ], 500);
         }
     }
 
@@ -354,6 +459,19 @@ class KioskApiController extends Controller
         ) {
             $status = 404;
         } elseif (
+            str_contains($message, 'çok fazla başarısız')
+            || str_contains($message, 'cok fazla basarisiz')
+        ) {
+            $status = 429;
+        } elseif (
+            str_contains($message, 'oturum doğrulaması')
+            || str_contains($message, 'doğrulama süresi')
+            || str_contains($message, 'doğrulama geçersiz')
+            || str_contains($message, 'dogurlama suresi')
+            || str_contains($message, 'dogurlama gecersiz')
+        ) {
+            $status = 401;
+        } elseif (
             str_contains($message, 'yetkisiz')
             || str_contains($message, 'bağlanılamadı')
             || str_contains($message, 'baglanilamadi')
@@ -375,6 +493,16 @@ class KioskApiController extends Controller
         ], $status);
     }
 
+    private function isVerificationFailure(BelsisException $e): bool
+    {
+        $message = mb_strtolower($e->getMessage(), 'UTF-8');
+
+        return str_contains($message, 'doğum tarihi')
+            || str_contains($message, 'dogum tarihi')
+            || str_contains($message, 'çok fazla başarısız')
+            || str_contains($message, 'cok fazla basarisiz');
+    }
+
     private function assertTcKimlikNo(string $identityNo): void
     {
         $identityNo = trim($identityNo);
@@ -391,5 +519,47 @@ class KioskApiController extends Controller
         if (! ctype_digit($sicilNo) || strlen($sicilNo) < 1 || strlen($sicilNo) > 10) {
             throw new BelsisException('Sicil numarası 1–10 haneli olmalıdır.');
         }
+    }
+
+    private function launchEdgeIeMode(string $url): void
+    {
+        $edge = $this->resolveEdgePath();
+        $cmd = 'cmd /c start "" '.escapeshellarg($edge).' --ie-mode-force '.escapeshellarg($url);
+
+        $process = proc_open($cmd, [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ], $pipes);
+
+        if (! is_resource($process)) {
+            throw new \RuntimeException('Edge süreci başlatılamadı.');
+        }
+
+        foreach ($pipes as $pipe) {
+            if (is_resource($pipe)) {
+                fclose($pipe);
+            }
+        }
+
+        proc_close($process);
+    }
+
+    private function resolveEdgePath(): string
+    {
+        $candidates = [
+            (string) getenv('ProgramFiles(x86)').'\\Microsoft\\Edge\\Application\\msedge.exe',
+            (string) getenv('ProgramFiles').'\\Microsoft\\Edge\\Application\\msedge.exe',
+            'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+            'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+        ];
+
+        foreach ($candidates as $path) {
+            if ($path !== '' && is_file($path)) {
+                return $path;
+            }
+        }
+
+        return 'msedge';
     }
 }
