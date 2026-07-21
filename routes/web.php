@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [KioskController::class, 'index'])->name('kiosk.index');
 Route::get('/kiosk', [KioskController::class, 'index']);
 
-// Chrome → Edge IE modu: istemci PC'de bir kez kurulum
-Route::get('/baylan-ie/kurulum.ps1', [BaylanIeController::class, 'installPs1']);
+// Kiosk kurulum ekranı: kiosk PC'de bir kez çalıştırılır
+Route::get('/baylan-ie', [BaylanIeController::class, 'installPage']);
 Route::get('/baylan-ie/kurulum.reg', [BaylanIeController::class, 'registerReg']);
 Route::get('/baylan-ie/kurulum.cmd', [BaylanIeController::class, 'installCmd']);
 

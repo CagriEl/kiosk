@@ -878,7 +878,6 @@
         const KIOSK_SUPPORT_PHONE = @json(config('kiosk.support_phone'));
         const KIOSK_ENABLE_TEST = @json((bool) config('kiosk.enable_test_query'));
         const BAYLAN_IE_URL = @json(config('belsis.baylan_ie_url'));
-        const BAYLAN_IE_PROTOCOL = 'baylan-ie:open';
 
         /**
          * Windows kiosk başlatıcısı kullanılmadığında ilk kullanıcı dokunuşuyla
@@ -895,36 +894,21 @@
         }
 
         /**
-         * Chrome'dan istemci PC'de Edge IE modunu açar.
-         * 1) baylan-ie: protokolü (kurulum.ps1 / kurulum.reg gerekir)
-         * 2) Sunucu Windows ise /api/kiosk/baylan/open yedek yolu
+         * BAYLAN'a tıklanınca Edge'i IE modunda açar.
+         * Edge, kiosk PC'de çalışan PHP tarafından doğrudan başlatılır
+         * (/api/kiosk/baylan/open). Tarayıcı protokolü / eklenti gerekmez.
          */
         async function openBaylanInEdgeIe() {
             ensureBrowserFullscreen();
-
-            // Protokol: gizli <a> + iframe (kiosk modunda daha güvenilir)
             try {
-                const a = document.createElement('a');
-                a.href = BAYLAN_IE_PROTOCOL;
-                a.rel = 'noopener';
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-            } catch (_) { /* ignore */ }
-
-            try {
-                const iframe = document.createElement('iframe');
-                iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden';
-                iframe.src = BAYLAN_IE_PROTOCOL;
-                document.body.appendChild(iframe);
-                setTimeout(() => iframe.remove(), 2500);
-            } catch (_) { /* ignore */ }
-
-            // PHP aynı Windows kiosk PC'de çalışıyorsa Edge'i sunucudan aç
-            try {
-                await apiRequest('/api/kiosk/baylan/open', { method: 'POST', body: '{}' });
-            } catch (_) { /* Mac/dev veya uzak sunucu: protokol yolu yeterli */ }
+                const res = await apiRequest('/api/kiosk/baylan/open', { method: 'POST', body: '{}' });
+                if (res && res.opened === false) {
+                    // Windows dışı (Mac/dev) veya Edge bulunamadı
+                    console.warn('Baylan Edge açılmadı:', res.message || '');
+                }
+            } catch (err) {
+                console.warn('Baylan açma isteği başarısız:', err);
+            }
         }
 
         function kioskHeaders(extra = {}) {
