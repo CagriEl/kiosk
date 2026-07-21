@@ -5,16 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Response;
 
 /**
- * Baylan / kiosk kurulum köprüsü.
+ * Uzak sunucu → Windows kiosk PC köprüsü.
  *
- * BAYLAN'a tıklanınca Edge, kiosk PC'de çalışan PHP tarafından doğrudan
- * açılır (KioskApiController@openBaylan). Bu yüzden tarayıcı protokolü
- * (baylan-ie:) artık kullanılmaz.
- *
- * Buradaki kurulum dosyaları yalnızca opsiyonel kiosk kilidini ayarlar:
- *  - Windows oturum açılışında Chrome'u tam ekran (kiosk) başlatır
- *  - Edge için ilk çalıştırma sihirbazını kapatır
- * Kurulum ekranından .reg veya kendini silen .cmd indirilebilir.
+ * PHP sunucuda çalışır; Edge istemci (kiosk) PC'de açılmalıdır.
+ * BAYLAN tıklanınca tarayıcı "baylan-ie:" protokolünü çağırır.
+ * Protokol, kiosk PC'de bir kez kurulum.reg / kurulum.cmd ile kaydedilir.
  */
 class BaylanIeController extends Controller
 {
@@ -32,43 +27,49 @@ class BaylanIeController extends Controller
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kırklareli Kiosk · Kurulum</title>
+<title>Kırklareli Kiosk · Baylan Kurulum</title>
 <style>
   body { font-family: system-ui, Segoe UI, Arial, sans-serif; background:#0f172a; color:#e2e8f0; margin:0; padding:32px; }
-  .card { max-width:720px; margin:0 auto; background:#1e293b; border:1px solid #334155; border-radius:18px; padding:28px 32px; }
+  .card { max-width:760px; margin:0 auto; background:#1e293b; border:1px solid #334155; border-radius:18px; padding:28px 32px; }
   h1 { font-size:22px; margin:0 0 4px; }
-  p.sub { color:#94a3b8; margin:0 0 24px; }
-  .btns { display:flex; gap:14px; flex-wrap:wrap; margin:20px 0 28px; }
+  p.sub { color:#94a3b8; margin:0 0 20px; }
+  .warn { background:#422006; border:1px solid #b45309; color:#fdba74; padding:12px 14px; border-radius:10px; margin-bottom:20px; font-size:14px; line-height:1.5; }
+  .btns { display:flex; gap:14px; flex-wrap:wrap; margin:16px 0 24px; }
   a.btn { display:inline-block; text-decoration:none; font-weight:700; padding:16px 22px; border-radius:12px; }
   a.primary { background:#0ea5e9; color:#04283a; }
   a.secondary { background:#334155; color:#e2e8f0; }
-  ol { line-height:1.7; }
-  code { background:#0f172a; padding:2px 7px; border-radius:6px; color:#7dd3fc; }
+  ol { line-height:1.75; padding-left:22px; }
+  code { background:#0f172a; padding:2px 7px; border-radius:6px; color:#7dd3fc; word-break:break-all; }
   .note { margin-top:22px; font-size:13px; color:#94a3b8; border-top:1px solid #334155; padding-top:16px; }
 </style>
 </head>
 <body>
 <div class="card">
-  <h1>Kırklareli Kiosk — Kurulum</h1>
-  <p class="sub">Bu ekranı yalnızca kiosk bilgisayarında açın.</p>
+  <h1>Baylan IE — Kiosk PC Kurulumu</h1>
+  <p class="sub">Bu sayfayı <b>kiosk Windows bilgisayarında</b> açın (sunucuda değil).</p>
+
+  <div class="warn">
+    Uygulama uzak sunucuda çalışır; Edge kiosk PC'de açılmalıdır.
+    Aşağıdaki kurulumu <b>bir kez kiosk PC'de</b> çalıştırın.
+    <code>baylan-ie:</code> protokolü kaydedilir; BAYLAN'a tıklanınca Chrome Edge'i IE modunda açar.
+  </div>
 
   <div class="btns">
-    <a class="btn primary" href="$cmdUrl">Otomatik kurulum indir (.cmd)</a>
-    <a class="btn secondary" href="$regUrl">Registry dosyası indir (.reg)</a>
+    <a class="btn primary" href="$cmdUrl">1) Otomatik kurulum (.cmd)</a>
+    <a class="btn secondary" href="$regUrl">veya .reg indir</a>
   </div>
 
   <ol>
-    <li><b>.cmd</b> dosyasını indirin ve <b>çift tıklayın</b> (yönetici gerekmez). Kurulum biter, dosya kendini siler.</li>
-    <li>Alternatif: <b>.reg</b> dosyasını çift tıklayıp <b>Evet</b> deyin.</li>
-    <li>Chrome'u <b>tamamen kapatıp</b> yeniden açın.</li>
-    <li>Windows oturumunu kapatıp açtığınızda kiosk tam ekran otomatik başlar.</li>
+    <li><b>.cmd</b> indirip <b>çift tıklayın</b> (yönetici gerekmez). Bitince dosya kendini siler. Edge test için açılır.</li>
+    <li>Alternatif: <b>.reg</b> → çift tık → <b>Evet</b>.</li>
+    <li><b>Chrome'u tamamen kapatıp</b> yeniden açın.</li>
+    <li><code>chrome://policy</code> → <code>AutoLaunchProtocolsFromOrigins</code> görünmeli.</li>
+    <li>Kiosk'tan <b>BAYLAN</b>'a tıklayın.</li>
   </ol>
 
   <div class="note">
-    BAYLAN'a tıklandığında Edge IE modunda bu adrese açılır:<br>
-    <code>$baylanUrl</code><br><br>
-    Kiosk ana ekranı: <code>$kioskUrl</code><br>
-    Edge'i açan PHP bu kiosk bilgisayarında çalışmalıdır.
+    Baylan: <code>$baylanUrl</code><br><br>
+    Kiosk: <code>$kioskUrl</code>
   </div>
 </div>
 </body>
@@ -83,9 +84,17 @@ HTML;
 
     public function registerReg(): Response
     {
-        $chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+        $url = $this->baylanUrl();
         $kioskUrl = $this->kioskOrigin().'/kiosk';
+        $edge = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+        $chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+        $policyReg = str_replace('"', '\\"', $this->autoLaunchPolicyJson());
 
+        $baylanCmd = $this->regCommandValue(
+            '"'.$edge.'" --edge-kiosk-type=fullscreen --ie-mode-force --no-first-run'
+            .' --disable-pinch --overscroll-history-navigation=0'
+            .' --kiosk "'.$url.'"'
+        );
         $kioskCmd = $this->regCommandValue(
             '"'.$chrome.'" --no-first-run --disable-pinch --overscroll-history-navigation=0'
             .' --disable-session-crashed-bubble'
@@ -95,16 +104,25 @@ HTML;
         $reg = <<<REG
 Windows Registry Editor Version 5.00
 
-; Kirklareli Kiosk kurulum
-; Cift tiklayin (Yonetici GEREKMEZ), Evet deyin.
-; Sonra Windows oturumunu kapatip acin.
+; Kirklareli Kiosk - Baylan IE (kiosk PC'de bir kez)
+; Cift tiklayin, Evet deyin. Sonra Chrome'u tamamen kapatip acin.
+
+[HKEY_CURRENT_USER\\Software\\Classes\\baylan-ie]
+@="URL:Baylan IE Mode"
+"URL Protocol"=""
+
+[HKEY_CURRENT_USER\\Software\\Classes\\baylan-ie\\shell\\open\\command]
+@="$baylanCmd"
+
+[HKEY_CURRENT_USER\\Software\\Policies\\Google\\Chrome]
+"AutoLaunchProtocolsFromOrigins"="$policyReg"
+"ExternalProtocolDialogShowAlwaysOpenCheckbox"=dword:00000001
+
+[HKEY_CURRENT_USER\\Software\\Policies\\Microsoft\\Edge]
+"HideFirstRunExperience"=dword:00000001
 
 [HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run]
 "KirklareliKiosk"="$kioskCmd"
-
-; Edge ilk calistirma sihirbazini kapat (IE modu temiz acilsin)
-[HKEY_CURRENT_USER\\Software\\Policies\\Microsoft\\Edge]
-"HideFirstRunExperience"=dword:00000001
 
 REG;
 
@@ -116,42 +134,31 @@ REG;
     }
 
     /**
-     * Çift tıklanınca registry'yi yazar, sonra kendini siler.
+     * Kiosk PC'de çift tık: gömülü PowerShell ile protokol kurar, kendini siler.
      */
     public function installCmd(): Response
     {
-        $chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-        $kioskUrl = $this->kioskOrigin().'/kiosk';
-
-        $kioskLaunch = '"'.$chrome.'" --no-first-run --disable-pinch'
-            .' --overscroll-history-navigation=0 --disable-session-crashed-bubble'
-            .' --kiosk "'.$kioskUrl.'"';
-        $kioskForReg = str_replace('"', '\\"', $kioskLaunch);
+        $ps1 = $this->buildInstallPs1();
+        $b64 = base64_encode($ps1);
 
         $cmd = <<<CMD
 @echo off
 chcp 65001 >nul
-title Kirklareli Kiosk Kurulum
-echo Kirklareli Kiosk - kurulum
+title Kirklareli Kiosk Baylan Kurulum
+echo Kurulum basliyor...
 echo.
 
-reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v KirklareliKiosk /t REG_SZ /d "{$kioskForReg}" /f >nul
-if errorlevel 1 goto err
+powershell -NoProfile -ExecutionPolicy Bypass -Command "\$p=Join-Path \$env:TEMP 'kiosk-baylan-kurulum.ps1'; [IO.File]::WriteAllBytes(\$p,[Convert]::FromBase64String('{$b64}')); try { & \$p; \$code=\$LASTEXITCODE } catch { Write-Host \$_.Exception.Message -ForegroundColor Red; \$code=1 }; Remove-Item -LiteralPath \$p -Force -ErrorAction SilentlyContinue; exit \$code"
 
-reg add "HKCU\\Software\\Policies\\Microsoft\\Edge" /v HideFirstRunExperience /t REG_DWORD /d 1 /f >nul
+if errorlevel 1 (
+  echo.
+  echo HATA: Kurulum basarisiz.
+  pause
+  goto cleanup
+)
 
-echo Kurulum OK.
 echo.
-echo 1^) Chrome'u TAMAMEN kapatip yeniden acin
-echo 2^) Windows oturumunu kapatip acin -^> kiosk tam ekran baslar
-echo 3^) Kiosk'tan BAYLAN'a tiklayin
-echo.
-echo Bu pencere kapaninca kurulum dosyasi silinecek.
-pause
-goto cleanup
-
-:err
-echo HATA: Registry yazilamadi.
+echo Kurulum tamam. Bu pencere kapaninca dosya silinecek.
 pause
 
 :cleanup
@@ -163,6 +170,91 @@ CMD;
             'Content-Disposition' => 'attachment; filename="kurulum.cmd"',
             'Cache-Control' => 'no-store',
         ]);
+    }
+
+    private function buildInstallPs1(): string
+    {
+        $url = $this->escapePsSingle($this->baylanUrl());
+        $origin = $this->escapePsSingle($this->kioskOrigin());
+        $kioskUrl = $this->escapePsSingle($this->kioskOrigin().'/kiosk');
+        $policy = $this->escapePsSingle($this->autoLaunchPolicyJson());
+
+        return <<<POWERSHELL
+\$ErrorActionPreference = 'Stop'
+\$url = '$url'
+\$origin = '$origin'
+\$kioskUrl = '$kioskUrl'
+\$policyJson = '$policy'
+
+\$pf86 = [Environment]::GetFolderPath('ProgramFilesX86')
+\$pf = [Environment]::GetFolderPath('ProgramFiles')
+
+\$edge = \$null
+foreach (\$p in @(
+    (Join-Path \$pf86 'Microsoft\\Edge\\Application\\msedge.exe'),
+    (Join-Path \$pf 'Microsoft\\Edge\\Application\\msedge.exe')
+)) {
+    if (Test-Path -LiteralPath \$p) { \$edge = \$p; break }
+}
+if (-not \$edge) {
+    Write-Host 'HATA: Microsoft Edge bulunamadi.' -ForegroundColor Red
+    exit 1
+}
+
+\$chrome = \$null
+foreach (\$p in @(
+    (Join-Path \$pf 'Google\\Chrome\\Application\\chrome.exe'),
+    (Join-Path \$pf86 'Google\\Chrome\\Application\\chrome.exe')
+)) {
+    if (Test-Path -LiteralPath \$p) { \$chrome = \$p; break }
+}
+
+\$dir = Join-Path \$env:LOCALAPPDATA 'KioskBaylan'
+New-Item -ItemType Directory -Force -Path \$dir | Out-Null
+\$edgeProfile = Join-Path \$dir 'EdgeProfile'
+
+\$launch = '"{0}" --user-data-dir="{1}" --edge-kiosk-type=fullscreen --ie-mode-force --no-first-run --disable-pinch --overscroll-history-navigation=0 --kiosk "{2}"' -f \$edge, \$edgeProfile, \$url
+
+[Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Classes\\baylan-ie', '', 'URL:Baylan IE Mode')
+[Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Classes\\baylan-ie', 'URL Protocol', '')
+[Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Classes\\baylan-ie\\shell\\open\\command', '', \$launch)
+
+[Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Policies\\Google\\Chrome', 'AutoLaunchProtocolsFromOrigins', \$policyJson)
+[Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Policies\\Google\\Chrome', 'ExternalProtocolDialogShowAlwaysOpenCheckbox', 1, [Microsoft.Win32.RegistryValueKind]::DWord)
+[Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Policies\\Microsoft\\Edge', 'HideFirstRunExperience', 1, [Microsoft.Win32.RegistryValueKind]::DWord)
+
+if (\$chrome) {
+    \$chromeProfile = Join-Path \$dir 'ChromeProfile'
+    \$kioskLaunch = '"{0}" --user-data-dir="{1}" --no-first-run --disable-pinch --overscroll-history-navigation=0 --disable-session-crashed-bubble --kiosk "{2}"' -f \$chrome, \$chromeProfile, \$kioskUrl
+    \$kioskCmd = Join-Path \$dir 'open-kiosk.cmd'
+    @('@echo off', ('start "" ' + \$kioskLaunch)) | Set-Content -LiteralPath \$kioskCmd -Encoding ASCII
+    [Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run', 'KirklareliKiosk', ('"' + \$kioskCmd + '"'))
+}
+
+\$verify = [Microsoft.Win32.Registry]::GetValue('HKEY_CURRENT_USER\\Software\\Classes\\baylan-ie\\shell\\open\\command', '', \$null)
+if (-not \$verify) {
+    Write-Host 'HATA: Protokol kaydi yazilamadi.' -ForegroundColor Red
+    exit 1
+}
+
+Write-Host 'Kurulum OK.' -ForegroundColor Green
+Write-Host ('Edge: ' + \$edge)
+Write-Host ('Baylan: ' + \$url)
+Write-Host ('Origin: ' + \$origin)
+
+Start-Process -FilePath \$edge -ArgumentList @(
+    ('--user-data-dir=' + \$edgeProfile),
+    '--edge-kiosk-type=fullscreen',
+    '--ie-mode-force',
+    '--no-first-run',
+    '--kiosk',
+    \$url
+) | Out-Null
+
+Write-Host 'Test: Edge acildi. Baylan sayfasi geldiyse kurulum dogru.' -ForegroundColor Green
+Write-Host 'SIMDI: Chrome u tamamen kapatip yeniden acin, sonra BAYLAN a tiklayin.'
+exit 0
+POWERSHELL;
     }
 
     private function baylanUrl(): string
@@ -180,7 +272,29 @@ CMD;
         return rtrim(request()->getSchemeAndHttpHost(), '/');
     }
 
-    /** .reg komut satırı değeri: ters bölü ve tırnakları kaçır. */
+    private function autoLaunchPolicyJson(): string
+    {
+        $origin = $this->kioskOrigin();
+
+        return json_encode([
+            [
+                'protocol' => 'baylan-ie',
+                'allowed_origins' => array_values(array_unique([
+                    '*',
+                    $origin,
+                    'http://localhost',
+                    'http://127.0.0.1',
+                    'http://kiosk.test',
+                ])),
+            ],
+        ], JSON_UNESCAPED_SLASHES);
+    }
+
+    private function escapePsSingle(string $value): string
+    {
+        return str_replace("'", "''", $value);
+    }
+
     private function regCommandValue(string $commandLine): string
     {
         $escaped = str_replace('\\', '\\\\', $commandLine);

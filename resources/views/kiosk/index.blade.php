@@ -878,6 +878,7 @@
         const KIOSK_SUPPORT_PHONE = @json(config('kiosk.support_phone'));
         const KIOSK_ENABLE_TEST = @json((bool) config('kiosk.enable_test_query'));
         const BAYLAN_IE_URL = @json(config('belsis.baylan_ie_url'));
+        const BAYLAN_IE_PROTOCOL = 'baylan-ie:open';
 
         /**
          * Windows kiosk başlatıcısı kullanılmadığında ilk kullanıcı dokunuşuyla
@@ -894,21 +895,29 @@
         }
 
         /**
-         * BAYLAN'a tıklanınca Edge'i IE modunda açar.
-         * Edge, kiosk PC'de çalışan PHP tarafından doğrudan başlatılır
-         * (/api/kiosk/baylan/open). Tarayıcı protokolü / eklenti gerekmez.
+         * Uzak sunucudaki PHP, kiosk PC'de Edge açamaz.
+         * Bu yüzden istemci tarafında baylan-ie: protokolü kullanılır
+         * (kiosk PC'de /baylan-ie kurulumundan sonra).
          */
-        async function openBaylanInEdgeIe() {
+        function openBaylanInEdgeIe() {
             ensureBrowserFullscreen();
             try {
-                const res = await apiRequest('/api/kiosk/baylan/open', { method: 'POST', body: '{}' });
-                if (res && res.opened === false) {
-                    // Windows dışı (Mac/dev) veya Edge bulunamadı
-                    console.warn('Baylan Edge açılmadı:', res.message || '');
-                }
-            } catch (err) {
-                console.warn('Baylan açma isteği başarısız:', err);
-            }
+                const a = document.createElement('a');
+                a.href = BAYLAN_IE_PROTOCOL;
+                a.rel = 'noopener';
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } catch (_) { /* ignore */ }
+
+            try {
+                const iframe = document.createElement('iframe');
+                iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden';
+                iframe.src = BAYLAN_IE_PROTOCOL;
+                document.body.appendChild(iframe);
+                setTimeout(() => iframe.remove(), 2500);
+            } catch (_) { /* ignore */ }
         }
 
         function kioskHeaders(extra = {}) {
