@@ -52,7 +52,7 @@ else { \$chrome = 'chrome' }
 \$edgeProfile = Join-Path \$dir 'EdgeProfile'
 @(
     '@echo off'
-    ('start "" "' + \$edge + '" --user-data-dir="' + \$edgeProfile + '" --kiosk "' + \$url + '" --edge-kiosk-type=fullscreen --ie-mode-force --no-first-run --disable-pinch --overscroll-history-navigation=0')
+    ('start "" "' + \$edge + '" --user-data-dir="' + \$edgeProfile + '" --edge-kiosk-type=fullscreen --ie-mode-force --no-first-run --disable-pinch --overscroll-history-navigation=0 --kiosk "' + \$url + '"')
 ) | Set-Content -Path \$baylanCmdPath -Encoding ASCII
 
 \$kioskCmdPath = Join-Path \$dir 'open-kiosk.cmd'
@@ -118,18 +118,17 @@ POWERSHELL;
         $edge = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
         $chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 
+        // .reg komutlarında %LOCALAPPDATA% genişlemez; sabit Edge/Chrome yolu kullan.
         $edgeReg = str_replace('\\', '\\\\', $edge);
         $chromeReg = str_replace('\\', '\\\\', $chrome);
         $urlReg = str_replace(['\\', '"'], ['\\\\', '\\"'], $url);
         $kioskUrlReg = str_replace(['\\', '"'], ['\\\\', '\\"'], $kioskUrl);
-        $command = '\\"'.$edgeReg.'\\" --kiosk \\"'.$urlReg
-            .'\\" --edge-kiosk-type=fullscreen --ie-mode-force --no-first-run'
+        $command = '\\"'.$edgeReg.'\\" --edge-kiosk-type=fullscreen --ie-mode-force --no-first-run'
             .' --disable-pinch --overscroll-history-navigation=0'
-            .' --user-data-dir=\\"%LOCALAPPDATA%\\\\KioskBaylan\\\\EdgeProfile\\"';
-        $kioskCommand = '\\"'.$chromeReg.'\\" --kiosk \\"'.$kioskUrlReg
-            .'\\" --no-first-run --disable-pinch --overscroll-history-navigation=0'
+            .' --kiosk \\"'.$urlReg.'\\"';
+        $kioskCommand = '\\"'.$chromeReg.'\\" --no-first-run --disable-pinch --overscroll-history-navigation=0'
             .' --disable-session-crashed-bubble'
-            .' --user-data-dir=\\"%LOCALAPPDATA%\\\\KioskBaylan\\\\ChromeProfile\\"';
+            .' --kiosk \\"'.$kioskUrlReg.'\\"';
 
         // .reg içinde JSON tırnakları \" olarak kaçar
         $policyReg = str_replace('"', '\\"', $this->autoLaunchPolicyJson());
@@ -191,14 +190,15 @@ REG;
 
     /**
      * Chrome'un baylan-ie: için uyarı göstermemesi.
-     * Yalnızca bu kiosk origin'i baylan-ie: protokolünü uyarısız açabilir.
+     * Kiosk PC'de yalnızca bu uygulama çalıştığı için tüm origin'lere izin verilir;
+     * dar origin eşleşmesi (IP / localhost farkı) protokolü sessizce engelleyebilir.
      */
     private function autoLaunchPolicyJson(): string
     {
         return json_encode([
             [
                 'protocol' => 'baylan-ie',
-                'allowed_origins' => [$this->kioskOrigin()],
+                'allowed_origins' => ['*'],
             ],
         ], JSON_UNESCAPED_SLASHES);
     }

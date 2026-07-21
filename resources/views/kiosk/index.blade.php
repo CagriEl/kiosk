@@ -894,15 +894,37 @@
             });
         }
 
-        /** Chrome'dan istemci PC'de Edge IE modunu açar (baylan-ie: protokolü gerekir). */
-        function openBaylanInEdgeIe() {
+        /**
+         * Chrome'dan istemci PC'de Edge IE modunu açar.
+         * 1) baylan-ie: protokolü (kurulum.ps1 / kurulum.reg gerekir)
+         * 2) Sunucu Windows ise /api/kiosk/baylan/open yedek yolu
+         */
+        async function openBaylanInEdgeIe() {
             ensureBrowserFullscreen();
-            const a = document.createElement('a');
-            a.href = BAYLAN_IE_PROTOCOL;
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
+
+            // Protokol: gizli <a> + iframe (kiosk modunda daha güvenilir)
+            try {
+                const a = document.createElement('a');
+                a.href = BAYLAN_IE_PROTOCOL;
+                a.rel = 'noopener';
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } catch (_) { /* ignore */ }
+
+            try {
+                const iframe = document.createElement('iframe');
+                iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden';
+                iframe.src = BAYLAN_IE_PROTOCOL;
+                document.body.appendChild(iframe);
+                setTimeout(() => iframe.remove(), 2500);
+            } catch (_) { /* ignore */ }
+
+            // PHP aynı Windows kiosk PC'de çalışıyorsa Edge'i sunucudan aç
+            try {
+                await apiRequest('/api/kiosk/baylan/open', { method: 'POST', body: '{}' });
+            } catch (_) { /* Mac/dev veya uzak sunucu: protokol yolu yeterli */ }
         }
 
         function kioskHeaders(extra = {}) {

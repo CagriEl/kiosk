@@ -524,7 +524,10 @@ class KioskApiController extends Controller
     private function launchEdgeIeMode(string $url): void
     {
         $edge = $this->resolveEdgePath();
-        $cmd = 'cmd /c start "" '.escapeshellarg($edge).' --ie-mode-force '.escapeshellarg($url);
+        $cmd = 'cmd /c start "" '.escapeshellarg($edge)
+            .' --edge-kiosk-type=fullscreen --ie-mode-force --no-first-run'
+            .' --disable-pinch --overscroll-history-navigation=0'
+            .' --kiosk '.escapeshellarg($url);
 
         $process = proc_open($cmd, [
             0 => ['pipe', 'r'],
