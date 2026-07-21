@@ -908,22 +908,10 @@
                 return;
             }
 
+            // AutoLaunchProtocolsFromOrigins politikası yüklüyse Chrome onay
+            // penceresi göstermeden protokolü doğrudan çalıştırır.
             try {
-                const a = document.createElement('a');
-                a.href = BAYLAN_IE_PROTOCOL;
-                a.rel = 'noopener';
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-            } catch (_) { /* ignore */ }
-
-            try {
-                const iframe = document.createElement('iframe');
-                iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;visibility:hidden';
-                iframe.src = BAYLAN_IE_PROTOCOL;
-                document.body.appendChild(iframe);
-                setTimeout(() => iframe.remove(), 2500);
+                window.location.assign(BAYLAN_IE_PROTOCOL);
             } catch (_) { /* ignore */ }
         }
 

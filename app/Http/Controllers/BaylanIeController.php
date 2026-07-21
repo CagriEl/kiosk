@@ -59,7 +59,7 @@ class BaylanIeController extends Controller
   </div>
 
   <ol>
-    <li><b>.cmd</b> indirip <b>çift tıklayın</b>. Edge test için Baylan sayfasını IE modunda açar; dosya kendini siler.</li>
+    <li><b>.cmd</b> indirip <b>çift tıklayın</b> ve Windows yönetici onayına <b>Evet</b> deyin. Edge test için Baylan sayfasını IE modunda açar; dosya kendini siler.</li>
     <li>Alternatif: <b>.reg</b> → çift tık → <b>Evet</b>.</li>
     <li><b>Chrome'u tamamen kapatıp</b> yeniden açın.</li>
     <li>Kiosk'tan <b>BAYLAN</b>'a tıklayın → avans kredi sayfası IE modunda açılır.</li>
@@ -120,7 +120,14 @@ Windows Registry Editor Version 5.00
 "AutoLaunchProtocolsFromOrigins"="$policyReg"
 "ExternalProtocolDialogShowAlwaysOpenCheckbox"=dword:00000001
 
+[HKEY_LOCAL_MACHINE\\Software\\Policies\\Google\\Chrome]
+"AutoLaunchProtocolsFromOrigins"="$policyReg"
+"ExternalProtocolDialogShowAlwaysOpenCheckbox"=dword:00000001
+
 [HKEY_CURRENT_USER\\Software\\Policies\\Microsoft\\Edge]
+"HideFirstRunExperience"=dword:00000001
+
+[HKEY_LOCAL_MACHINE\\Software\\Policies\\Microsoft\\Edge]
 "HideFirstRunExperience"=dword:00000001
 
 [HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run]
@@ -144,6 +151,12 @@ REG;
 @echo off
 chcp 65001 >nul
 title Kirklareli Kiosk Baylan Kurulum
+
+if /I "%~1"=="elevated" goto install
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -ArgumentList 'elevated' -Verb RunAs"
+exit /b
+
+:install
 echo Kurulum basliyor...
 echo.
 
@@ -237,7 +250,10 @@ New-Item -ItemType Directory -Force -Path \$dir | Out-Null
 
 [Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Policies\\Google\\Chrome', 'AutoLaunchProtocolsFromOrigins', \$policyJson)
 [Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Policies\\Google\\Chrome', 'ExternalProtocolDialogShowAlwaysOpenCheckbox', 1, [Microsoft.Win32.RegistryValueKind]::DWord)
+[Microsoft.Win32.Registry]::SetValue('HKEY_LOCAL_MACHINE\\Software\\Policies\\Google\\Chrome', 'AutoLaunchProtocolsFromOrigins', \$policyJson)
+[Microsoft.Win32.Registry]::SetValue('HKEY_LOCAL_MACHINE\\Software\\Policies\\Google\\Chrome', 'ExternalProtocolDialogShowAlwaysOpenCheckbox', 1, [Microsoft.Win32.RegistryValueKind]::DWord)
 [Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Policies\\Microsoft\\Edge', 'HideFirstRunExperience', 1, [Microsoft.Win32.RegistryValueKind]::DWord)
+[Microsoft.Win32.Registry]::SetValue('HKEY_LOCAL_MACHINE\\Software\\Policies\\Microsoft\\Edge', 'HideFirstRunExperience', 1, [Microsoft.Win32.RegistryValueKind]::DWord)
 
 if (\$chrome) {
     \$chromeProfile = Join-Path \$dir 'ChromeProfile'
