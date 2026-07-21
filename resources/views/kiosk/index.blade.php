@@ -880,8 +880,23 @@
         const BAYLAN_IE_URL = @json(config('belsis.baylan_ie_url'));
         const BAYLAN_IE_PROTOCOL = 'baylan-ie:open';
 
+        /**
+         * Windows kiosk başlatıcısı kullanılmadığında ilk kullanıcı dokunuşuyla
+         * tarayıcı arayüzünü gizler. Gerçek cihazda Chrome ayrıca --kiosk ile açılır.
+         */
+        function ensureBrowserFullscreen() {
+            if (document.fullscreenElement || !document.documentElement.requestFullscreen) {
+                return;
+            }
+
+            document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {
+                // Tarayıcı politikası izin vermiyorsa Windows --kiosk başlatıcısı devralır.
+            });
+        }
+
         /** Chrome'dan istemci PC'de Edge IE modunu açar (baylan-ie: protokolü gerekir). */
         function openBaylanInEdgeIe() {
+            ensureBrowserFullscreen();
             const a = document.createElement('a');
             a.href = BAYLAN_IE_PROTOCOL;
             a.style.display = 'none';
@@ -1873,7 +1888,11 @@
             });
         });
 
-        document.getElementById('btn-start').addEventListener('click', () => { showScreen('menu'); onUserActivity(); });
+        document.getElementById('btn-start').addEventListener('click', () => {
+            ensureBrowserFullscreen();
+            showScreen('menu');
+            onUserActivity();
+        });
         document.getElementById('btn-menu-back').addEventListener('click', goHome);
         document.getElementById('btn-menu-debt').addEventListener('click', () => { showScreen('login'); onUserActivity(); });
         document.getElementById('btn-menu-water').addEventListener('click', () => { resetWaterSession(); showScreen('waterVendor'); onUserActivity(); });
