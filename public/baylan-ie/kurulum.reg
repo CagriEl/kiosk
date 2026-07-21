@@ -1,8 +1,8 @@
 Windows Registry Editor Version 5.00
 
 ; Kirklareli Kiosk - Baylan IE
-; BAYLAN -> Edge IE modunda baylan.aspx (avans kredi)
-; Yonetici olarak calistirin (HKLM policy icin). Sonra Chrome'u tamamen kapatip acin.
+; baylan-ie: -> dogrudan Edge IE modunda baylan.aspx (avans kredi)
+; Yonetici olarak calistirin. Sonra Chrome'u tamamen kapatip acin.
 
 [HKEY_CURRENT_USER\Software\Classes\baylan-ie]
 @="URL:Baylan IE Mode"

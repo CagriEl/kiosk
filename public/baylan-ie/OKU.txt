@@ -1,19 +1,14 @@
-Kirklareli Kiosk - Baylan IE kurulum
-====================================
+Kirklareli Kiosk - Baylan IE kurulum (duzeltilmis)
+==================================================
 
-Bu klasoru sunucuya yukleyin:  public/baylan-ie/
+SORUN: Eski kurulum BAYLAN tiklayinca System32 aciyordu.
+COZUM: baylan-ie: protokolu artik dogrudan msedge.exe + Baylan URL.
 
-Kiosk Windows PC'de:
-1) Tarayicida acin:  http://SUNUCU-ADRESI/baylan-ie/
-2) kurulum.cmd indirip cift tiklayin (yonetici Evvet)
-3) Chrome'u tamamen kapatip yeniden acin
-4) Kiosk'tan BAYLAN'a tiklayin
+1) Bu klasoru sunucuya yukleyin: public/baylan-ie/
+2) Kiosk PC'de http://SUNUCU/baylan-ie/ acin
+3) kurulum.cmd calistirin (yonetici Evvet)
+4) Chrome'u tamamen kapatip acin
+5) BAYLAN'a tiklayin
 
-Acilan adres (Edge IE modu):
+URL:
 http://belapp.belediye.local/Belsis-Net/genel/kioskwebservisV1/baylan.aspx?txtKartId=&txtYukle=&txtAboneNoC=&txtDonemC=&txtGensicilnoC=&txtIlkEndeksC=&txtYuklenecekC=&txtAtikSuMikC=
-
-Dosyalar:
-- index.html   : kurulum ekrani
-- kurulum.cmd  : otomatik kurulum (onerilen)
-- kurulum.reg  : manuel registry
-- OKU.txt      : bu dosya

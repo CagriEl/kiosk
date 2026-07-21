@@ -22,11 +22,11 @@
 <body>
 <div class="card">
   <h1>Baylan IE — Kiosk PC Kurulumu</h1>
-  <p class="sub">Bu sayfayı <b>kiosk Windows bilgisayarında</b> açın (sunucuda değil).</p>
+  <p class="sub">Bu sayfayı <b>kiosk Windows bilgisayarında</b> açın.</p>
 
   <div class="warn">
-    BAYLAN'a tıklanınca aşağıdaki adres Edge <b>IE modunda</b>, onay penceresi olmadan açılır.<br>
-    Bunun için kurulumu <b>bir kez kiosk PC'de</b> çalıştırın.
+    <b>Önemli:</b> Eski kurulum System32 açıyordu. Bu yeni paket protokolü
+    doğrudan Edge'e bağlar. Mutlaka <b>yeniden kurulum</b> yapın.
   </div>
 
   <div class="btns">
@@ -35,11 +35,10 @@
   </div>
 
   <ol>
-    <li><b>kurulum.cmd</b> indirip çift tıklayın → yönetici onayına <b>Evet</b> deyin.</li>
-    <li>Edge, Baylan avans kredi sayfasını IE modunda test için açar; .cmd kendini siler.</li>
+    <li><b>kurulum.cmd</b> çift tıklayın → yönetici <b>Evet</b>.</li>
+    <li>Edge, Baylan sayfasını IE modunda test için açmalı.</li>
     <li><b>Chrome'u tamamen kapatıp</b> yeniden açın.</li>
-    <li>İsterseniz <code>chrome://policy</code> → <code>AutoLaunchProtocolsFromOrigins</code> kontrol edin.</li>
-    <li>Kiosk'tan <b>BAYLAN</b>'a tıklayın → doğrudan Edge IE açılır (Aç/İptal yok).</li>
+    <li>Kiosk'tan <b>BAYLAN</b> → Edge IE, onay penceresi yok.</li>
   </ol>
 
   <div class="note">
