@@ -895,12 +895,19 @@
         }
 
         /**
-         * Uzak sunucudaki PHP, kiosk PC'de Edge açamaz.
-         * Bu yüzden istemci tarafında baylan-ie: protokolü kullanılır
-         * (kiosk PC'de /baylan-ie kurulumundan sonra).
+         * BAYLAN → Edge IE modunda avans kredi sayfası:
+         * http://belapp.belediye.local/.../baylan.aspx?...
+         *
+         * baylan-ie:open protokolü, kiosk PC kurulumunda kaydedilen launcher'ı
+         * Edge --ie-mode-force --kiosk ile bu adrese yönlendirir.
          */
         function openBaylanInEdgeIe() {
             ensureBrowserFullscreen();
+            if (!BAYLAN_IE_URL) {
+                console.warn('BAYLAN_IE_URL tanımsız');
+                return;
+            }
+
             try {
                 const a = document.createElement('a');
                 a.href = BAYLAN_IE_PROTOCOL;

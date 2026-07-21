@@ -7,9 +7,9 @@ use Illuminate\Http\Response;
 /**
  * Uzak sunucu → Windows kiosk PC köprüsü.
  *
- * PHP sunucuda çalışır; Edge istemci (kiosk) PC'de açılmalıdır.
- * BAYLAN tıklanınca tarayıcı "baylan-ie:" protokolünü çağırır.
- * Protokol, kiosk PC'de bir kez kurulum.reg / kurulum.cmd ile kaydedilir.
+ * BAYLAN tıklanınca Chrome şu protokolü çağırır:
+ *   baylan-ie:http://belapp.belediye.local/.../baylan.aspx?...
+ * Kiosk PC'deki handler Edge'i --ie-mode-force ile o URL'de açar.
  */
 class BaylanIeController extends Controller
 {
@@ -49,9 +49,8 @@ class BaylanIeController extends Controller
   <p class="sub">Bu sayfayı <b>kiosk Windows bilgisayarında</b> açın (sunucuda değil).</p>
 
   <div class="warn">
-    Uygulama uzak sunucuda çalışır; Edge kiosk PC'de açılmalıdır.
-    Aşağıdaki kurulumu <b>bir kez kiosk PC'de</b> çalıştırın.
-    <code>baylan-ie:</code> protokolü kaydedilir; BAYLAN'a tıklanınca Chrome Edge'i IE modunda açar.
+    BAYLAN'a tıklanınca şu adres Edge <b>IE modunda</b> açılmalıdır.<br>
+    Bunun için aşağıdaki kurulumu <b>bir kez kiosk PC'de</b> çalıştırın.
   </div>
 
   <div class="btns">
@@ -60,15 +59,14 @@ class BaylanIeController extends Controller
   </div>
 
   <ol>
-    <li><b>.cmd</b> indirip <b>çift tıklayın</b> (yönetici gerekmez). Bitince dosya kendini siler. Edge test için açılır.</li>
+    <li><b>.cmd</b> indirip <b>çift tıklayın</b>. Edge test için Baylan sayfasını IE modunda açar; dosya kendini siler.</li>
     <li>Alternatif: <b>.reg</b> → çift tık → <b>Evet</b>.</li>
     <li><b>Chrome'u tamamen kapatıp</b> yeniden açın.</li>
-    <li><code>chrome://policy</code> → <code>AutoLaunchProtocolsFromOrigins</code> görünmeli.</li>
-    <li>Kiosk'tan <b>BAYLAN</b>'a tıklayın.</li>
+    <li>Kiosk'tan <b>BAYLAN</b>'a tıklayın → avans kredi sayfası IE modunda açılır.</li>
   </ol>
 
   <div class="note">
-    Baylan: <code>$baylanUrl</code><br><br>
+    Açılacak adres:<br><code>$baylanUrl</code><br><br>
     Kiosk: <code>$kioskUrl</code>
   </div>
 </div>
@@ -90,6 +88,10 @@ HTML;
         $chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
         $policyReg = str_replace('"', '\\"', $this->autoLaunchPolicyJson());
 
+        // %1 = baylan-ie:http://...  → open-baylan.cmd protokol önekini silip Edge IE açar
+        // .reg sabit yol kullanamaz (%LOCALAPPDATA% genişlemez); Edge'i doğrudan çağırır,
+        // URL protokol argümanından veya yedek olarak kayıtlı adresten gelir.
+        // En güvenlisi .cmd kurulumu (LOCALAPPDATA altında launcher yazar).
         $baylanCmd = $this->regCommandValue(
             '"'.$edge.'" --edge-kiosk-type=fullscreen --ie-mode-force --no-first-run'
             .' --disable-pinch --overscroll-history-navigation=0'
@@ -104,8 +106,8 @@ HTML;
         $reg = <<<REG
 Windows Registry Editor Version 5.00
 
-; Kirklareli Kiosk - Baylan IE (kiosk PC'de bir kez)
-; Cift tiklayin, Evet deyin. Sonra Chrome'u tamamen kapatip acin.
+; Kirklareli Kiosk - Baylan IE
+; BAYLAN → Edge IE modunda baylan.aspx (avans kredi)
 
 [HKEY_CURRENT_USER\\Software\\Classes\\baylan-ie]
 @="URL:Baylan IE Mode"
@@ -133,9 +135,6 @@ REG;
         ]);
     }
 
-    /**
-     * Kiosk PC'de çift tık: gömülü PowerShell ile protokol kurar, kendini siler.
-     */
     public function installCmd(): Response
     {
         $ps1 = $this->buildInstallPs1();
@@ -179,9 +178,10 @@ CMD;
         $kioskUrl = $this->escapePsSingle($this->kioskOrigin().'/kiosk');
         $policy = $this->escapePsSingle($this->autoLaunchPolicyJson());
 
+        // Launcher: baylan-ie:http://... veya baylan-ie:open → Edge IE kiosk
         return <<<POWERSHELL
 \$ErrorActionPreference = 'Stop'
-\$url = '$url'
+\$defaultUrl = '$url'
 \$origin = '$origin'
 \$kioskUrl = '$kioskUrl'
 \$policyJson = '$policy'
@@ -213,11 +213,27 @@ foreach (\$p in @(
 New-Item -ItemType Directory -Force -Path \$dir | Out-Null
 \$edgeProfile = Join-Path \$dir 'EdgeProfile'
 
-\$launch = '"{0}" --user-data-dir="{1}" --edge-kiosk-type=fullscreen --ie-mode-force --no-first-run --disable-pinch --overscroll-history-navigation=0 --kiosk "{2}"' -f \$edge, \$edgeProfile, \$url
+# open-baylan.cmd: protokol argümanından URL çıkar, yoksa varsayılan Baylan adresi
+\$launcher = Join-Path \$dir 'open-baylan.cmd'
+\$launcherLines = @(
+    '@echo off',
+    'setlocal EnableExtensions',
+    'set "EDGE=' + \$edge + '"',
+    'set "PROFILE=' + \$edgeProfile + '"',
+    'set "DEFAULT=' + \$defaultUrl + '"',
+    'set "RAW=%~1"',
+    'if "%RAW%"=="" set "RAW=%DEFAULT%"',
+    'set "RAW=%RAW:baylan-ie:=%"',
+    'if /I "%RAW%"=="open" set "RAW=%DEFAULT%"',
+    'if "%RAW%"=="" set "RAW=%DEFAULT%"',
+    'start "" "%EDGE%" --user-data-dir="%PROFILE%" --edge-kiosk-type=fullscreen --ie-mode-force --no-first-run --disable-pinch --overscroll-history-navigation=0 --kiosk "%RAW%"'
+)
+\$launcherLines | Set-Content -LiteralPath \$launcher -Encoding ASCII
 
+\$protocolCmd = '"' + \$launcher + '" "%1"'
 [Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Classes\\baylan-ie', '', 'URL:Baylan IE Mode')
 [Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Classes\\baylan-ie', 'URL Protocol', '')
-[Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Classes\\baylan-ie\\shell\\open\\command', '', \$launch)
+[Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Classes\\baylan-ie\\shell\\open\\command', '', \$protocolCmd)
 
 [Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Policies\\Google\\Chrome', 'AutoLaunchProtocolsFromOrigins', \$policyJson)
 [Microsoft.Win32.Registry]::SetValue('HKEY_CURRENT_USER\\Software\\Policies\\Google\\Chrome', 'ExternalProtocolDialogShowAlwaysOpenCheckbox', 1, [Microsoft.Win32.RegistryValueKind]::DWord)
@@ -239,8 +255,7 @@ if (-not \$verify) {
 
 Write-Host 'Kurulum OK.' -ForegroundColor Green
 Write-Host ('Edge: ' + \$edge)
-Write-Host ('Baylan: ' + \$url)
-Write-Host ('Origin: ' + \$origin)
+Write-Host ('Baylan (IE): ' + \$defaultUrl)
 
 Start-Process -FilePath \$edge -ArgumentList @(
     ('--user-data-dir=' + \$edgeProfile),
@@ -248,10 +263,10 @@ Start-Process -FilePath \$edge -ArgumentList @(
     '--ie-mode-force',
     '--no-first-run',
     '--kiosk',
-    \$url
+    \$defaultUrl
 ) | Out-Null
 
-Write-Host 'Test: Edge acildi. Baylan sayfasi geldiyse kurulum dogru.' -ForegroundColor Green
+Write-Host 'Test: Edge IE modunda Baylan avans kredi sayfasi acildi.' -ForegroundColor Green
 Write-Host 'SIMDI: Chrome u tamamen kapatip yeniden acin, sonra BAYLAN a tiklayin.'
 exit 0
 POWERSHELL;
