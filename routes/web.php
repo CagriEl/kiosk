@@ -11,6 +11,7 @@ Route::get('/kiosk', [KioskController::class, 'index']);
 // Chrome → Edge IE modu: istemci PC'de bir kez kurulum
 Route::get('/baylan-ie/kurulum.ps1', [BaylanIeController::class, 'installPs1']);
 Route::get('/baylan-ie/kurulum.reg', [BaylanIeController::class, 'registerReg']);
+Route::get('/baylan-ie/kurulum.cmd', [BaylanIeController::class, 'installCmd']);
 
 // Kiosk API — web rotaları (paylaşımlı hosting /public altında güvenilir erişim)
 Route::prefix('api/kiosk')->middleware('kiosk.key')->group(function () {
