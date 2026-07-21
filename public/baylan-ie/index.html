@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kırklareli Kiosk · Baylan Kurulum</title>
+<style>
+  body { font-family: system-ui, Segoe UI, Arial, sans-serif; background:#0f172a; color:#e2e8f0; margin:0; padding:32px; }
+  .card { max-width:760px; margin:0 auto; background:#1e293b; border:1px solid #334155; border-radius:18px; padding:28px 32px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  p.sub { color:#94a3b8; margin:0 0 20px; }
+  .warn { background:#422006; border:1px solid #b45309; color:#fdba74; padding:12px 14px; border-radius:10px; margin-bottom:20px; font-size:14px; line-height:1.5; }
+  .btns { display:flex; gap:14px; flex-wrap:wrap; margin:16px 0 24px; }
+  a.btn { display:inline-block; text-decoration:none; font-weight:700; padding:16px 22px; border-radius:12px; }
+  a.primary { background:#0ea5e9; color:#04283a; }
+  a.secondary { background:#334155; color:#e2e8f0; }
+  ol { line-height:1.75; padding-left:22px; }
+  code { background:#0f172a; padding:2px 7px; border-radius:6px; color:#7dd3fc; word-break:break-all; }
+  .note { margin-top:22px; font-size:13px; color:#94a3b8; border-top:1px solid #334155; padding-top:16px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Baylan IE — Kiosk PC Kurulumu</h1>
+  <p class="sub">Bu sayfayı <b>kiosk Windows bilgisayarında</b> açın (sunucuda değil).</p>
+
+  <div class="warn">
+    BAYLAN'a tıklanınca aşağıdaki adres Edge <b>IE modunda</b>, onay penceresi olmadan açılır.<br>
+    Bunun için kurulumu <b>bir kez kiosk PC'de</b> çalıştırın.
+  </div>
+
+  <div class="btns">
+    <a class="btn primary" href="kurulum.cmd" download>1) Otomatik kurulum (.cmd)</a>
+    <a class="btn secondary" href="kurulum.reg" download>veya .reg indir</a>
+  </div>
+
+  <ol>
+    <li><b>kurulum.cmd</b> indirip çift tıklayın → yönetici onayına <b>Evet</b> deyin.</li>
+    <li>Edge, Baylan avans kredi sayfasını IE modunda test için açar; .cmd kendini siler.</li>
+    <li><b>Chrome'u tamamen kapatıp</b> yeniden açın.</li>
+    <li>İsterseniz <code>chrome://policy</code> → <code>AutoLaunchProtocolsFromOrigins</code> kontrol edin.</li>
+    <li>Kiosk'tan <b>BAYLAN</b>'a tıklayın → doğrudan Edge IE açılır (Aç/İptal yok).</li>
+  </ol>
+
+  <div class="note">
+    Açılacak adres:<br><code>http://belapp.belediye.local/Belsis-Net/genel/kioskwebservisV1/baylan.aspx?txtKartId=&amp;txtYukle=&amp;txtAboneNoC=&amp;txtDonemC=&amp;txtGensicilnoC=&amp;txtIlkEndeksC=&amp;txtYuklenecekC=&amp;txtAtikSuMikC=</code>
+  </div>
+</div>
+</body>
+</html>

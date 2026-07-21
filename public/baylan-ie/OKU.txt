@@ -1,0 +1,19 @@
+Kirklareli Kiosk - Baylan IE kurulum
+====================================
+
+Bu klasoru sunucuya yukleyin:  public/baylan-ie/
+
+Kiosk Windows PC'de:
+1) Tarayicida acin:  http://SUNUCU-ADRESI/baylan-ie/
+2) kurulum.cmd indirip cift tiklayin (yonetici Evvet)
+3) Chrome'u tamamen kapatip yeniden acin
+4) Kiosk'tan BAYLAN'a tiklayin
+
+Acilan adres (Edge IE modu):
+http://belapp.belediye.local/Belsis-Net/genel/kioskwebservisV1/baylan.aspx?txtKartId=&txtYukle=&txtAboneNoC=&txtDonemC=&txtGensicilnoC=&txtIlkEndeksC=&txtYuklenecekC=&txtAtikSuMikC=
+
+Dosyalar:
+- index.html   : kurulum ekrani
+- kurulum.cmd  : otomatik kurulum (onerilen)
+- kurulum.reg  : manuel registry
+- OKU.txt      : bu dosya

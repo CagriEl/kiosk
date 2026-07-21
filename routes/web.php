@@ -1,17 +1,14 @@
 <?php
 
 use App\Http\Controllers\Api\KioskApiController;
-use App\Http\Controllers\BaylanIeController;
 use App\Http\Controllers\KioskController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [KioskController::class, 'index'])->name('kiosk.index');
 Route::get('/kiosk', [KioskController::class, 'index']);
 
-// Kiosk kurulum ekranı: kiosk PC'de bir kez çalıştırılır
-Route::get('/baylan-ie', [BaylanIeController::class, 'installPage']);
-Route::get('/baylan-ie/kurulum.reg', [BaylanIeController::class, 'registerReg']);
-Route::get('/baylan-ie/kurulum.cmd', [BaylanIeController::class, 'installCmd']);
+// Statik kurulum paketi: public/baylan-ie/
+Route::redirect('/baylan-ie', '/baylan-ie/index.html');
 
 // Kiosk API — web rotaları (paylaşımlı hosting /public altında güvenilir erişim)
 Route::prefix('api/kiosk')->middleware('kiosk.key')->group(function () {

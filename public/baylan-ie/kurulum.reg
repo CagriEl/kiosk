@@ -1,0 +1,29 @@
+Windows Registry Editor Version 5.00
+
+; Kirklareli Kiosk - Baylan IE
+; BAYLAN -> Edge IE modunda baylan.aspx (avans kredi)
+; Yonetici olarak calistirin (HKLM policy icin). Sonra Chrome'u tamamen kapatip acin.
+
+[HKEY_CURRENT_USER\Software\Classes\baylan-ie]
+@="URL:Baylan IE Mode"
+"URL Protocol"=""
+
+[HKEY_CURRENT_USER\Software\Classes\baylan-ie\shell\open\command]
+@="\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --edge-kiosk-type=fullscreen --ie-mode-force --no-first-run --disable-pinch --overscroll-history-navigation=0 --kiosk \"http://belapp.belediye.local/Belsis-Net/genel/kioskwebservisV1/baylan.aspx?txtKartId=&txtYukle=&txtAboneNoC=&txtDonemC=&txtGensicilnoC=&txtIlkEndeksC=&txtYuklenecekC=&txtAtikSuMikC=\""
+
+[HKEY_CURRENT_USER\Software\Policies\Google\Chrome]
+"AutoLaunchProtocolsFromOrigins"="[{\"protocol\":\"baylan-ie\",\"allowed_origins\":[\"*\"]}]"
+"ExternalProtocolDialogShowAlwaysOpenCheckbox"=dword:00000001
+
+[HKEY_LOCAL_MACHINE\Software\Policies\Google\Chrome]
+"AutoLaunchProtocolsFromOrigins"="[{\"protocol\":\"baylan-ie\",\"allowed_origins\":[\"*\"]}]"
+"ExternalProtocolDialogShowAlwaysOpenCheckbox"=dword:00000001
+
+[HKEY_CURRENT_USER\Software\Policies\Microsoft\Edge]
+"HideFirstRunExperience"=dword:00000001
+
+[HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Edge]
+"HideFirstRunExperience"=dword:00000001
+
+[HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run]
+"KirklareliKiosk"="\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" --no-first-run --disable-pinch --overscroll-history-navigation=0 --disable-session-crashed-bubble --kiosk \"http://kiosk.test/kiosk\""
