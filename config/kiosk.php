@@ -23,4 +23,14 @@ return [
 
     // Sağlık kontrolü — Belsis oturum açmayı dener (hafif)
     'health_check_belsis' => filter_var(env('KIOSK_HEALTH_CHECK_BELSIS', true), FILTER_VALIDATE_BOOLEAN),
+
+    // Gece bakımı — bilgisayar yerel saatine göre tam ekran (00:44 uyarı → 00:45–07:00 kilit)
+    'maintenance' => [
+        'warn_hour' => (int) env('KIOSK_MAINT_WARN_HOUR', 0),
+        'warn_minute' => (int) env('KIOSK_MAINT_WARN_MINUTE', 44),
+        'start_hour' => (int) env('KIOSK_MAINT_START_HOUR', 0),
+        'start_minute' => (int) env('KIOSK_MAINT_START_MINUTE', 45),
+        'end_hour' => (int) env('KIOSK_MAINT_END_HOUR', 7),
+        'end_minute' => (int) env('KIOSK_MAINT_END_MINUTE', 0),
+    ],
 ];

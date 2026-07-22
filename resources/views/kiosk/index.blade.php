@@ -347,6 +347,62 @@
             0%, 100% { transform: translateY(0); box-shadow: inset 0 -8px 0 rgba(8,145,178,0.12); }
             50% { transform: translateY(-4px); box-shadow: inset 0 -8px 0 rgba(8,145,178,0.22), 0 8px 16px rgba(8,145,178,0.18); }
         }
+        #maintenance-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            width: 1024px;
+            height: 768px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(180deg, #1e5a9e 0%, #123a6b 55%, #0a1f38 100%);
+            color: #fff;
+            text-align: center;
+            padding: 2.5rem;
+        }
+        #maintenance-overlay.is-visible { display: flex; }
+        #maintenance-overlay .maint-clock {
+            font-size: 3.25rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            font-variant-numeric: tabular-nums;
+            margin: 1.25rem 0 0.5rem;
+        }
+        #maintenance-overlay .maint-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.14);
+            border: 1px solid rgba(255,255,255,0.28);
+            border-radius: 999px;
+            padding: 0.45rem 1.1rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        #maintenance-overlay .maint-title {
+            font-size: 2.125rem;
+            font-weight: 800;
+            line-height: 1.15;
+            margin: 1.1rem 0 0.75rem;
+            max-width: 820px;
+        }
+        #maintenance-overlay .maint-msg {
+            font-size: 1.2rem;
+            line-height: 1.45;
+            opacity: 0.92;
+            max-width: 720px;
+            font-weight: 400;
+        }
+        #maintenance-overlay .maint-support {
+            margin-top: 2rem;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.22);
+            border-radius: 1rem;
+            padding: 1rem 1.5rem;
+            min-width: 280px;
+        }
     </style>
 </head>
 <body oncontextmenu="return false;" ondragstart="return false;">
@@ -862,6 +918,26 @@
         <button id="btn-health-banner-close" type="button" class="absolute right-4 top-1/2 -translate-y-1/2 touch-btn w-10 h-10 rounded-lg bg-white/20 hover:bg-white/30 font-bold">×</button>
     </div>
 
+    {{-- Gece bakımı (bilgisayar saati): 00:44 uyarı → 00:45–07:00 kilit --}}
+    <div id="maintenance-overlay" role="alertdialog" aria-modal="true" aria-labelledby="maint-title" aria-live="polite">
+        <div class="absolute top-0 left-0 flex items-center gap-4 px-8 py-5">
+            <img src="{{ asset('images/logo.png') }}" alt="" class="h-20 w-auto drop-shadow-xl" />
+            <div class="text-left">
+                <p class="text-kiosk-base font-bold tracking-wide leading-tight">T.C. Kırklareli Belediye Başkanlığı</p>
+                <p class="text-kiosk-sm font-medium opacity-90 leading-tight mt-0.5">Akıllı Ödeme Sistemleri</p>
+            </div>
+        </div>
+        <span id="maint-badge" class="maint-badge">Sistem Bakımı</span>
+        <h2 id="maint-title" class="maint-title">Sistem bakımdadır</h2>
+        <p id="maint-msg" class="maint-msg">Sabah 07:00’de yeniden hizmete açılacaktır.</p>
+        <div id="maint-clock" class="maint-clock" aria-hidden="true">00:00:00</div>
+        <p id="maint-until" class="text-kiosk-sm opacity-80 mt-1"></p>
+        <div class="maint-support">
+            <p class="text-kiosk-xs opacity-80 mb-1">Destek hattı</p>
+            <p class="text-kiosk-xl font-bold tracking-wide">{{ config('kiosk.support_phone') }}</p>
+        </div>
+    </div>
+
     <script>
     (function () {
         'use strict';
@@ -879,6 +955,14 @@
         const KIOSK_ENABLE_TEST = @json((bool) config('kiosk.enable_test_query'));
         const BAYLAN_IE_URL = @json(config('belsis.baylan_ie_url'));
         const BAYLAN_IE_PROTOCOL = 'baylan-ie:open';
+        const MAINT = {
+            warnHour: {{ (int) config('kiosk.maintenance.warn_hour') }},
+            warnMinute: {{ (int) config('kiosk.maintenance.warn_minute') }},
+            startHour: {{ (int) config('kiosk.maintenance.start_hour') }},
+            startMinute: {{ (int) config('kiosk.maintenance.start_minute') }},
+            endHour: {{ (int) config('kiosk.maintenance.end_hour') }},
+            endMinute: {{ (int) config('kiosk.maintenance.end_minute') }},
+        };
 
         /**
          * Windows kiosk başlatıcısı kullanılmadığında ilk kullanıcı dokunuşuyla
@@ -2503,6 +2587,90 @@
         });
         checkSystemHealth();
         setInterval(checkSystemHealth, 60000);
+
+        // —— Gece bakımı (bilgisayar yerel saati) ——
+        const maintOverlay = document.getElementById('maintenance-overlay');
+        const maintBadge = document.getElementById('maint-badge');
+        const maintTitle = document.getElementById('maint-title');
+        const maintMsg = document.getElementById('maint-msg');
+        const maintClock = document.getElementById('maint-clock');
+        const maintUntil = document.getElementById('maint-until');
+        let maintPhase = null;
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
+        function minutesOfDay(d) {
+            return d.getHours() * 60 + d.getMinutes();
+        }
+
+        function toMinutes(h, m) {
+            return h * 60 + m;
+        }
+
+        function formatClock(d) {
+            return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+        }
+
+        function formatHm(h, m) {
+            return pad2(h) + ':' + pad2(m);
+        }
+
+        /** overnight: warn → end (e.g. 00:44–07:00) */
+        function getMaintenancePhase(now) {
+            const cur = minutesOfDay(now);
+            const warn = toMinutes(MAINT.warnHour, MAINT.warnMinute);
+            const start = toMinutes(MAINT.startHour, MAINT.startMinute);
+            const end = toMinutes(MAINT.endHour, MAINT.endMinute);
+
+            const inWindow = end > warn
+                ? (cur >= warn && cur < end)
+                : (cur >= warn || cur < end);
+
+            if (!inWindow) return null;
+            if (cur >= warn && cur < start) return 'warning';
+            return 'active';
+        }
+
+        function applyMaintenanceUi(phase, now) {
+            const endLabel = formatHm(MAINT.endHour, MAINT.endMinute);
+            const startLabel = formatHm(MAINT.startHour, MAINT.startMinute);
+
+            maintClock.textContent = formatClock(now);
+            if (phase === 'warning') {
+                maintBadge.textContent = 'Uyarı';
+                maintTitle.textContent = 'Sistem bakıma giriyor';
+                maintMsg.textContent = 'Saat ' + startLabel + '’te bakım başlayacak; sabah ' + endLabel + '’de yeniden hizmete açılacaktır.';
+                maintUntil.textContent = '';
+            } else {
+                maintBadge.textContent = 'Sistem Bakımı';
+                maintTitle.textContent = 'Sistem bakımdadır';
+                maintMsg.textContent = 'Sabah ' + endLabel + '’de yeniden hizmete açılacaktır.';
+                maintUntil.textContent = '';
+            }
+        }
+
+        function tickMaintenance() {
+            const now = new Date();
+            const phase = getMaintenancePhase(now);
+
+            if (phase) {
+                applyMaintenanceUi(phase, now);
+                if (!maintOverlay.classList.contains('is-visible')) {
+                    maintOverlay.classList.add('is-visible');
+                    try { resetSession(); showScreen('welcome'); } catch (_) { /* ignore */ }
+                } else if (phase !== maintPhase) {
+                    applyMaintenanceUi(phase, now);
+                }
+            } else if (maintOverlay.classList.contains('is-visible')) {
+                maintOverlay.classList.remove('is-visible');
+                try { goHome(); } catch (_) { /* ignore */ }
+            }
+
+            maintPhase = phase;
+        }
+
+        tickMaintenance();
+        setInterval(tickMaintenance, 1000);
     })();
     </script>
 </body>
