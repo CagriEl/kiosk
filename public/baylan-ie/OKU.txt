@@ -1,8 +1,15 @@
-Tek dosya: kilitle.cmd
+VPN bekleyen ekran (onerilen)
+  1) http://10.0.1.1/kiosk/public/baylan-ie/bekleyen.html
+  2) http://10.0.1.1/kiosk/public/baylan-ie/bekleyen-kur.cmd
+  Ikisini ayni klasore indir → bekleyen-kur.cmd calistir
+
+  Sonuc:
+  - Masaustunde Kiosk kisayolu
+  - Acilista yerel sayfa acilir (VPN gerekmez)
+  - "Sistem bakımdadır / Yakında devreye girecektir"
+  - 10.0.1.1 gelince AYNI pencerede kiosk yuklenir (yeni sekme yok)
+  - Baglanti kopunca ekran temizlenir, yine bekleyen kalir
 
 Kilit:
   http://10.0.1.1/kiosk/public/baylan-ie/kilitle.cmd
-  indir → cift tik → yonetici Evvet → oturumu kapat/ac
-
-Kilidi ac:
-  kilitle.cmd ac
+  http://10.0.1.1/kiosk/public/baylan-ie/ac.cmd
