@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('kiosk')->middleware('kiosk.key')->group(function () {
     Route::get('/health', [KioskApiController::class, 'health']);
+    Route::post('/stats/event', [KioskApiController::class, 'recordStatEvent']);
     Route::get('/payment-methods', [KioskApiController::class, 'paymentMethods']);
     Route::get('/receipt/{makbuzId}', [KioskApiController::class, 'receipt']);
     Route::get('/citizen/{identityNo}', [KioskApiController::class, 'citizen'])

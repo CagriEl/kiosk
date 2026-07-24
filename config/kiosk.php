@@ -33,4 +33,7 @@ return [
         'end_hour' => (int) env('KIOSK_MAINT_END_HOUR', 7),
         'end_minute' => (int) env('KIOSK_MAINT_END_MINUTE', 0),
     ],
+
+    // Günlük rapor sayfası: /rapor?key=...  (boşsa anahtar istenmez — yalnızca iç ağda kullanın)
+    'report_key' => env('KIOSK_REPORT_KEY', ''),
 ];

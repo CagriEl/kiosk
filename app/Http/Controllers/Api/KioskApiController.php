@@ -7,7 +7,9 @@ use App\Http\Controllers\Controller;
 use App\Services\Belsis\BelsisAuthService;
 use App\Services\Belsis\BelsisKioskService;
 use App\Services\Belsis\WaterCardKioskService;
+use App\Models\KioskDailyStat;
 use App\Services\Kiosk\KioskAuditLogger;
+use App\Services\Kiosk\KioskDailyCounter;
 use App\Services\Kiosk\KioskQueryGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +23,7 @@ class KioskApiController extends Controller
         private readonly BelsisAuthService $belsisAuth,
         private readonly KioskQueryGate $queryGate,
         private readonly KioskAuditLogger $audit,
+        private readonly KioskDailyCounter $dailyCounter,
     ) {}
 
     public function health(): JsonResponse
@@ -131,12 +134,16 @@ class KioskApiController extends Controller
                 throw new BelsisException('Geçersiz abone numarası.');
             }
 
-            return response()->json($this->belsis->getDebts(
+            $debts = $this->belsis->getDebts(
                 $identityNo,
                 'tc',
                 $gensicilNo,
                 ($aboneNo !== null && $aboneNo !== '') ? $aboneNo : null,
-            ));
+            );
+
+            $this->dailyCounter->increment(KioskDailyStat::METRIC_DEBT_QUERY, $kioskId);
+
+            return response()->json($debts);
         } catch (BelsisException $e) {
             return $this->belsisError($e);
         } catch (Throwable $e) {
@@ -146,6 +153,30 @@ class KioskApiController extends Controller
                 'Borç sorgusu sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyiniz.',
             ));
         }
+    }
+
+    /**
+     * Günlük sayaç — kiosk UI olayları (örn. Baylan / avans kredi açılışı).
+     */
+    public function recordStatEvent(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:debt_query,avans_credit',
+        ]);
+
+        $kioskId = $this->queryGate->kioskId($request->header('X-Kiosk-Id'));
+        $metric = $validated['type'] === 'avans_credit'
+            ? KioskDailyStat::METRIC_AVANS_CREDIT
+            : KioskDailyStat::METRIC_DEBT_QUERY;
+
+        // Borç sorgusu sunucu tarafında debts() içinde sayılır; istemciden tekrarlama yok.
+        if ($metric === KioskDailyStat::METRIC_DEBT_QUERY) {
+            return response()->json(['ok' => true, 'counted' => false]);
+        }
+
+        $this->dailyCounter->increment($metric, $kioskId);
+
+        return response()->json(['ok' => true, 'counted' => true]);
     }
 
     public function paymentMethods(): JsonResponse
@@ -240,6 +271,8 @@ class KioskApiController extends Controller
             return response()->json(['message' => 'Baylan adresi yapılandırılmamış.'], 500);
         }
 
+        $kioskId = $this->queryGate->kioskId(request()->header('X-Kiosk-Id'));
+
         if (PHP_OS_FAMILY !== 'Windows') {
             return response()->json([
                 'ok'      => false,
@@ -251,6 +284,7 @@ class KioskApiController extends Controller
 
         try {
             $this->launchEdgeIeMode($url);
+            $this->dailyCounter->increment(KioskDailyStat::METRIC_AVANS_CREDIT, $kioskId);
 
             return response()->json(['ok' => true, 'opened' => true, 'url' => $url]);
         } catch (Throwable $e) {
@@ -365,9 +399,11 @@ class KioskApiController extends Controller
         ]);
 
         try {
-            return response()->json(
-                $this->waterCard->loadAdvance($validated['vendor'], $validated['aboneNo']),
-            );
+            $result = $this->waterCard->loadAdvance($validated['vendor'], $validated['aboneNo']);
+            $kioskId = $this->queryGate->kioskId($request->header('X-Kiosk-Id'));
+            $this->dailyCounter->increment(KioskDailyStat::METRIC_AVANS_CREDIT, $kioskId);
+
+            return response()->json($result);
         } catch (BelsisException $e) {
             return $this->belsisError($e);
         }
