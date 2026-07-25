@@ -34,6 +34,9 @@ return [
         'end_minute' => (int) env('KIOSK_MAINT_END_MINUTE', 0),
     ],
 
-    // Günlük rapor sayfası: /rapor?key=...  (boşsa anahtar istenmez — yalnızca iç ağda kullanın)
+    // Günlük rapor eski anahtarı (artık kiosk-yonetim şifresi kullanılıyor)
     'report_key' => env('KIOSK_REPORT_KEY', ''),
+
+    // Yönetim paneli şifresi: /kiosk-yonetim
+    'yonetim_password' => env('KIOSK_YONETIM_PASSWORD', 'Bi.34100!!'),
 ];

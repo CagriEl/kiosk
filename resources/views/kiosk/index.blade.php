@@ -453,8 +453,8 @@
                 <div class="w-16 h-16 rounded-2xl bg-municipal-100 flex items-center justify-center mb-5">
                     <svg class="w-9 h-9 text-municipal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                 </div>
-                <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-2">Borç Ödeme &amp; Sorgulama</h3>
-                <p class="text-kiosk-sm text-municipalGray-600">T.C. Kimlik Numaranızla belediye borçlarınızı görüntüleyin ve ödeyin.</p>
+                <h3 class="text-kiosk-xl font-bold text-municipalGray-800 mb-2">Borç Sorgulama</h3>
+                <p class="text-kiosk-sm text-municipalGray-600">T.C. Kimlik Numaranızla belediye borçlarınızı görüntüleyin.</p>
             </button>
             <button id="btn-menu-water" type="button" class="touch-btn flex-1 max-w-md bg-white border-3 border-cyan-400 rounded-3xl p-10 shadow-xl hover:border-cyan-600 text-left">
                 <div class="w-16 h-16 rounded-2xl bg-cyan-100 flex items-center justify-center mb-5">
@@ -791,32 +791,30 @@
         <div class="flex-1 flex overflow-hidden min-h-0">
             <div class="flex-1 px-6 py-4 overflow-hidden flex flex-col min-w-0">
                 <div class="flex items-center justify-between mb-3 gap-2">
-                    <p class="text-kiosk-sm text-municipalGray-600">Borçları seçiniz</p>
+                    <p class="text-kiosk-sm text-municipalGray-600">Borçlarınız</p>
                     <button id="btn-select-all" type="button" class="touch-btn text-kiosk-xs font-semibold text-municipal-600 bg-municipal-50 px-4 py-2 rounded-xl border-2 border-municipal-200 shrink-0">TÜMÜNÜ SEÇ</button>
                 </div>
                 <div id="debt-list" class="flex-1 min-h-0 space-y-2" role="list"></div>
             </div>
-            <aside class="w-[290px] shrink-0 bg-white border-l-2 border-municipal-200 flex flex-col items-center justify-center px-5 py-6 shadow-inner">
-                <div class="text-center mb-5">
-                    <p class="text-kiosk-xs text-municipalGray-500 mb-1">Seçilen Toplam</p>
-                    <p id="selected-total" class="text-kiosk-xl font-bold text-municipal-700">0,00 ₺</p>
-                    <p id="selected-count" class="text-kiosk-xs text-municipalGray-500 mt-1">0 borç seçildi</p>
-                </div>
-                <div class="w-28 h-20 mb-5 rounded-2xl bg-municipal-50 border-2 border-municipal-200 flex items-center justify-center">
-                    <svg class="w-16 h-12 text-municipal-600" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 64 48">
-                        <rect x="2" y="6" width="60" height="36" rx="4" stroke-width="2"/>
-                        <rect x="2" y="14" width="60" height="8" fill="currentColor" opacity="0.15" stroke="none"/>
-                        <rect x="8" y="30" width="20" height="4" rx="1" fill="currentColor" opacity="0.4" stroke="none"/>
-                        <rect x="36" y="28" width="12" height="8" rx="2" stroke-width="2"/>
+            <aside class="w-[290px] shrink-0 bg-amber-50 border-l-2 border-amber-300 flex flex-col items-center justify-center px-5 py-6 shadow-inner">
+                <div class="w-16 h-16 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center mb-4">
+                    <svg class="w-9 h-9 text-amber-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
                     </svg>
                 </div>
-                <button id="btn-pay-bank" type="button" disabled
-                    class="touch-btn w-full bg-municipal-600 text-white font-bold text-kiosk-sm px-4 py-5 rounded-2xl shadow-xl hover:bg-municipal-700 disabled:opacity-40 flex flex-col items-center gap-2">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
-                    BANKA KARTI İLE ÖDE
-                </button>
-                <p class="text-[0.7rem] text-municipalGray-500 text-center mt-3 leading-snug">Kartınızı yanınızdaki POS cihazına okutunuz</p>
-                <p id="payment-error" class="mt-3 text-kiosk-xs text-red-600 text-center hidden" role="alert"></p>
+                <p class="text-kiosk-sm font-bold text-amber-900 text-center leading-snug mb-3">Şu anda ödeme yapılamamaktadır</p>
+                <p class="text-kiosk-xs text-municipalGray-700 text-center leading-relaxed mb-4">
+                    Bu ekran yalnızca borç sorgulama için kullanılmaktadır.
+                </p>
+                <div class="w-full rounded-2xl bg-white border-2 border-amber-200 px-4 py-4 text-center">
+                    <p class="text-[0.7rem] text-municipalGray-500 mb-1.5">Borçlarınızı şu adresten ödeyebilirsiniz</p>
+                    <p class="text-kiosk-xs font-bold text-municipal-700 break-all leading-snug">e-belediye.kirklareli.bel.tr</p>
+                </div>
+                {{-- Ödeme geçici kapalı; JS uyumluluğu için gizli alanlar --}}
+                <p id="selected-total" class="hidden">0,00 ₺</p>
+                <p id="selected-count" class="hidden">0 borç seçildi</p>
+                <button id="btn-pay-bank" type="button" class="hidden" tabindex="-1" aria-hidden="true" disabled></button>
+                <p id="payment-error" class="hidden" role="alert"></p>
             </aside>
         </div>
     </section>
@@ -2405,13 +2403,18 @@
             const selected = session.debts.filter(d => session.selectedIds.has(d.id));
             const total = selected.reduce((s, d) => s + d.amount, 0);
             const groupCount = groupDebtsForDisplay(selected).length;
-            document.getElementById('selected-total').textContent = formatCurrency(total);
-            document.getElementById('selected-count').textContent =
-                selected.length
+            const totalEl = document.getElementById('selected-total');
+            const countEl = document.getElementById('selected-count');
+            const payBtn = document.getElementById('btn-pay-bank');
+            const errEl = document.getElementById('payment-error');
+            if (totalEl) totalEl.textContent = formatCurrency(total);
+            if (countEl) {
+                countEl.textContent = selected.length
                     ? (groupCount + ' grup · ' + selected.length + ' kalem seçildi')
                     : '0 borç seçildi';
-            document.getElementById('btn-pay-bank').disabled = selected.length === 0;
-            document.getElementById('payment-error').classList.add('hidden');
+            }
+            if (payBtn) payBtn.disabled = true;
+            if (errEl) errEl.classList.add('hidden');
         }
 
         function openBankModal(total) {
@@ -2440,29 +2443,9 @@
             onUserActivity();
         });
 
-        document.getElementById('btn-pay-bank').addEventListener('click', async () => {
-            const selectedIds = [...session.selectedIds];
-            if (!selectedIds.length) return;
-            const btnPay = document.getElementById('btn-pay-bank');
-            const total = session.debts.filter(d => session.selectedIds.has(d.id)).reduce((s, d) => s + d.amount, 0);
-            btnPay.disabled = true;
-            onUserActivity();
-            try {
-                const payment = await initiateBankPayment(
-                    session.citizen.identityNo,
-                    selectedIds,
-                    'tc',
-                    session.citizen.gensicilNo || undefined,
-                    session.citizen.aboneNo || undefined,
-                );
-                session.pendingPayment = { transactionId: payment.transactionId, debtIds: selectedIds };
-                openBankModal(total);
-            } catch (err) {
-                const errEl = document.getElementById('payment-error');
-                errEl.textContent = err.message;
-                errEl.classList.remove('hidden');
-                btnPay.disabled = false;
-            }
+        document.getElementById('btn-pay-bank')?.addEventListener('click', async () => {
+            // Banka POS ödemesi geçici olarak kapalı.
+            return;
         });
 
         document.getElementById('btn-cancel-bank').addEventListener('click', () => {

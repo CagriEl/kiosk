@@ -1,0 +1,11 @@
+Kiosk yonetim (sifreli)
+  http://10.0.1.1/kiosk/public/kiosk-yonetim
+
+Icerik:
+  - Gunluk islem raporu (borc / avans)
+  - kilitle.cmd / ac.cmd
+  - bekleyen.html + bekleyen-kur.cmd
+  - vpn-koru.cmd + vpn-koru-kur.cmd (GlobalProtect)
+  - kurulum.cmd / kurulum.reg / baylan.aspx
+
+Eski adresler (/baylan-ie, /rapor) yonetim paneline yonlendirilir.

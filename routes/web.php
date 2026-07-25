@@ -2,15 +2,33 @@
 
 use App\Http\Controllers\Api\KioskApiController;
 use App\Http\Controllers\KioskController;
-use App\Http\Controllers\KioskReportController;
+use App\Http\Controllers\KioskYonetimController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [KioskController::class, 'index'])->name('kiosk.index');
 Route::get('/kiosk', [KioskController::class, 'index']);
-Route::get('/rapor', KioskReportController::class)->name('kiosk.report');
 
-// Statik kurulum paketi: public/baylan-ie/
-Route::redirect('/baylan-ie', '/baylan-ie/index.html');
+// Eski adresler → şifreli yönetim
+Route::redirect('/rapor', '/kiosk-yonetim/rapor');
+Route::redirect('/baylan-ie', '/kiosk-yonetim');
+Route::get('/baylan-ie/{any}', function () {
+    return redirect('/kiosk-yonetim');
+})->where('any', '.*');
+
+// Kiosk yönetim (şifreli): rapor + kurulum dosyaları
+Route::prefix('kiosk-yonetim')->group(function () {
+    Route::get('/giris', [KioskYonetimController::class, 'loginForm'])->name('yonetim.login');
+    Route::post('/giris', [KioskYonetimController::class, 'login'])->name('yonetim.login.post');
+
+    Route::middleware('kiosk.yonetim')->group(function () {
+        Route::get('/', [KioskYonetimController::class, 'index'])->name('yonetim.index');
+        Route::post('/cikis', [KioskYonetimController::class, 'logout'])->name('yonetim.logout');
+        Route::get('/rapor', [KioskYonetimController::class, 'report'])->name('yonetim.report');
+        Route::get('/dosya/{file}', [KioskYonetimController::class, 'download'])
+            ->where('file', '[A-Za-z0-9._-]+')
+            ->name('yonetim.download');
+    });
+});
 
 // Kiosk API — web rotaları (paylaşımlı hosting /public altında güvenilir erişim)
 Route::prefix('api/kiosk')->middleware('kiosk.key')->group(function () {

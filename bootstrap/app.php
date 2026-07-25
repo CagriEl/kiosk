@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->alias([
             'kiosk.key' => \App\Http\Middleware\EnsureKioskApiKey::class,
+            'kiosk.yonetim' => \App\Http\Middleware\EnsureKioskYonetimAuth::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

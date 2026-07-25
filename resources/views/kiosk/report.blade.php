@@ -129,7 +129,12 @@
         </tbody>
     </table>
 
-    <p class="meta">Son {{ $days }} gün · Destek: {{ $supportPhone }}</p>
+    <p class="meta">
+        Son {{ $days }} gün · Destek: {{ $supportPhone }}
+        @if (!empty($yonetim))
+            · <a href="{{ route('yonetim.index') }}" style="color:#1e5a9e;font-weight:700;">Yönetime dön</a>
+        @endif
+    </p>
 </div>
 </body>
 </html>
