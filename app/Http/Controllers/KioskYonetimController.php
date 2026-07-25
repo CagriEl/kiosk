@@ -14,15 +14,12 @@ class KioskYonetimController extends Controller
 {
     private const ALLOWED_FILES = [
         'kilitle.cmd',
-        'ac.cmd',
         'bekleyen.html',
         'bekleyen-kur.cmd',
         'vpn-koru.cmd',
-        'vpn-koru-kur.cmd',
         'kurulum.cmd',
         'kurulum.reg',
         'baylan.aspx',
-        'OKU.txt',
     ];
 
     public function loginForm(): View|RedirectResponse
@@ -125,16 +122,13 @@ class KioskYonetimController extends Controller
     private function fileLabel(string $name): string
     {
         return match ($name) {
-            'kilitle.cmd' => 'Windows kilit',
-            'ac.cmd' => 'Kilidi aç',
+            'kilitle.cmd' => 'Windows kilit / aç (kilitle.cmd ac)',
             'bekleyen.html' => 'VPN bekleyen sayfa',
             'bekleyen-kur.cmd' => 'Bekleyen kurulum',
-            'vpn-koru.cmd' => 'GlobalProtect VPN koruyucu',
-            'vpn-koru-kur.cmd' => 'VPN koruyucu kurulum',
+            'vpn-koru.cmd' => 'GlobalProtect VPN koruyucu (kur + çalıştır)',
             'kurulum.cmd' => 'Baylan IE protokol kurulum',
             'kurulum.reg' => 'Baylan IE kayıt (.reg)',
             'baylan.aspx' => 'Baylan ASPX kopyası',
-            'OKU.txt' => 'Kısa kullanım notu',
             default => $name,
         };
     }

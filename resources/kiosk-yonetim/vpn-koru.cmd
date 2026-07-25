@@ -2,29 +2,47 @@
 chcp 65001 >nul
 title Kirklareli Kiosk - GlobalProtect VPN Koruyucu
 
-REM ============================================================
-REM  Palo Alto GlobalProtect — kopunca yeniden baglanmayi dener.
-REM  http://10.0.1.1/kiosk/public/baylan-ie/vpn-koru.cmd
-REM
-REM  Yontem: 10.0.1.1 yanit vermezse PanGPS servisini yeniden baslatir.
-REM  (Kayitli portal / kullanici ile GlobalProtect genelde otomatik baglanir.)
-REM ============================================================
+REM Tek dosya: kurulum + koruyucu
+REM Yonetimden indir → cift tik → UAC Evet
+REM Acilista otomatik baslar; 10.0.1.1 yoksa PanGPS yeniden baslatilir.
 
 set "CHECK_HOST=10.0.1.1"
 set "INTERVAL=20"
 set "FAIL_NEED=2"
 set "FAILS=0"
+set "DIR=%LOCALAPPDATA%\KioskBekleyen"
+set "DST=%DIR%\vpn-koru.cmd"
+set "VBS=%DIR%\vpn-koru-gizli.vbs"
 
-REM Yonetici degilse kendini yukselt (servis restart icin gerekli)
+if /I "%~1"=="run" goto elevate_ok
+
+REM Ilk calistirma: yonetici yap, kur, sonra koru
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -ArgumentList 'run' -Verb RunAs"
+exit /b
+
+:elevate_ok
 net session >nul 2>&1
 if errorlevel 1 (
-  powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
-  exit /b
+  echo HATA: Yonetici yetkisi yok.
+  pause
+  exit /b 1
 )
 
-echo GlobalProtect VPN koruyucu basladi.
-echo  Kontrol : %CHECK_HOST% her %INTERVAL% sn
-echo  Durdurmak icin bu pencereyi kapatin.
+mkdir "%DIR%" 2>nul
+copy /Y "%~f0" "%DST%" >nul
+
+> "%VBS%" (
+  echo Set sh = CreateObject("WScript.Shell")
+  echo sh.Run "powershell -NoProfile -WindowStyle Hidden -Command ""Start-Process -FilePath '%DST%' -ArgumentList 'run' -Verb RunAs""", 0, False
+)
+
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "KirklareliVpnKoru" /t REG_SZ /d "wscript.exe //nologo \"%VBS%\"" /f >nul
+
+echo.
+echo GlobalProtect VPN koruyucu hazir.
+echo  Kurulum  : acilista otomatik
+echo  Kontrol  : %CHECK_HOST% her %INTERVAL% sn
+echo  Durdurmak: Gorev Yoneticisi'nden bu pencereyi kapatin
 echo.
 
 :loop
@@ -48,7 +66,6 @@ timeout /t %INTERVAL% /nobreak >nul
 goto loop
 
 :reconnect
-REM Servis adi genelde PanGPS
 sc query PanGPS >nul 2>&1
 if errorlevel 1 (
   echo [%TIME%] HATA: PanGPS servisi bulunamadi. GlobalProtect kurulu mu?
@@ -58,12 +75,8 @@ if errorlevel 1 (
 net stop PanGPS /y >nul 2>&1
 timeout /t 3 /nobreak >nul
 net start PanGPS >nul 2>&1
-if errorlevel 1 (
-  echo [%TIME%] PanGPS start basarisiz — sc ile deneniyor...
-  sc start PanGPS >nul 2>&1
-)
+if errorlevel 1 sc start PanGPS >nul 2>&1
 
-REM Arayuz aciksa bir kez tetikle (kuruluysa)
 if exist "%ProgramFiles%\Palo Alto Networks\GlobalProtect\PanGPA.exe" (
   start "" "%ProgramFiles%\Palo Alto Networks\GlobalProtect\PanGPA.exe"
 )
