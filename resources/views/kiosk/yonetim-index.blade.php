@@ -65,7 +65,7 @@
             <h1>Kiosk yönetim</h1>
             <p>T.C. Kırklareli Belediye Başkanlığı · Destek {{ $supportPhone }}</p>
         </div>
-        <form method="post" action="{{ route('yonetim.logout') }}">
+        <form method="post" action="{{ route('yonetim.logout', absolute: false) }}">
             @csrf
             <button class="logout" type="submit">Çıkış</button>
         </form>

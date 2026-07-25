@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Kiosk Yönetim · Giriş</title>
     <style>
         body {
@@ -38,7 +39,7 @@
 <div class="card">
     <h1>Kiosk yönetim</h1>
     <p>Kurulum dosyaları ve günlük rapor. Yetkisiz erişim kapalıdır.</p>
-    <form method="post" action="{{ route('yonetim.login.post') }}">
+    <form method="post" action="">
         @csrf
         <label for="password">Şifre</label>
         <input id="password" type="password" name="password" autocomplete="current-password" autofocus required>
