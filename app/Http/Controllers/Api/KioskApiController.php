@@ -161,13 +161,15 @@ class KioskApiController extends Controller
     public function recordStatEvent(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'type' => 'required|in:debt_query,avans_credit',
+            'type' => 'required|in:debt_query,avans_credit,avans_success',
         ]);
 
         $kioskId = $this->queryGate->kioskId($request->header('X-Kiosk-Id'));
-        $metric = $validated['type'] === 'avans_credit'
-            ? KioskDailyStat::METRIC_AVANS_CREDIT
-            : KioskDailyStat::METRIC_DEBT_QUERY;
+        $metric = match ($validated['type']) {
+            'avans_credit' => KioskDailyStat::METRIC_AVANS_CREDIT,
+            'avans_success' => KioskDailyStat::METRIC_AVANS_SUCCESS,
+            default => KioskDailyStat::METRIC_DEBT_QUERY,
+        };
 
         // Borç sorgusu sunucu tarafında debts() içinde sayılır; istemciden tekrarlama yok.
         if ($metric === KioskDailyStat::METRIC_DEBT_QUERY) {
@@ -177,6 +179,27 @@ class KioskApiController extends Controller
         $this->dailyCounter->increment($metric, $kioskId);
 
         return response()->json(['ok' => true, 'counted' => true]);
+    }
+
+    /**
+     * Baylan ASPX (farklı origin) başarı sayacı — Image/beacon ile çağrılır.
+     * API key gerektirmez; yalnızca avans_success kabul eder.
+     */
+    public function recordStatHit(Request $request): \Illuminate\Http\Response
+    {
+        $type = (string) $request->query('type', '');
+        if ($type === 'avans_success') {
+            $kioskId = $this->queryGate->kioskId($request->header('X-Kiosk-Id'));
+            $this->dailyCounter->increment(KioskDailyStat::METRIC_AVANS_SUCCESS, $kioskId);
+        }
+
+        // 1x1 gif
+        $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+
+        return response($gif, 200, [
+            'Content-Type' => 'image/gif',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ]);
     }
 
     public function paymentMethods(): JsonResponse

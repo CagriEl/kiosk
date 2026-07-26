@@ -30,6 +30,9 @@ Route::prefix('kiosk-yonetim')->group(function () {
     });
 });
 
+// Baylan ASPX başarı sayacı (API key yok — Image beacon)
+Route::get('/api/kiosk/stats/hit', [KioskApiController::class, 'recordStatHit']);
+
 // Kiosk API — web rotaları (paylaşımlı hosting /public altında güvenilir erişim)
 Route::prefix('api/kiosk')->middleware('kiosk.key')->group(function () {
     Route::get('/health', [KioskApiController::class, 'health']);

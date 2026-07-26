@@ -15,6 +15,7 @@ class KioskDailyCounter
         if (! in_array($metric, [
             KioskDailyStat::METRIC_DEBT_QUERY,
             KioskDailyStat::METRIC_AVANS_CREDIT,
+            KioskDailyStat::METRIC_AVANS_SUCCESS,
         ], true)) {
             return;
         }
@@ -38,7 +39,7 @@ class KioskDailyCounter
     }
 
     /**
-     * @return list<array{date: string, debt_query: int, avans_credit: int, total: int}>
+     * @return list<array{date: string, debt_query: int, avans_credit: int, avans_success: int, total: int}>
      */
     public function report(?string $kioskId = null, int $days = 30): array
     {
@@ -62,11 +63,13 @@ class KioskDailyCounter
             $rows = $grouped->get($date, collect());
             $debt = (int) $rows->where('metric', KioskDailyStat::METRIC_DEBT_QUERY)->sum('count');
             $avans = (int) $rows->where('metric', KioskDailyStat::METRIC_AVANS_CREDIT)->sum('count');
+            $success = (int) $rows->where('metric', KioskDailyStat::METRIC_AVANS_SUCCESS)->sum('count');
             $out[] = [
                 'date' => $date,
                 'debt_query' => $debt,
                 'avans_credit' => $avans,
-                'total' => $debt + $avans,
+                'avans_success' => $success,
+                'total' => $debt + $avans + $success,
             ];
         }
 
@@ -74,7 +77,7 @@ class KioskDailyCounter
     }
 
     /**
-     * @return array{date: string, debt_query: int, avans_credit: int, total: int}
+     * @return array{date: string, debt_query: int, avans_credit: int, avans_success: int, total: int}
      */
     public function today(?string $kioskId = null): array
     {
@@ -85,6 +88,7 @@ class KioskDailyCounter
             'date' => $today,
             'debt_query' => 0,
             'avans_credit' => 0,
+            'avans_success' => 0,
             'total' => 0,
         ];
     }

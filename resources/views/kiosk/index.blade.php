@@ -186,8 +186,45 @@
         }
         .abone-digit.filled { background: #eff6ff; border-color: #1e5a9e; }
         .abone-digit.active { border-color: #1e5a9e; box-shadow: 0 0 0 3px rgba(30, 90, 158, 0.2); background: #fff; }
-        #debt-list, #water-invoice-list { overflow-y:auto; scrollbar-width:none; }
-        #debt-list::-webkit-scrollbar, #water-invoice-list::-webkit-scrollbar { display:none; }
+        #screen-debts.active {
+            display: flex;
+            flex-direction: column;
+            height: 768px;
+            max-height: 768px;
+            overflow: hidden;
+        }
+        #screen-debts .debts-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+        }
+        #screen-debts .debts-list-wrap {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #debt-list, #water-invoice-list {
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            scrollbar-color: #93c5fd transparent;
+        }
+        #debt-list::-webkit-scrollbar, #water-invoice-list::-webkit-scrollbar {
+            width: 10px;
+        }
+        #debt-list::-webkit-scrollbar-thumb, #water-invoice-list::-webkit-scrollbar-thumb {
+            background: #93c5fd;
+            border-radius: 8px;
+        }
+        #debt-list::-webkit-scrollbar-track, #water-invoice-list::-webkit-scrollbar-track {
+            background: #e2e8f0;
+            border-radius: 8px;
+        }
 
         /* Baylan — genel.7z avans akışı */
         #screen-baylan {
@@ -788,9 +825,9 @@
             </div>
             <span class="text-kiosk-xs opacity-75 shrink-0">Adım 2 / 2</span>
         </header>
-        <div class="flex-1 flex overflow-hidden min-h-0">
-            <div class="flex-1 px-6 py-4 overflow-hidden flex flex-col min-w-0">
-                <div class="flex items-center justify-between mb-3 gap-2">
+        <div class="debts-body flex-1 flex min-h-0">
+            <div class="debts-list-wrap flex-1 px-6 py-4 min-w-0">
+                <div class="flex items-center justify-between mb-3 gap-2 shrink-0">
                     <p class="text-kiosk-sm text-municipalGray-600">Borçlarınız</p>
                     <button id="btn-select-all" type="button" class="touch-btn text-kiosk-xs font-semibold text-municipal-600 bg-municipal-50 px-4 py-2 rounded-xl border-2 border-municipal-200 shrink-0">TÜMÜNÜ SEÇ</button>
                 </div>

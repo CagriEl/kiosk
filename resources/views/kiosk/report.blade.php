@@ -16,6 +16,7 @@
             --line: #e5e7eb;
             --green: #047857;
             --cyan: #0e7490;
+            --amber: #b45309;
         }
         * { box-sizing: border-box; }
         body {
@@ -25,7 +26,7 @@
             color: var(--text);
             padding: 24px;
         }
-        .wrap { max-width: 920px; margin: 0 auto; }
+        .wrap { max-width: 980px; margin: 0 auto; }
         header {
             background: linear-gradient(180deg, var(--blue), var(--blue-dark));
             color: #fff;
@@ -37,7 +38,7 @@
         header p { margin: 0; opacity: .9; font-size: .95rem; }
         .cards {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 14px;
             margin-bottom: 20px;
         }
@@ -47,10 +48,11 @@
             border-radius: 14px;
             padding: 18px 20px;
         }
-        .card .label { color: var(--muted); font-size: .85rem; font-weight: 600; }
+        .card .label { color: var(--muted); font-size: .82rem; font-weight: 600; }
         .card .value { font-size: 2rem; font-weight: 800; margin-top: 6px; letter-spacing: .02em; }
         .card.debt .value { color: var(--blue); }
         .card.avans .value { color: var(--cyan); }
+        .card.success .value { color: var(--amber); }
         .card.total .value { color: var(--green); }
         table {
             width: 100%;
@@ -69,15 +71,15 @@
         th {
             background: #eef4fb;
             color: var(--blue-dark);
-            font-size: .8rem;
+            font-size: .78rem;
             text-transform: uppercase;
             letter-spacing: .04em;
         }
         tr:last-child td { border-bottom: 0; }
         td.num { font-variant-numeric: tabular-nums; font-weight: 700; }
         .meta { color: var(--muted); font-size: .85rem; margin: 14px 0 0; }
-        @media (max-width: 700px) {
-            .cards { grid-template-columns: 1fr; }
+        @media (max-width: 800px) {
+            .cards { grid-template-columns: 1fr 1fr; }
             body { padding: 14px; }
         }
     </style>
@@ -95,11 +97,15 @@
             <div class="value">{{ $today['debt_query'] }}</div>
         </div>
         <div class="card avans">
-            <div class="label">Bugün · Avans kredi</div>
+            <div class="label">Bugün · Avans ekranı açılış</div>
             <div class="value">{{ $today['avans_credit'] }}</div>
         </div>
+        <div class="card success">
+            <div class="label">Bugün · Başarılı yükleme</div>
+            <div class="value">{{ $today['avans_success'] ?? 0 }}</div>
+        </div>
         <div class="card total">
-            <div class="label">Bugün · Toplam</div>
+            <div class="label">Bugün · Toplam olay</div>
             <div class="value">{{ $today['total'] }}</div>
         </div>
     </div>
@@ -109,7 +115,8 @@
             <tr>
                 <th>Tarih</th>
                 <th>Borç sorgulama</th>
-                <th>Avans kredi</th>
+                <th>Avans açılış</th>
+                <th>Başarılı yükleme</th>
                 <th>Toplam</th>
             </tr>
         </thead>
@@ -119,11 +126,12 @@
                     <td>{{ \Illuminate\Support\Carbon::parse($row['date'])->format('d.m.Y') }}</td>
                     <td class="num">{{ $row['debt_query'] }}</td>
                     <td class="num">{{ $row['avans_credit'] }}</td>
+                    <td class="num">{{ $row['avans_success'] ?? 0 }}</td>
                     <td class="num">{{ $row['total'] }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="4">Henüz kayıt yok.</td>
+                    <td colspan="5">Henüz kayıt yok.</td>
                 </tr>
             @endforelse
         </tbody>
@@ -131,8 +139,9 @@
 
     <p class="meta">
         Son {{ $days }} gün · Destek: {{ $supportPhone }}
+        · Başarılı yükleme yalnızca yönetimde görünür
         @if (!empty($yonetim))
-            · <a href="{{ route('yonetim.index') }}" style="color:#1e5a9e;font-weight:700;">Yönetime dön</a>
+            · <a href="{{ route('yonetim.index', absolute: false) }}" style="color:#1e5a9e;font-weight:700;">Yönetime dön</a>
         @endif
     </p>
 </div>
