@@ -10,8 +10,6 @@ class KioskDailyStat extends Model
 
     public const METRIC_AVANS_CREDIT = 'avans_credit';
 
-    public const METRIC_AVANS_SUCCESS = 'avans_success';
-
     protected $fillable = [
         'stat_date',
         'kiosk_id',

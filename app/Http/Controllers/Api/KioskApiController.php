@@ -161,39 +161,25 @@ class KioskApiController extends Controller
     public function recordStatEvent(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'type' => 'required|in:debt_query,avans_credit,avans_success',
+            'type' => 'required|in:debt_query,avans_credit',
         ]);
 
-        $kioskId = $this->queryGate->kioskId($request->header('X-Kiosk-Id'));
-        $metric = match ($validated['type']) {
-            'avans_credit' => KioskDailyStat::METRIC_AVANS_CREDIT,
-            'avans_success' => KioskDailyStat::METRIC_AVANS_SUCCESS,
-            default => KioskDailyStat::METRIC_DEBT_QUERY,
-        };
-
-        // Borç sorgusu sunucu tarafında debts() içinde sayılır; istemciden tekrarlama yok.
-        if ($metric === KioskDailyStat::METRIC_DEBT_QUERY) {
-            return response()->json(['ok' => true, 'counted' => false]);
-        }
-
-        $this->dailyCounter->increment($metric, $kioskId);
-
-        return response()->json(['ok' => true, 'counted' => true]);
+        // Avans yalnızca Baylan ASPX başarı mesajından (stats/hit) sayılır.
+        return response()->json(['ok' => true, 'counted' => false, 'type' => $validated['type']]);
     }
 
     /**
-     * Baylan ASPX (farklı origin) başarı sayacı — Image/beacon ile çağrılır.
-     * API key gerektirmez; yalnızca avans_success kabul eder.
+     * Baylan ASPX başarı sayacı — Image/beacon.
+     * Yalnızca başarılı yükleme mesajı sonrası type=avans_credit ile çağrılır.
      */
     public function recordStatHit(Request $request): \Illuminate\Http\Response
     {
         $type = (string) $request->query('type', '');
-        if ($type === 'avans_success') {
+        if ($type === 'avans_credit') {
             $kioskId = $this->queryGate->kioskId($request->header('X-Kiosk-Id'));
-            $this->dailyCounter->increment(KioskDailyStat::METRIC_AVANS_SUCCESS, $kioskId);
+            $this->dailyCounter->increment(KioskDailyStat::METRIC_AVANS_CREDIT, $kioskId);
         }
 
-        // 1x1 gif
         $gif = base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
 
         return response($gif, 200, [
@@ -294,8 +280,6 @@ class KioskApiController extends Controller
             return response()->json(['message' => 'Baylan adresi yapılandırılmamış.'], 500);
         }
 
-        $kioskId = $this->queryGate->kioskId(request()->header('X-Kiosk-Id'));
-
         if (PHP_OS_FAMILY !== 'Windows') {
             return response()->json([
                 'ok'      => false,
@@ -307,7 +291,6 @@ class KioskApiController extends Controller
 
         try {
             $this->launchEdgeIeMode($url);
-            $this->dailyCounter->increment(KioskDailyStat::METRIC_AVANS_CREDIT, $kioskId);
 
             return response()->json(['ok' => true, 'opened' => true, 'url' => $url]);
         } catch (Throwable $e) {
@@ -422,11 +405,9 @@ class KioskApiController extends Controller
         ]);
 
         try {
-            $result = $this->waterCard->loadAdvance($validated['vendor'], $validated['aboneNo']);
-            $kioskId = $this->queryGate->kioskId($request->header('X-Kiosk-Id'));
-            $this->dailyCounter->increment(KioskDailyStat::METRIC_AVANS_CREDIT, $kioskId);
-
-            return response()->json($result);
+            return response()->json(
+                $this->waterCard->loadAdvance($validated['vendor'], $validated['aboneNo']),
+            );
         } catch (BelsisException $e) {
             return $this->belsisError($e);
         }

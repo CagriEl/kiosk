@@ -1027,17 +1027,6 @@
                 return;
             }
 
-            // Günlük avans kredi sayacı (başarısız olsa da akışı engellemez)
-            try {
-                fetch(`${API_BASE}/stats/event`, {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: kioskHeaders(),
-                    body: JSON.stringify({ type: 'avans_credit' }),
-                    keepalive: true,
-                }).catch(() => {});
-            } catch (_) { /* ignore */ }
-
             // AutoLaunchProtocolsFromOrigins politikası yüklüyse Chrome onay
             // penceresi göstermeden protokolü doğrudan çalıştırır.
             try {
