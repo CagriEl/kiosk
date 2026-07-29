@@ -39,4 +39,11 @@ return [
 
     // Yönetim paneli şifresi: /kiosk-yonetim
     'yonetim_password' => env('KIOSK_YONETIM_PASSWORD', 'Bi.34100!!'),
+
+    // Telegram bildirimleri
+    'telegram_bot_token' => env('KIOSK_TELEGRAM_BOT_TOKEN', ''),
+    'telegram_chat_id' => env('KIOSK_TELEGRAM_CHAT_ID', ''),
+
+    // İzlenen kiosk cihazları (heartbeat kontrolü)
+    'monitored_kiosks' => array_filter(explode(',', env('KIOSK_MONITORED_KIOSKS', 'kiosk-1'))),
 ];

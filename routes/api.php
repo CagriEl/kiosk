@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\Route;
 // Baylan ASPX başarı sayacı (Image beacon — API key yok)
 Route::get('/kiosk/stats/hit', [KioskApiController::class, 'recordStatHit']);
 
+// Kiosk heartbeat (API key yok — cihazdan her dakika gelir)
+Route::get('/kiosk/heartbeat', [KioskApiController::class, 'heartbeat']);
+
 Route::prefix('kiosk')->middleware('kiosk.key')->group(function () {
     Route::get('/health', [KioskApiController::class, 'health']);
     Route::post('/stats/event', [KioskApiController::class, 'recordStatEvent']);

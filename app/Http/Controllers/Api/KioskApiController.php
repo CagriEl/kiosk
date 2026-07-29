@@ -10,6 +10,7 @@ use App\Services\Belsis\WaterCardKioskService;
 use App\Models\KioskDailyStat;
 use App\Services\Kiosk\KioskAuditLogger;
 use App\Services\Kiosk\KioskDailyCounter;
+use App\Services\Kiosk\KioskHeartbeatService;
 use App\Services\Kiosk\KioskQueryGate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class KioskApiController extends Controller
         private readonly KioskQueryGate $queryGate,
         private readonly KioskAuditLogger $audit,
         private readonly KioskDailyCounter $dailyCounter,
+        private readonly KioskHeartbeatService $heartbeatService,
     ) {}
 
     public function health(): JsonResponse
@@ -64,6 +66,17 @@ class KioskApiController extends Controller
         }
 
         return response()->json($payload);
+    }
+
+    /**
+     * Cihazdan gelen periyodik heartbeat — çevrimiçi durumunu takip eder.
+     */
+    public function heartbeat(Request $request): JsonResponse
+    {
+        $kioskId = $request->query('kiosk_id', config('kiosk.id', 'kiosk-1'));
+        $this->heartbeatService->beat($kioskId);
+
+        return response()->json(['ok' => true, 'kiosk_id' => $kioskId]);
     }
 
     public function citizen(Request $request, string $identityNo): JsonResponse

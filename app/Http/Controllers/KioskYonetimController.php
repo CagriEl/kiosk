@@ -20,6 +20,7 @@ class KioskYonetimController extends Controller
         'kurulum.cmd',
         'kurulum.reg',
         'baylan.aspx',
+        'kapanma-izle.cmd',
     ];
 
     public function loginForm(): View|RedirectResponse
